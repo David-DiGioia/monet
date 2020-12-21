@@ -61,12 +61,12 @@ void VulkanEngine::init()
 
 void VulkanEngine::init_scene()
 {
-	_camPos = glm::vec3{ 0.0f, -6.0f, -10.0f };
+	_camPos = glm::vec3{ 0.0f, 6.0f, 10.0f };
 
 	RenderObject monkey{};
 	monkey.mesh = get_mesh("monkey");
 	monkey.material = get_material("default");
-	monkey.transformMatrix = glm::translate(glm::mat4{ 1.0 }, glm::vec3(0.0, 3.0, 0.0));
+	monkey.transformMatrix = glm::translate(glm::mat4{ 1.0 }, glm::vec3(0.0, 5.0, 0.0));
 
 	_renderables.push_back(monkey);
 
@@ -671,7 +671,8 @@ Mesh* VulkanEngine::get_mesh(const std::string& name)
 
 void VulkanEngine::draw_objects(VkCommandBuffer cmd, RenderObject* first, int count)
 {
-	glm::mat4 view{ glm::translate(glm::mat4(1.0f), _camPos) };
+	// negate _camPos since remeber we're actually translating everything in the scene, not the 'camera'
+	glm::mat4 view{ glm::translate(glm::mat4(1.0f), -_camPos) };
 	glm::mat4 projection{ glm::perspective(glm::radians(70.0f), 1700.0f / 900.0f, 0.1f, 200.0f) };
 	projection[1][1] *= -1;
 
@@ -746,22 +747,22 @@ bool VulkanEngine::process_input()
 
 	// continuous-response keys
 	if (keystate[SDL_SCANCODE_W]) {
-		_camPos.z += speed * delta;
-	}
-	if (keystate[SDL_SCANCODE_A]) {
-		_camPos.x += speed * delta;
-	}
-	if (keystate[SDL_SCANCODE_S]) {
 		_camPos.z -= speed * delta;
 	}
-	if (keystate[SDL_SCANCODE_D]) {
+	if (keystate[SDL_SCANCODE_A]) {
 		_camPos.x -= speed * delta;
 	}
+	if (keystate[SDL_SCANCODE_S]) {
+		_camPos.z += speed * delta;
+	}
+	if (keystate[SDL_SCANCODE_D]) {
+		_camPos.x += speed * delta;
+	}
 	if (keystate[SDL_SCANCODE_E]) {
-		_camPos.y -= speed * delta;
+		_camPos.y += speed * delta;
 	}
 	if (keystate[SDL_SCANCODE_Q]) {
-		_camPos.y += speed * delta;
+		_camPos.y -= speed * delta;
 	}
 
 	bool bQuit{ false };
