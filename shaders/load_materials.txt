@@ -1,0 +1,1 @@
+default tri_mesh.vert.spv colored_triangle.frag.spv

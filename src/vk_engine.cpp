@@ -51,7 +51,7 @@ void VulkanEngine::init()
 	init_default_renderpass();
 	init_framebuffers();
 	init_sync_structures();
-	init_pipelines();
+	load_materials();
 	load_meshes();
 	init_scene();
 
@@ -66,17 +66,23 @@ void VulkanEngine::init_scene()
 	RenderObject monkey{};
 	monkey.mesh = get_mesh("monkey");
 	monkey.material = get_material("default");
-	monkey.transformMatrix = glm::mat4{ 1.0f };
+	monkey.transformMatrix = glm::translate(glm::mat4{ 1.0 }, glm::vec3(0.0, 3.0, 0.0));
 
 	_renderables.push_back(monkey);
 
 	for (auto x{ -20 }; x <= 20; ++x) {
 		for (auto y{ -20 }; y <= 20; ++y) {
 			RenderObject tri{};
-			tri.mesh = get_mesh("monkey");
+			glm::mat4 scale;
+			if (x % 2) {
+				tri.mesh = get_mesh("monkey");
+				scale = glm::scale(glm::mat4{1.0}, glm::vec3(0.2, 0.2, 0.2));
+			} else {
+				tri.mesh = get_mesh("penguin");
+				scale = glm::scale(glm::mat4{1.0}, glm::vec3(1.0, 1.0, 1.0));
+			}
 			tri.material = get_material("default");
 			glm::mat4 translation{ glm::translate(glm::mat4{1.0}, glm::vec3(x, 0, y)) };
-			glm::mat4 scale{ glm::scale(glm::mat4{1.0}, glm::vec3(0.2, 0.2, 0.2)) };
 			tri.transformMatrix = translation * scale;
 
 			_renderables.push_back(tri);
@@ -144,17 +150,28 @@ void VulkanEngine::load_mesh(const std::string& name, const std::string& path)
 	_meshes[name] = mesh;
 }
 
-void VulkanEngine::init_pipelines()
+void VulkanEngine::load_materials()
+{
+	std::string name, vertPath, fragPath;
+	std::string prefix{ "../../shaders/" };
+	std::ifstream file{ "../../shaders/load_materials.txt" };
+	while (file >> name >> vertPath >> fragPath) {
+		init_pipeline(name, prefix + vertPath, prefix + fragPath);
+	}
+}
+
+// name must be unique!
+void VulkanEngine::init_pipeline(const std::string& name, const std::string& vertPath, const std::string& fragPath)
 {
 	VkShaderModule meshVertShader;
-	if (!load_shader_module("../../shaders/tri_mesh.vert.spv", &meshVertShader)) {
+	if (!load_shader_module(vertPath, &meshVertShader)) {
 		std::cout << "Error when building vertex shader module\n";
 	} else {
 		std::cout << "Vertex shader successfully loaded\n";
 	}
 
 	VkShaderModule triangleFragShader;
-	if (!load_shader_module("../../shaders/colored_triangle.frag.spv", &triangleFragShader)) {
+	if (!load_shader_module(fragPath, &triangleFragShader)) {
 		std::cout << "Error when building fragment shader module\n";
 	} else {
 		std::cout << "Fragment shader successfully loaded\n";
@@ -210,7 +227,7 @@ void VulkanEngine::init_pipelines()
 
 	VkPipeline pipeline{ pipelineBuilder.build_pipeline(_device, _renderPass) };
 
-	create_material(pipeline, layout, "default");
+	create_material(pipeline, layout, name);
 
 	vkDestroyShaderModule(_device, meshVertShader, nullptr);
 	vkDestroyShaderModule(_device, triangleFragShader, nullptr);
@@ -469,7 +486,7 @@ void VulkanEngine::init_vulkan()
 	});
 }
 
-bool VulkanEngine::load_shader_module(const char* filePath, VkShaderModule* outShaderModule)
+bool VulkanEngine::load_shader_module(const std::string& filePath, VkShaderModule* outShaderModule)
 {
 	// std::ios::ate puts cursor at end of file upon opening
 	std::ifstream file{ filePath, std::ios::ate | std::ios::binary };
@@ -660,6 +677,10 @@ void VulkanEngine::draw_objects(VkCommandBuffer cmd, RenderObject* first, int co
 
 	Mesh* lastMesh{ nullptr };
 	Material* lastMaterial{ nullptr };
+
+	uint32_t pipelineBinds{ 0 };
+	uint32_t vertexBufferBinds{ 0 };
+
 	for (auto i{ 0 }; i < count; ++i) {
 		RenderObject& object{ first[i] };
 
@@ -667,6 +688,7 @@ void VulkanEngine::draw_objects(VkCommandBuffer cmd, RenderObject* first, int co
 		if (object.material != lastMaterial) {
 			vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, object.material->pipeline);
 			lastMaterial = object.material;
+			++pipelineBinds;
 		}
 
 		glm::mat4 model{ object.transformMatrix };
@@ -684,9 +706,11 @@ void VulkanEngine::draw_objects(VkCommandBuffer cmd, RenderObject* first, int co
 			VkDeviceSize offset{ 0 };
 			vkCmdBindVertexBuffers(cmd, 0, 1, &object.mesh->_vertexBuffer._buffer, &offset);
 			lastMesh = object.mesh;
+			++vertexBufferBinds;
 		}
 		vkCmdDraw(cmd, object.mesh->_vertices.size(), 1, 0, 0);
 	}
+		//std::cout << "pipeline binds: " << pipelineBinds << "\nvertex buffer binds: " << vertexBufferBinds << "\n";
 }
 
 void VulkanEngine::showFPS() {

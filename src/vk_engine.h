@@ -133,13 +133,15 @@ private:
 
 	void init_sync_structures();
 
-	void init_pipelines();
+	void init_pipeline(const std::string& name, const std::string& vertPath, const std::string& fragPath);
 
-	bool load_shader_module(const char* filePath, VkShaderModule* outShaderModule);
+	bool load_shader_module(const std::string& filePath, VkShaderModule* outShaderModule);
 
 	void load_meshes();
 
 	void load_mesh(const std::string& name, const std::string& path);
+
+	void load_materials();
 
 	void upload_mesh(Mesh& mesh);
 
