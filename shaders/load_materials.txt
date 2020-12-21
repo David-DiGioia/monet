@@ -1,1 +1,3 @@
-default tri_mesh.vert.spv colored_triangle.frag.spv
+default projection.vert.spv	vertex_colors.frag.spv
+red 	projection.vert.spv	red.frag.spv
+green	projection.vert.spv	green.frag.spv

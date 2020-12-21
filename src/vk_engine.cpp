@@ -70,22 +70,31 @@ void VulkanEngine::init_scene()
 
 	_renderables.push_back(monkey);
 
+	uint32_t idx{ 0 };
+
 	for (auto x{ -20 }; x <= 20; ++x) {
 		for (auto y{ -20 }; y <= 20; ++y) {
-			RenderObject tri{};
+			RenderObject obj{};
 			glm::mat4 scale;
-			if (x % 2) {
-				tri.mesh = get_mesh("monkey");
-				scale = glm::scale(glm::mat4{1.0}, glm::vec3(0.2, 0.2, 0.2));
+			if (idx % 2) {
+				obj.mesh = get_mesh("monkey");
+				scale = glm::scale(glm::mat4{ 1.0 }, glm::vec3(0.2, 0.2, 0.2));
 			} else {
-				tri.mesh = get_mesh("penguin");
-				scale = glm::scale(glm::mat4{1.0}, glm::vec3(1.0, 1.0, 1.0));
+				obj.mesh = get_mesh("penguin");
+				scale = glm::scale(glm::mat4{ 1.0 }, glm::vec3(1.0, 1.0, 1.0));
 			}
-			tri.material = get_material("default");
+			if (idx % 3 == 0) {
+				obj.material = get_material("default");
+			} else if (idx % 3 == 1) {
+				obj.material = get_material("red");
+			} else {
+				obj.material = get_material("green");
+			}
 			glm::mat4 translation{ glm::translate(glm::mat4{1.0}, glm::vec3(x, 0, y)) };
-			tri.transformMatrix = translation * scale;
+			obj.transformMatrix = translation * scale;
 
-			_renderables.push_back(tri);
+			_renderables.push_back(obj);
+			++idx;
 		}
 	}
 }
@@ -711,7 +720,7 @@ void VulkanEngine::draw_objects(VkCommandBuffer cmd, RenderObject* first, int co
 		}
 		vkCmdDraw(cmd, object.mesh->_vertices.size(), 1, 0, 0);
 	}
-		//std::cout << "pipeline binds: " << pipelineBinds << "\nvertex buffer binds: " << vertexBufferBinds << "\n";
+	//std::cout << "pipeline binds: " << pipelineBinds << "\nvertex buffer binds: " << vertexBufferBinds << "\n\n";
 }
 
 void VulkanEngine::showFPS() {
