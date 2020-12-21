@@ -9,6 +9,7 @@
 #include <deque>
 #include <functional>
 #include <unordered_map>
+#include <string>
 
 #include "vk_types.h"
 #include "vk_mem_alloc.h"
@@ -84,20 +85,9 @@ public:
 	VkSemaphore _renderSemaphore;
 	VkFence _renderFence;
 
-	VkPipelineLayout _trianglePipelineLayout;
-	VkPipeline _trianglePipeline;
-	VkPipeline _redTrianglePipeline;
-
 	DeletionQueue _mainDeletionQueue;
 
 	VmaAllocator _allocator;
-
-	VkPipeline _meshPipeline;
-	Mesh _triangleMesh;
-
-	VkPipelineLayout _meshPipelineLayout;
-
-	Mesh _monkeyMesh;
 
 	VkImageView _depthImageView;
 	AllocatedImage _depthImage;
@@ -145,6 +135,8 @@ private:
 	bool load_shader_module(const char* filePath, VkShaderModule* outShaderModule);
 
 	void load_meshes();
+
+	void load_mesh(const std::string& name, const std::string& path);
 
 	void upload_mesh(Mesh& mesh);
 

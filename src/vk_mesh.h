@@ -1,8 +1,10 @@
 #pragma once
 
-#include <vk_types.h>
 #include <vector>
-#include <glm/vec3.hpp>
+#include <string>
+
+#include "vk_types.h"
+#include "glm/vec3.hpp"
 
 struct VertexInputDescription {
 	std::vector<VkVertexInputBindingDescription> bindings;
@@ -25,5 +27,5 @@ struct Mesh {
 	// vertex data on GPU
 	AllocatedBuffer _vertexBuffer;
 
-	bool load_from_obj(const char* filename);
+	bool load_from_obj(const std::string& filename);
 };
