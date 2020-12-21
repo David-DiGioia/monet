@@ -61,6 +61,8 @@ void VulkanEngine::init()
 
 void VulkanEngine::init_scene()
 {
+	_camPos = glm::vec3{ 0.0f, -6.0f, -10.0f };
+
 	RenderObject monkey{};
 	monkey.mesh = get_mesh("monkey");
 	monkey.material = get_material("default");
@@ -652,8 +654,7 @@ Mesh* VulkanEngine::get_mesh(const std::string& name)
 
 void VulkanEngine::draw_objects(VkCommandBuffer cmd, RenderObject* first, int count)
 {
-	glm::vec3 camPos{ 0.0f, -6.0f, -10.0f };
-	glm::mat4 view{ glm::translate(glm::mat4(1.0f), camPos) };
+	glm::mat4 view{ glm::translate(glm::mat4(1.0f), _camPos) };
 	glm::mat4 projection{ glm::perspective(glm::radians(70.0f), 1700.0f / 900.0f, 0.1f, 200.0f) };
 	projection[1][1] *= -1;
 
@@ -691,7 +692,7 @@ void VulkanEngine::draw_objects(VkCommandBuffer cmd, RenderObject* first, int co
 void VulkanEngine::showFPS() {
 	uint32_t currentTicks{ SDL_GetTicks() };
 	double currentTime{ currentTicks / 1000.0 };
-	double delta{ currentTime - _lastTime };
+	double delta{ currentTime - _lastTimeFPS };
 	++_nbFrames;
 
 	// if last fps update was more than a second ago
@@ -705,35 +706,68 @@ void VulkanEngine::showFPS() {
 		SDL_SetWindowTitle(_window, ss.str().c_str());
 
 		_nbFrames = 0;
-		_lastTime = currentTime;
+		_lastTimeFPS = currentTime;
 	}
+}
+
+bool VulkanEngine::process_input()
+{
+	double currentTime{ SDL_GetTicks() / 1000.0 };
+	double delta{ currentTime - _lastTime };
+	_lastTime = currentTime;
+
+	double speed{ 3.0f };
+
+	const Uint8* keystate{ SDL_GetKeyboardState(nullptr) };
+
+	// continuous-response keys
+	if (keystate[SDL_SCANCODE_W]) {
+		_camPos.z += speed * delta;
+	}
+	if (keystate[SDL_SCANCODE_A]) {
+		_camPos.x += speed * delta;
+	}
+	if (keystate[SDL_SCANCODE_S]) {
+		_camPos.z -= speed * delta;
+	}
+	if (keystate[SDL_SCANCODE_D]) {
+		_camPos.x -= speed * delta;
+	}
+	if (keystate[SDL_SCANCODE_E]) {
+		_camPos.y -= speed * delta;
+	}
+	if (keystate[SDL_SCANCODE_Q]) {
+		_camPos.y += speed * delta;
+	}
+
+	bool bQuit{ false };
+	SDL_Event e;
+	// Handle events on queue
+	while (SDL_PollEvent(&e))
+	{
+		switch (e.type)
+		{
+		case SDL_MOUSEMOTION:
+			break;
+		case SDL_QUIT:
+			bQuit = true;
+			break;
+		case SDL_KEYDOWN:
+			if (e.key.keysym.sym == SDLK_f) {
+				std::cout << "Thank you for pressing F\n";
+			}
+		}
+	}
+	return bQuit;
 }
 
 void VulkanEngine::run()
 {
-	SDL_Event e;
 	bool bQuit{ false };
 
 	// main loop
-	while (!bQuit)
-	{
-		// Handle events on queue
-		while (SDL_PollEvent(&e) != 0)
-		{
-			// close the window when user alt-f4s or clicks the X button			
-			if (e.type == SDL_QUIT) {
-				bQuit = true;
-			} else if (e.type == SDL_KEYDOWN) {
-				if (e.key.keysym.sym == SDLK_SPACE) {
-					_selectedShader = (_selectedShader + 1) % 2;
-				}
-			}
-
-			if (e.key.keysym.sym == SDLK_f && e.key.state == SDL_RELEASED) {
-				std::cout << "Thank you for pressing F\n";
-			}
-		}
-
+	while (!bQuit) {
+		bQuit = process_input();
 		draw();
 		showFPS();
 	}

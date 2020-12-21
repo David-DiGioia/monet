@@ -98,11 +98,14 @@ public:
 	std::unordered_map<std::string, Material> _materials;
 	std::unordered_map<std::string, Mesh> _meshes;
 
-	// variables for keeping track of fps
-	double _lastTime{ 0.0 };
-	uint32_t _nbFrames{ 0 };
+	glm::vec3 _camPos;
 
-	int _selectedShader{ 0 };
+	// for delta time
+	double _lastTime{ 0.0 };
+
+	// variables for keeping track of fps
+	double _lastTimeFPS{ 0.0 };
+	uint32_t _nbFrames{ 0 };
 
 	// initializes everything in the engine
 	void init();
@@ -143,6 +146,8 @@ private:
 	void showFPS();
 
 	void init_scene();
+
+	bool process_input();
 
 	// create material and add it to the map
 	Material* create_material(VkPipeline pipeline, VkPipelineLayout layout, const std::string& name);
