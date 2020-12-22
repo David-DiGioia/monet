@@ -68,12 +68,13 @@ void VulkanEngine::init_scene()
 	monkey.material = get_material("default");
 	monkey.transformMatrix = glm::translate(glm::mat4{ 1.0 }, glm::vec3(0.0, 5.0, 0.0));
 
+	//_renderables.insert(monkey);
 	_renderables.push_back(monkey);
 
 	uint32_t idx{ 0 };
 
-	for (auto x{ -20 }; x <= 20; ++x) {
-		for (auto y{ -20 }; y <= 20; ++y) {
+	for (auto x{ -40 }; x <= 40; ++x) {
+		for (auto y{ -40 }; y <= 40; ++y) {
 			RenderObject obj{};
 			glm::mat4 scale;
 			if (idx % 2) {
@@ -93,6 +94,7 @@ void VulkanEngine::init_scene()
 			glm::mat4 translation{ glm::translate(glm::mat4{1.0}, glm::vec3(x, 0, y)) };
 			obj.transformMatrix = translation * scale;
 
+			//_renderables.insert(obj);
 			_renderables.push_back(obj);
 			++idx;
 		}
@@ -561,11 +563,13 @@ void VulkanEngine::cleanup()
 
 void VulkanEngine::draw()
 {
+	uint32_t msStartTime{ SDL_GetTicks() };
+
 	// wait until the gpu has finished rendering the last frame. Timeout of 1 second
 	VK_CHECK(vkWaitForFences(_device, 1, &_renderFence, true, 1'000'000'000));
 	VK_CHECK(vkResetFences(_device, 1, &_renderFence));
 
-	// request image from the swapchain, one second timeout. This is also where vsync happens
+	// request image from the swapchain, one second timeout. This is also where vsync happens according to vkguide, but for me it happens at present
 	uint32_t swapchainImageIndex;
 	VK_CHECK(vkAcquireNextImageKHR(_device, _swapchain, 1'000'000'000, _presentSemaphore, VK_NULL_HANDLE, &swapchainImageIndex));
 
@@ -643,6 +647,10 @@ void VulkanEngine::draw()
 	presentInfo.pWaitSemaphores = &_renderSemaphore;
 	presentInfo.pImageIndices = &swapchainImageIndex;
 
+	uint32_t msEndTime{ SDL_GetTicks() };
+	_msDelta = msEndTime - msStartTime;
+
+	// This is what actually blocks for vsync at least on my system...
 	VK_CHECK(vkQueuePresentKHR(_graphicsQueue, &presentInfo));
 
 	++_frameNumber;
@@ -735,7 +743,7 @@ void VulkanEngine::showFPS() {
 		double fps{ _nbFrames / delta };
 
 		std::stringstream ss;
-		ss << ms << " ms   [" << fps << " fps]";
+		ss << ms << " ms [" << fps << " fps] (" << _msDelta << " ms no vsync)";
 
 		SDL_SetWindowTitle(_window, ss.str().c_str());
 

@@ -10,6 +10,7 @@
 #include <functional>
 #include <unordered_map>
 #include <string>
+#include <set>
 
 #include "vk_types.h"
 #include "vk_mem_alloc.h"
@@ -93,7 +94,7 @@ public:
 	AllocatedImage _depthImage;
 	VkFormat _depthFormat;
 
-	// default array of renderable objects
+	//std::set<RenderObject> _renderables;
 	std::vector<RenderObject> _renderables;
 	std::unordered_map<std::string, Material> _materials;
 	std::unordered_map<std::string, Mesh> _meshes;
@@ -106,6 +107,9 @@ public:
 	// variables for keeping track of fps
 	double _lastTimeFPS{ 0.0 };
 	uint32_t _nbFrames{ 0 };
+
+	// measure ms of each frame without vsync
+	double _msDelta;
 
 	// initializes everything in the engine
 	void init();
