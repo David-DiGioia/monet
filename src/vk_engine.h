@@ -29,6 +29,8 @@ struct RenderObject {
 	Mesh* mesh;
 	Material* material;
 	glm::mat4 transformMatrix;
+
+	bool operator<(const RenderObject& other) const;
 };
 
 struct MeshPushConstants {
@@ -94,8 +96,7 @@ public:
 	AllocatedImage _depthImage;
 	VkFormat _depthFormat;
 
-	//std::set<RenderObject> _renderables;
-	std::vector<RenderObject> _renderables;
+	std::multiset<RenderObject> _renderables;
 	std::unordered_map<std::string, Material> _materials;
 	std::unordered_map<std::string, Mesh> _meshes;
 
@@ -164,7 +165,7 @@ private:
 	// returns nullptr if it can't be found
 	Mesh* get_mesh(const std::string& name);
 
-	void draw_objects(VkCommandBuffer cmd, RenderObject* first, int count);
+	void draw_objects(VkCommandBuffer cmd, const std::multiset<RenderObject>& renderables);
 };
 
 class PipelineBuilder {

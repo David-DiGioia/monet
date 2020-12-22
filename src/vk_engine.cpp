@@ -29,6 +29,15 @@
 		}\
 	} while (0)\
 
+bool RenderObject::operator<(const RenderObject& other) const
+{
+	if (material->pipeline == other.material->pipeline) {
+		return mesh->_vertexBuffer._buffer < other.mesh->_vertexBuffer._buffer;
+	} else {
+		return material->pipeline < other.material->pipeline;
+	}
+}
+
 void VulkanEngine::init()
 {
 	// We initialize SDL and create a window with it. 
@@ -68,8 +77,7 @@ void VulkanEngine::init_scene()
 	monkey.material = get_material("default");
 	monkey.transformMatrix = glm::translate(glm::mat4{ 1.0 }, glm::vec3(0.0, 5.0, 0.0));
 
-	//_renderables.insert(monkey);
-	_renderables.push_back(monkey);
+	_renderables.insert(monkey);
 
 	uint32_t idx{ 0 };
 
@@ -94,8 +102,7 @@ void VulkanEngine::init_scene()
 			glm::mat4 translation{ glm::translate(glm::mat4{1.0}, glm::vec3(x, 0, y)) };
 			obj.transformMatrix = translation * scale;
 
-			//_renderables.insert(obj);
-			_renderables.push_back(obj);
+			_renderables.insert(obj);
 			++idx;
 		}
 	}
@@ -537,7 +544,8 @@ bool VulkanEngine::load_shader_module(const std::string& filePath, VkShaderModul
 	return true;
 }
 
-void DestroyDebugUtilsMessengerEXT(VkInstance instance, VkDebugUtilsMessengerEXT debugMessenger, const VkAllocationCallbacks* pAllocator) {
+void DestroyDebugUtilsMessengerEXT(VkInstance instance, VkDebugUtilsMessengerEXT debugMessenger, const VkAllocationCallbacks* pAllocator)
+{
 	auto func{ (PFN_vkDestroyDebugUtilsMessengerEXT)vkGetInstanceProcAddr(instance, "vkDestroyDebugUtilsMessengerEXT") };
 	if (func != nullptr) {
 		func(instance, debugMessenger, pAllocator);
@@ -610,7 +618,7 @@ void VulkanEngine::draw()
 
 	vkCmdBeginRenderPass(_mainCommandBuffer, &rpInfo, VK_SUBPASS_CONTENTS_INLINE);
 
-	draw_objects(_mainCommandBuffer, _renderables.data(), _renderables.size());
+	draw_objects(_mainCommandBuffer, _renderables);
 
 	vkCmdEndRenderPass(_mainCommandBuffer);
 	VK_CHECK(vkEndCommandBuffer(_mainCommandBuffer));
@@ -686,7 +694,7 @@ Mesh* VulkanEngine::get_mesh(const std::string& name)
 	}
 }
 
-void VulkanEngine::draw_objects(VkCommandBuffer cmd, RenderObject* first, int count)
+void VulkanEngine::draw_objects(VkCommandBuffer cmd, const std::multiset<RenderObject>& renderables)
 {
 	// negate _camPos since remeber we're actually translating everything in the scene, not the 'camera'
 	glm::mat4 view{ glm::translate(glm::mat4(1.0f), -_camPos) };
@@ -699,8 +707,8 @@ void VulkanEngine::draw_objects(VkCommandBuffer cmd, RenderObject* first, int co
 	uint32_t pipelineBinds{ 0 };
 	uint32_t vertexBufferBinds{ 0 };
 
-	for (auto i{ 0 }; i < count; ++i) {
-		RenderObject& object{ first[i] };
+	for (auto i{ renderables.cbegin() }; i != renderables.cend(); ++i) {
+		const RenderObject& object{ *i };
 
 		// only bind the pipeline if it doesn't match with the already bound one
 		if (object.material != lastMaterial) {
