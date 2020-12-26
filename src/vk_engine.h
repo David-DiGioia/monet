@@ -17,6 +17,42 @@
 #include "vk_mesh.h"
 #include "glm/glm.hpp"
 
+// number of frames to overlap when rendering
+constexpr unsigned int FRAME_OVERLAP{ 2 };
+
+struct GPUSceneData {
+	glm::vec4 fogColor; // w is for exponent
+	glm::vec4 fogDistance; // x for min, y for max, zw unused
+	glm::vec4 ambientColor;
+	glm::vec4 sunlightDirection; // w for sun power
+	glm::vec4 sunlightColor;
+};
+
+struct GPUCameraData {
+	glm::mat4 view;
+	glm::mat4 projection;
+	glm::mat4 viewProj;
+};
+
+struct FrameData {
+	VkSemaphore _presentSemaphore;
+	VkSemaphore _renderSemaphore;
+	VkFence _renderFence;
+
+	// This belongs to a frame because it's fast to reset a whole
+	// command pool, and we reset this for the whole frame
+	// (aka lifetime of this command pool is lifetime of this frame)
+	VkCommandPool _commandPool;
+	// command buffer belongs to frame since we for the next frame
+	// while the other frame's command buffer is submitted
+	VkCommandBuffer _mainCommandBuffer;
+
+	// buffer that holds a single GPUCameraData to use when rendering
+	AllocatedBuffer cameraBuffer;
+	// descriptor that has frame lifetime
+	VkDescriptorSet globalDescriptor;
+};
+
 // note that we store the VkPipeline and layout by value, not pointer.
 // They are 64 bit handles to internal driver structures anyway so storing
 // a pointer to them isn't very useful
@@ -78,15 +114,9 @@ public:
 
 	VkQueue _graphicsQueue;
 	uint32_t _graphicsQueueFamily;
-	VkCommandPool _commandPool;
-	VkCommandBuffer _mainCommandBuffer;
 
 	VkRenderPass _renderPass;
 	std::vector<VkFramebuffer> _framebuffers;
-
-	VkSemaphore _presentSemaphore;
-	VkSemaphore _renderSemaphore;
-	VkFence _renderFence;
 
 	DeletionQueue _mainDeletionQueue;
 
@@ -101,6 +131,20 @@ public:
 	std::unordered_map<std::string, Mesh> _meshes;
 
 	glm::vec3 _camPos;
+
+	VkDescriptorSetLayout _globalSetLayout;
+	VkDescriptorPool _descriptorPool;
+
+	VkPhysicalDeviceProperties _gpuProperties;
+
+	GPUSceneData _sceneParameters;
+	AllocatedBuffer _sceneParameterBuffer;
+
+	// frame storage
+	FrameData _frames[FRAME_OVERLAP];
+
+	// getter for the frame we are rendering to right now
+	FrameData& get_current_frame();
 
 	// for delta time
 	double _lastTime{ 0.0 };
@@ -166,6 +210,12 @@ private:
 	Mesh* get_mesh(const std::string& name);
 
 	void draw_objects(VkCommandBuffer cmd, const std::multiset<RenderObject>& renderables);
+
+	AllocatedBuffer create_buffer(size_t allocSize, VkBufferUsageFlags usage, VmaMemoryUsage memoryUsage);
+
+	void init_descriptors();
+
+	size_t pad_uniform_buffer_size(size_t originalSize);
 };
 
 class PipelineBuilder {
