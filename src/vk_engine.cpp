@@ -205,6 +205,9 @@ void VulkanEngine::init_descriptors()
 	pool_info.pPoolSizes = sizes.data();
 	
 	VK_CHECK(vkCreateDescriptorPool(_device, &pool_info, nullptr, &_descriptorPool));
+	_mainDeletionQueue.push_function([=]() {
+		vkDestroyDescriptorPool(_device, _descriptorPool, nullptr);
+	});
 
 	VkDescriptorSetLayoutBinding cameraBind{ vkinit::descriptorset_layout_binding(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_VERTEX_BIT, 0) };
 	VkDescriptorSetLayoutBinding sceneBind{ vkinit::descriptorset_layout_binding(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, 1) };
@@ -218,8 +221,10 @@ void VulkanEngine::init_descriptors()
 	setInfo.bindingCount = bindings.size();
 	setInfo.pBindings = bindings.data();
 
-
 	VK_CHECK(vkCreateDescriptorSetLayout(_device, &setInfo, nullptr, &_globalSetLayout));
+	_mainDeletionQueue.push_function([=]() {
+		vkDestroyDescriptorSetLayout(_device, _globalSetLayout, nullptr);
+	});
 
 	const size_t sceneParamBufferSize{ FRAME_OVERLAP * pad_uniform_buffer_size(sizeof(GPUSceneData)) };
 	_sceneParameterBuffer = create_buffer(sceneParamBufferSize, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VMA_MEMORY_USAGE_CPU_TO_GPU);
@@ -835,6 +840,7 @@ void VulkanEngine::draw_objects(VkCommandBuffer cmd, const std::multiset<RenderO
 
 	// copy scene data to scene buffer
 	float framed{ _frameNumber / 120.0f };
+
 	_sceneParameters.ambientColor = { sin(framed), 0, cos(framed), 1 };
 	char* sceneData;
 	vmaMapMemory(_allocator, _sceneParameterBuffer._allocation, (void**)&sceneData);
