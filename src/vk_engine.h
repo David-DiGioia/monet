@@ -34,6 +34,10 @@ struct GPUCameraData {
 	glm::mat4 viewProj;
 };
 
+struct GPUObjectData {
+	glm::mat4 modelMatrix;
+};
+
 struct FrameData {
 	VkSemaphore _presentSemaphore;
 	VkSemaphore _renderSemaphore;
@@ -51,6 +55,11 @@ struct FrameData {
 	AllocatedBuffer cameraBuffer;
 	// descriptor that has frame lifetime
 	VkDescriptorSet globalDescriptor;
+
+	// Object matrices for all objects in scenes. This belongs to the frame since it's
+	// dynamic and changing every frame (static scenes would need only one objectBuffer)
+	AllocatedBuffer objectBuffer;
+
 };
 
 // note that we store the VkPipeline and layout by value, not pointer.
