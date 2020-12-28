@@ -104,6 +104,15 @@ struct DeletionQueue
 class VulkanEngine {
 public:
 
+	// We need each of these per immediate submission since we will allocate a buffer
+	// from this command pool and use a fence to wait for it to finish.
+	// we use a separate command pool from rendering so we can reset it and use
+	// it from separate threads
+	struct UploadContext {
+		VkFence _uploadFence;
+		VkCommandPool _commandPool;
+	};
+
 	bool _isInitialized{ false };
 	int _frameNumber{ 0 };
 	VkExtent2D _windowExtent{ 1700 , 900 };
@@ -150,6 +159,8 @@ public:
 	AllocatedBuffer _sceneParameterBuffer;
 
 	VkDescriptorSetLayout _objectSetLayout;
+
+	UploadContext _uploadContext;
 
 	// frame storage
 	FrameData _frames[FRAME_OVERLAP];
@@ -227,6 +238,8 @@ private:
 	void init_descriptors();
 
 	size_t pad_uniform_buffer_size(size_t originalSize);
+
+	void immediate_submit(std::function<void(VkCommandBuffer cmd)>&& function);
 };
 
 class PipelineBuilder {
