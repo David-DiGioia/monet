@@ -59,7 +59,7 @@ struct FrameData {
 	// Object matrices for all objects in scenes. This belongs to the frame since it's
 	// dynamic and changing every frame (static scenes would need only one objectBuffer)
 	AllocatedBuffer objectBuffer;
-
+	VkDescriptorSet objectDescriptor;
 };
 
 // note that we store the VkPipeline and layout by value, not pointer.
@@ -149,11 +149,10 @@ public:
 	GPUSceneData _sceneParameters;
 	AllocatedBuffer _sceneParameterBuffer;
 
+	VkDescriptorSetLayout _objectSetLayout;
+
 	// frame storage
 	FrameData _frames[FRAME_OVERLAP];
-
-	// getter for the frame we are rendering to right now
-	FrameData& get_current_frame();
 
 	// for delta time
 	double _lastTime{ 0.0 };
@@ -208,6 +207,9 @@ private:
 	void init_scene();
 
 	bool process_input();
+
+	// getter for the frame we are rendering to right now
+	FrameData& get_current_frame();
 
 	// create material and add it to the map
 	Material* create_material(VkPipeline pipeline, VkPipelineLayout layout, const std::string& name);

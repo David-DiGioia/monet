@@ -192,10 +192,10 @@ size_t VulkanEngine::pad_uniform_buffer_size(size_t originalSize)
 
 void VulkanEngine::init_descriptors()
 {
-	// create a descriptor pool that will hold 10 uniform buffers and 10 dynamic uniform buffers
 	std::vector<VkDescriptorPoolSize> sizes{
 		{ VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 10 },
-		{ VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, 10 }
+		{ VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, 10 },
+		{ VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 10 }
 	};
 
 	VkDescriptorPoolCreateInfo pool_info{};
@@ -222,9 +222,20 @@ void VulkanEngine::init_descriptors()
 	setInfo.bindingCount = bindings.size();
 	setInfo.pBindings = bindings.data();
 
+	VkDescriptorSetLayoutBinding objectBind{ vkinit::descriptorset_layout_binding(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_VERTEX_BIT, 0) };
+
+	VkDescriptorSetLayoutCreateInfo set2info{};
+	set2info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
+	set2info.pNext = nullptr;
+	set2info.flags = 0;
+	set2info.bindingCount = 1;
+	set2info.pBindings = &objectBind;
+
 	VK_CHECK(vkCreateDescriptorSetLayout(_device, &setInfo, nullptr, &_globalSetLayout));
+	VK_CHECK(vkCreateDescriptorSetLayout(_device, &set2info, nullptr, &_objectSetLayout));
 	_mainDeletionQueue.push_function([=]() {
 		vkDestroyDescriptorSetLayout(_device, _globalSetLayout, nullptr);
+		vkDestroyDescriptorSetLayout(_device, _objectSetLayout, nullptr);
 	});
 
 	const size_t sceneParamBufferSize{ FRAME_OVERLAP * pad_uniform_buffer_size(sizeof(GPUSceneData)) };
@@ -244,7 +255,16 @@ void VulkanEngine::init_descriptors()
 		allocInfo.descriptorSetCount = 1;
 		allocInfo.pSetLayouts = &_globalSetLayout;
 
+		// allocate the descriptor set that will point to object buffer
+		VkDescriptorSetAllocateInfo objectSetAlloc{};
+		objectSetAlloc.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
+		objectSetAlloc.pNext = nullptr;
+		objectSetAlloc.descriptorPool = _descriptorPool;
+		objectSetAlloc.descriptorSetCount = 1;
+		objectSetAlloc.pSetLayouts = &_objectSetLayout;
+
 		VK_CHECK(vkAllocateDescriptorSets(_device, &allocInfo, &_frames[i].globalDescriptor));
+		VK_CHECK(vkAllocateDescriptorSets(_device, &objectSetAlloc, &_frames[i].objectDescriptor));
 
 		// information about the buffer we want to point at in the descriptor
 		VkDescriptorBufferInfo cameraInfo{};
@@ -258,9 +278,15 @@ void VulkanEngine::init_descriptors()
 		sceneInfo.offset = 0;
 		sceneInfo.range = sizeof(GPUSceneData);
 
+		VkDescriptorBufferInfo objectInfo{};
+		objectInfo.buffer = _frames[i].objectBuffer._buffer;
+		objectInfo.offset = 0;
+		objectInfo.range = sizeof(GPUObjectData) * MAX_OBJECTS;
+
 		VkWriteDescriptorSet cameraWrite{ vkinit::write_descriptor_buffer(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, _frames[i].globalDescriptor, &cameraInfo, 0) };
 		VkWriteDescriptorSet sceneWrite{ vkinit::write_descriptor_buffer(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, _frames[i].globalDescriptor, &sceneInfo, 1) };
-		std::array<VkWriteDescriptorSet, 2> setWrites{ cameraWrite, sceneWrite };
+		VkWriteDescriptorSet objectWrite{ vkinit::write_descriptor_buffer(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, _frames[i].objectDescriptor, &objectInfo, 0) };
+		std::array<VkWriteDescriptorSet, 3> setWrites{ cameraWrite, sceneWrite, objectWrite };
 		vkUpdateDescriptorSets(_device, setWrites.size(), setWrites.data(), 0, nullptr);
 	}
 }
@@ -290,10 +316,12 @@ void VulkanEngine::init_pipeline(const std::string& name, const std::string& ver
 	// this push constant range is accessible only in the vertex shader
 	push_constant.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
 
+	std::array<VkDescriptorSetLayout, 2> setLayouts{ _globalSetLayout, _objectSetLayout };
+
 	mesh_pipeline_layout_info.pPushConstantRanges = &push_constant;
 	mesh_pipeline_layout_info.pushConstantRangeCount = 1;
-	mesh_pipeline_layout_info.setLayoutCount = 1;
-	mesh_pipeline_layout_info.pSetLayouts = &_globalSetLayout;
+	mesh_pipeline_layout_info.setLayoutCount = setLayouts.size();
+	mesh_pipeline_layout_info.pSetLayouts = setLayouts.data();
 
 	VkPipelineLayout layout;
 	VK_CHECK(vkCreatePipelineLayout(_device, &mesh_pipeline_layout_info, nullptr, &layout));
@@ -839,7 +867,7 @@ void VulkanEngine::draw_objects(VkCommandBuffer cmd, const std::multiset<RenderO
 	// copy camera data to camera buffer
 	void* data;
 	vmaMapMemory(_allocator, get_current_frame().cameraBuffer._allocation, &data);
-	memcpy(data, &camData, sizeof(GPUCameraData));
+	std::memcpy(data, &camData, sizeof(GPUCameraData));
 	vmaUnmapMemory(_allocator, get_current_frame().cameraBuffer._allocation);
 
 	// copy scene data to scene buffer
@@ -850,8 +878,19 @@ void VulkanEngine::draw_objects(VkCommandBuffer cmd, const std::multiset<RenderO
 	vmaMapMemory(_allocator, _sceneParameterBuffer._allocation, (void**)&sceneData);
 	int frameIndex{ _frameNumber % FRAME_OVERLAP };
 	sceneData += pad_uniform_buffer_size(sizeof(GPUSceneData)) * frameIndex;
-	memcpy(sceneData, &_sceneParameters, sizeof(GPUSceneData));
+	std::memcpy(sceneData, &_sceneParameters, sizeof(GPUSceneData));
 	vmaUnmapMemory(_allocator, _sceneParameterBuffer._allocation);
+
+	// write all the objects' matrices into the SSBO
+	void* objectData;
+	vmaMapMemory(_allocator, get_current_frame().objectBuffer._allocation, &objectData);
+	GPUObjectData* objectSSBO{ (GPUObjectData*)objectData };
+	uint32_t idx{ 0 };
+	for (const RenderObject& object : renderables) {
+		objectSSBO[idx].modelMatrix = object.transformMatrix;
+		++idx;
+	}
+	vmaUnmapMemory(_allocator, get_current_frame().objectBuffer._allocation);
 
 	Mesh* lastMesh{ nullptr };
 	Material* lastMaterial{ nullptr };
@@ -859,16 +898,21 @@ void VulkanEngine::draw_objects(VkCommandBuffer cmd, const std::multiset<RenderO
 	uint32_t pipelineBinds{ 0 };
 	uint32_t vertexBufferBinds{ 0 };
 
-	for (auto i{ renderables.cbegin() }; i != renderables.cend(); ++i) {
-		const RenderObject& object{ *i };
-
+	idx = 0;
+	for (const RenderObject& object : renderables) {
 		// only bind the pipeline if it doesn't match with the already bound one
 		if (object.material != lastMaterial) {
 			vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, object.material->pipeline);
 			lastMaterial = object.material;
+
+			// camera data descriptor
 			uint32_t uniformOffset{ static_cast<uint32_t>(pad_uniform_buffer_size(sizeof(GPUSceneData)) * frameIndex) };
 			// we probably bind descriptor set here since it depends on the pipelinelayout
 			vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, object.material->pipelineLayout, 0, 1, &get_current_frame().globalDescriptor, 1, &uniformOffset);
+			
+			// object data descriptor
+			vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, object.material->pipelineLayout, 1, 1, &get_current_frame().objectDescriptor, 0, nullptr);
+
 			++pipelineBinds;
 		}
 
@@ -889,7 +933,9 @@ void VulkanEngine::draw_objects(VkCommandBuffer cmd, const std::multiset<RenderO
 			lastMesh = object.mesh;
 			++vertexBufferBinds;
 		}
-		vkCmdDraw(cmd, object.mesh->_vertices.size(), 1, 0, 0);
+
+		vkCmdDraw(cmd, object.mesh->_vertices.size(), 1, 0, idx);
+		++idx;
 	}
 	//std::cout << "pipeline binds: " << pipelineBinds << "\nvertex buffer binds: " << vertexBufferBinds << "\n\n";
 }
