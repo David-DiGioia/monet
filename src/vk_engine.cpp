@@ -866,7 +866,7 @@ void VulkanEngine::draw_objects(VkCommandBuffer cmd, const std::multiset<RenderO
 		if (object.material != lastMaterial) {
 			vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, object.material->pipeline);
 			lastMaterial = object.material;
-			uint32_t uniformOffset{ pad_uniform_buffer_size(sizeof(GPUSceneData)) * frameIndex };
+			uint32_t uniformOffset{ static_cast<uint32_t>(pad_uniform_buffer_size(sizeof(GPUSceneData)) * frameIndex) };
 			// we probably bind descriptor set here since it depends on the pipelinelayout
 			vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, object.material->pipelineLayout, 0, 1, &get_current_frame().globalDescriptor, 1, &uniformOffset);
 			++pipelineBinds;
