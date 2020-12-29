@@ -20,6 +20,11 @@
 // number of frames to overlap when rendering
 constexpr unsigned int FRAME_OVERLAP{ 2 };
 
+struct Texture {
+	AllocatedImage image;
+	VkImageView imageView;
+};
+
 struct GPUSceneData {
 	glm::vec4 fogColor; // w is for exponent
 	glm::vec4 fogDistance; // x for min, y for max, zw unused
@@ -162,6 +167,9 @@ public:
 
 	UploadContext _uploadContext;
 
+	//texture hashmap
+	std::unordered_map<std::string, Texture> _loadedTextures;
+
 	// frame storage
 	FrameData _frames[FRAME_OVERLAP];
 
@@ -186,6 +194,12 @@ public:
 
 	// run main loop
 	void run();
+
+	AllocatedBuffer create_buffer(size_t allocSize, VkBufferUsageFlags usage, VmaMemoryUsage memoryUsage);
+
+	void immediate_submit(std::function<void(VkCommandBuffer cmd)>&& function);
+
+	void load_images();
 
 private:
 
@@ -233,13 +247,9 @@ private:
 
 	void draw_objects(VkCommandBuffer cmd, const std::multiset<RenderObject>& renderables);
 
-	AllocatedBuffer create_buffer(size_t allocSize, VkBufferUsageFlags usage, VmaMemoryUsage memoryUsage);
-
 	void init_descriptors();
 
 	size_t pad_uniform_buffer_size(size_t originalSize);
-
-	void immediate_submit(std::function<void(VkCommandBuffer cmd)>&& function);
 };
 
 class PipelineBuilder {

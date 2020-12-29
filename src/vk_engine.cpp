@@ -9,15 +9,15 @@
 #include <sstream>
 #include <fstream>
 
-#define VMA_IMPLEMENTATION
-#include "vk_mem_alloc.h"
 #include "SDL.h"
 #include "SDL_vulkan.h"
-
 #include "vk_types.h"
 #include "vk_initializers.h"
 #include "VkBootstrap.h"
 #include "glm/gtx/transform.hpp"
+#include "vk_textures.h"
+#define VMA_IMPLEMENTATION
+#include "vk_mem_alloc.h"
 
 #define VK_CHECK(x)\
 	do\
@@ -203,7 +203,16 @@ void VulkanEngine::upload_mesh(Mesh& mesh)
 	vmaDestroyBuffer(_allocator, stagingBuffer._buffer, stagingBuffer._allocation);
 }
 
-// load_mesh("monkey", "../../assets/monkey_smooth.obj")
+void VulkanEngine::load_images()
+{
+	Texture lostEmpire;
+	vkutil::load_image_from_file(*this, "../../assets/lost_empire-RGBA.png", lostEmpire.image);
+
+	VkImageViewCreateInfo imageInfo{ vkinit::imageview_create_info(VK_FORMAT_R8G8B8A8_UNORM, lostEmpire.image._image, VK_IMAGE_ASPECT_COLOR_BIT) };
+	vkCreateImageView(_device, &imageInfo, nullptr, &lostEmpire.imageView);
+
+	_loadedTextures["empire_diffuse"] = lostEmpire;
+}
 
 void VulkanEngine::load_meshes()
 {
@@ -449,8 +458,8 @@ void VulkanEngine::init_sync_structures()
 	semaphoreCreateInfo.flags = 0;
 
 	VkFenceCreateInfo uploadFenceCreateInfo{};
-	fenceCreateInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
-	fenceCreateInfo.pNext = nullptr;
+	uploadFenceCreateInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
+	uploadFenceCreateInfo.pNext = nullptr;
 
 	VK_CHECK(vkCreateFence(_device, &uploadFenceCreateInfo, nullptr, &_uploadContext._uploadFence));
 	_mainDeletionQueue.push_function([=]() {
