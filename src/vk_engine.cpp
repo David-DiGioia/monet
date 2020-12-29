@@ -709,7 +709,6 @@ void VulkanEngine::init_vulkan()
 	});
 
 	vkGetPhysicalDeviceProperties(_chosenGPU, &_gpuProperties);
-	std::cout << "The GPU has a minimum buffer alignment of " << _gpuProperties.limits.minUniformBufferOffsetAlignment << '\n';
 }
 
 bool VulkanEngine::load_shader_module(const std::string& filePath, VkShaderModule* outShaderModule)

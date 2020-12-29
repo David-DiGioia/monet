@@ -59,7 +59,7 @@ bool Mesh::load_from_obj(const std::string& filename)
 	std::string err;
 
 	// load the OBJ file
-	tinyobj::LoadObj(&attrib, &shapes, &materials, &warn, &err, filename.c_str(), nullptr);
+	tinyobj::LoadObj(&attrib, &shapes, &materials, &warn, &err, filename.c_str(), (filename + "/..").c_str());
 	// make sure to output the warnings to the console in case there are issues with the file
 	if (!warn.empty()) {
 		std::cout << "WARN: " << warn << '\n';
