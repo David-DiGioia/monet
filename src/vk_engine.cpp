@@ -61,7 +61,7 @@ void VulkanEngine::init()
 	init_framebuffers();
 	init_sync_structures();
 	init_descriptors(); // descriptors are needed at pipeline create, so before materials
-	load_images();
+	load_textures();
 	load_materials();
 	load_meshes();
 	init_scene();
@@ -125,7 +125,7 @@ void VulkanEngine::immediate_submit(std::function<void(VkCommandBuffer cmd)>&& f
 {
 	// allocate the default command buffer that we will use for the instant commands
 	VkCommandBufferAllocateInfo cmdAllocInfo{ vkinit::command_buffer_allocate_info(_uploadContext._commandPool, 1) };
-	
+
 	VkCommandBuffer cmd;
 	VK_CHECK(vkAllocateCommandBuffers(_device, &cmdAllocInfo, &cmd));
 
@@ -215,26 +215,33 @@ void VulkanEngine::upload_mesh(Mesh& mesh)
 	vmaDestroyBuffer(_allocator, stagingBuffer._buffer, stagingBuffer._allocation);
 }
 
-void VulkanEngine::load_images()
+void VulkanEngine::load_textures()
 {
-	Texture lostEmpire;
-	vkutil::load_image_from_file(*this, "../../assets/lost_empire-RGBA.png", lostEmpire.image);
+	std::string name, path;
+	std::string prefix{ "../../assets/texture/" };
+	std::string loadFile{ "_load_textures.txt" };
+	std::ifstream file{ prefix + loadFile };
+	while (file >> name >> path) {
+		Texture texture;
+		vkutil::load_image_from_file(*this, (prefix + path).c_str(), texture.image);
 
-	VkImageViewCreateInfo imageInfo{ vkinit::imageview_create_info(VK_FORMAT_R8G8B8A8_UNORM, lostEmpire.image._image, VK_IMAGE_ASPECT_COLOR_BIT) };
-	vkCreateImageView(_device, &imageInfo, nullptr, &lostEmpire.imageView);
+		VkImageViewCreateInfo imageInfo{ vkinit::imageview_create_info(VK_FORMAT_R8G8B8A8_UNORM, texture.image._image, VK_IMAGE_ASPECT_COLOR_BIT) };
+		vkCreateImageView(_device, &imageInfo, nullptr, &texture.imageView);
 
-	_mainDeletionQueue.push_function([=]() {
-		vkDestroyImageView(_device, lostEmpire.imageView, nullptr);
-	});
+		_mainDeletionQueue.push_function([=]() {
+			vkDestroyImageView(_device, texture.imageView, nullptr);
+		});
 
-	_loadedTextures["empire_diffuse"] = lostEmpire;
+		_loadedTextures[name] = texture;
+	}
 }
 
 void VulkanEngine::load_meshes()
 {
 	std::string name, path;
-	std::string prefix{ "../../assets/" };
-	std::ifstream file{ "../../assets/_load_meshes.txt" };
+	std::string prefix{ "../../assets/mesh/" };
+	std::string loadFile{ "_load_meshes.txt" };
+	std::ifstream file{ prefix + loadFile };
 	while (file >> name >> path) {
 		load_mesh(name, prefix + path);
 	}
@@ -259,7 +266,8 @@ void VulkanEngine::load_materials()
 {
 	std::string name, vertPath, fragPath, textureName;
 	std::string prefix{ "../../shaders/" };
-	std::ifstream file{ "../../shaders/_load_materials.txt" };
+	std::string loadFile{ "_load_materials.txt" };
+	std::ifstream file{ prefix + loadFile };
 	while (file >> name >> vertPath >> fragPath >> textureName) {
 		init_pipeline(name, prefix + vertPath, prefix + fragPath, textureName);
 	}
@@ -1056,7 +1064,7 @@ void VulkanEngine::draw_objects(VkCommandBuffer cmd, const std::multiset<RenderO
 			uint32_t uniformOffset{ static_cast<uint32_t>(pad_uniform_buffer_size(sizeof(GPUSceneData)) * frameIndex) };
 			// we probably bind descriptor set here since it depends on the pipelinelayout
 			vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, object.material->pipelineLayout, 0, 1, &get_current_frame().globalDescriptor, 1, &uniformOffset);
-			
+
 			// object data descriptor
 			vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, object.material->pipelineLayout, 1, 1, &get_current_frame().objectDescriptor, 0, nullptr);
 

@@ -204,7 +204,7 @@ public:
 
 	void immediate_submit(std::function<void(VkCommandBuffer cmd)>&& function);
 
-	void load_images();
+	void load_textures();
 
 private:
 
