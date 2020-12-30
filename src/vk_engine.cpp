@@ -74,39 +74,7 @@ void VulkanEngine::init_scene()
 {
 	// minecraft -------------------------------------------------------------------
 
-	// create a sampler for the texture
-	VkSamplerCreateInfo samplerInfo{ vkinit::sampler_create_info(VK_FILTER_NEAREST) };
-	VkSampler blockySampler;
-	vkCreateSampler(_device, &samplerInfo, nullptr, &blockySampler);
-
-	_mainDeletionQueue.push_function([=]() {
-		vkDestroySampler(_device, blockySampler, nullptr);
-	});
-
-	Material* mat{ get_material("textured_lit") };
-
-	VkDescriptorSetAllocateInfo allocInfo{};
-	allocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
-	allocInfo.pNext = nullptr;
-	allocInfo.descriptorPool = _descriptorPool;
-	allocInfo.descriptorSetCount = 1;
-	allocInfo.pSetLayouts = &_singleTextureSetLayout;
-
-	vkAllocateDescriptorSets(_device, &allocInfo, &mat->textureSet);
-
-	VkDescriptorImageInfo imageBufferInfo{};
-	imageBufferInfo.sampler = blockySampler;
-	imageBufferInfo.imageView = _loadedTextures["empire_diffuse"].imageView;
-	imageBufferInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-
-	VkWriteDescriptorSet texture1{ vkinit::write_descriptor_image(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, mat->textureSet, &imageBufferInfo, 0) };
-
-	vkUpdateDescriptorSets(_device, 1, &texture1, 0, nullptr);
-
-
-
-
-	_camPos = glm::vec3{ 0.0f, 6.0f, 10.0f };
+	_camPos = glm::vec3{ 0.0f, 12.0f, 10.0f };
 	RenderObject minecraft{};
 	minecraft.mesh = get_mesh("minecraft");
 	minecraft.material = get_material("textured_lit");
@@ -289,11 +257,11 @@ void VulkanEngine::load_mesh(const std::string& name, const std::string& path)
 
 void VulkanEngine::load_materials()
 {
-	std::string name, vertPath, fragPath;
+	std::string name, vertPath, fragPath, textureName;
 	std::string prefix{ "../../shaders/" };
 	std::ifstream file{ "../../shaders/_load_materials.txt" };
-	while (file >> name >> vertPath >> fragPath) {
-		init_pipeline(name, prefix + vertPath, prefix + fragPath);
+	while (file >> name >> vertPath >> fragPath >> textureName) {
+		init_pipeline(name, prefix + vertPath, prefix + fragPath, textureName);
 	}
 }
 
@@ -431,7 +399,7 @@ void VulkanEngine::init_descriptors()
 }
 
 // name must be unique!
-void VulkanEngine::init_pipeline(const std::string& name, const std::string& vertPath, const std::string& fragPath)
+void VulkanEngine::init_pipeline(const std::string& name, const std::string& vertPath, const std::string& fragPath, const std::string& textureName)
 {
 	VkShaderModule meshVertShader;
 	if (!load_shader_module(vertPath, &meshVertShader)) {
@@ -501,7 +469,7 @@ void VulkanEngine::init_pipeline(const std::string& name, const std::string& ver
 
 	VkPipeline pipeline{ pipelineBuilder.build_pipeline(_device, _renderPass) };
 
-	create_material(pipeline, layout, name);
+	create_material(pipeline, layout, name, textureName);
 
 	vkDestroyShaderModule(_device, meshVertShader, nullptr);
 	vkDestroyShaderModule(_device, triangleFragShader, nullptr);
@@ -965,11 +933,41 @@ AllocatedBuffer VulkanEngine::create_buffer(size_t allocSize, VkBufferUsageFlags
 	return newBuffer;
 }
 
-Material* VulkanEngine::create_material(VkPipeline pipeline, VkPipelineLayout layout, const std::string& name)
+Material* VulkanEngine::create_material(VkPipeline pipeline, VkPipelineLayout layout, const std::string& name, const std::string& textureName)
 {
 	Material mat{};
 	mat.pipeline = pipeline;
 	mat.pipelineLayout = layout;
+
+	if (textureName != "null") {
+		// create a sampler for the texture
+		VkSamplerCreateInfo samplerInfo{ vkinit::sampler_create_info(VK_FILTER_NEAREST) };
+		VkSampler blockySampler;
+		vkCreateSampler(_device, &samplerInfo, nullptr, &blockySampler);
+
+		_mainDeletionQueue.push_function([=]() {
+			vkDestroySampler(_device, blockySampler, nullptr);
+		});
+
+		VkDescriptorSetAllocateInfo allocInfo{};
+		allocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
+		allocInfo.pNext = nullptr;
+		allocInfo.descriptorPool = _descriptorPool;
+		allocInfo.descriptorSetCount = 1;
+		allocInfo.pSetLayouts = &_singleTextureSetLayout;
+
+		vkAllocateDescriptorSets(_device, &allocInfo, &mat.textureSet);
+
+		VkDescriptorImageInfo imageBufferInfo{};
+		imageBufferInfo.sampler = blockySampler;
+		imageBufferInfo.imageView = _loadedTextures[textureName].imageView;
+		imageBufferInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+
+		VkWriteDescriptorSet texture1{ vkinit::write_descriptor_image(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, mat.textureSet, &imageBufferInfo, 0) };
+
+		vkUpdateDescriptorSets(_device, 1, &texture1, 0, nullptr);
+	}
+
 	_materials[name] = mat;
 	return &_materials[name];
 }

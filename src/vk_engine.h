@@ -220,7 +220,7 @@ private:
 
 	void init_sync_structures();
 
-	void init_pipeline(const std::string& name, const std::string& vertPath, const std::string& fragPath);
+	void init_pipeline(const std::string& name, const std::string& vertPath, const std::string& fragPath, const std::string& textureName);
 
 	bool load_shader_module(const std::string& filePath, VkShaderModule* outShaderModule);
 
@@ -242,7 +242,7 @@ private:
 	FrameData& get_current_frame();
 
 	// create material and add it to the map
-	Material* create_material(VkPipeline pipeline, VkPipelineLayout layout, const std::string& name);
+	Material* create_material(VkPipeline pipeline, VkPipelineLayout layout, const std::string& name, const std::string& textureName);
 
 	// returns nullptr if it can't be found
 	Material* get_material(const std::string& name);
