@@ -1,2 +1,0 @@
-monkey monkey_smooth.obj
-penguin penguin.obj

@@ -109,6 +109,7 @@ bool vkutil::load_image_from_file(VulkanEngine& engine, const char* file, Alloca
 	});
 
 	engine._mainDeletionQueue.push_function([=]() {
+		std::cout << "destroying newImage\n";
 		vmaDestroyImage(engine._allocator, newImage._image, newImage._allocation);
 	});
 

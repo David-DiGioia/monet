@@ -1,0 +1,4 @@
+default 	projection.vert.spv	default_lit.frag.spv
+red 		projection.vert.spv	red.frag.spv
+green		projection.vert.spv	green.frag.spv
+textured_lit	projection.vert.spv	textured_lit.frag.spv

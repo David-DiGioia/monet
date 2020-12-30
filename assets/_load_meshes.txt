@@ -1,0 +1,3 @@
+monkey		monkey_smooth.obj
+penguin		penguin.obj
+minecraft	lost_empire.obj

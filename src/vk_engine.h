@@ -71,6 +71,8 @@ struct FrameData {
 // They are 64 bit handles to internal driver structures anyway so storing
 // a pointer to them isn't very useful
 struct Material {
+	// analogous to instance of descriptor set layout, which is why it's per material
+	VkDescriptorSet textureSet;
 	VkPipeline pipeline;
 	VkPipelineLayout pipelineLayout;
 };
@@ -169,6 +171,9 @@ public:
 
 	//texture hashmap
 	std::unordered_map<std::string, Texture> _loadedTextures;
+
+	// analagous to a template for descriptor sets
+	VkDescriptorSetLayout _singleTextureSetLayout;
 
 	// frame storage
 	FrameData _frames[FRAME_OVERLAP];
