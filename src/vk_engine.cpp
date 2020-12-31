@@ -16,6 +16,10 @@
 #include "VkBootstrap.h"
 #include "glm/gtx/transform.hpp"
 #include "vk_textures.h"
+#include "imgui.h"
+#include "imgui_impl_sdl.h"
+#include "imgui_impl_vulkan.h"
+
 #define VMA_IMPLEMENTATION
 #include "vk_mem_alloc.h"
 
@@ -65,9 +69,73 @@ void VulkanEngine::init()
 	load_materials();
 	load_meshes();
 	init_scene();
+	init_imgui();
 
 	// everything went fine
 	_isInitialized = true;
+}
+
+void VulkanEngine::init_imgui()
+{
+	// 1: create a descriptor pool for IMGUI
+	// the size of the pool is very oversized, but it's copied from imgui demo itself.
+	VkDescriptorPoolSize pool_sizes[]{
+		{ VK_DESCRIPTOR_TYPE_SAMPLER, 1000 },
+		{ VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1000 },
+		{ VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE, 1000 },
+		{ VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, 1000 },
+		{ VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER, 1000 },
+		{ VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER, 1000 },
+		{ VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1000 },
+		{ VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 1000 },
+		{ VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, 1000 },
+		{ VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC, 1000 },
+		{ VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT, 1000 }
+	};
+
+	VkDescriptorPoolCreateInfo pool_info{};
+	pool_info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
+	pool_info.flags = VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT;
+	pool_info.maxSets = 1000;
+	pool_info.poolSizeCount = std::size(pool_sizes);
+	pool_info.pPoolSizes = pool_sizes;
+
+	VkDescriptorPool imguiPool;
+	VK_CHECK(vkCreateDescriptorPool(_device, &pool_info, nullptr, &imguiPool));
+
+	// 2: initialize imgui library
+
+	// this initializes the core structures of imgui
+	ImGui::CreateContext();
+
+	// this initializes imgui for SDL
+	ImGui_ImplSDL2_InitForVulkan(_window);
+
+	// this initializes imgui for Vulkan
+	ImGui_ImplVulkan_InitInfo init_info{};
+	init_info.Instance = _instance;
+	init_info.PhysicalDevice = _chosenGPU;
+	init_info.Device = _device;
+	init_info.Queue = _graphicsQueue;
+	init_info.DescriptorPool = imguiPool;
+	init_info.MinImageCount = (uint32_t)_swapchainImages.size();
+	init_info.ImageCount = (uint32_t)_swapchainImages.size();;
+
+	ImGui_ImplVulkan_Init(&init_info, _renderPass);
+
+	// execute a GPU command to upload imgui font textures
+	immediate_submit([&](VkCommandBuffer cmd) {
+		ImGui_ImplVulkan_CreateFontsTexture(cmd);
+	});
+
+	// clear font textures from cpu data
+	ImGui_ImplVulkan_DestroyFontUploadObjects();
+
+	// enqueue destruction of the imgui created structures
+	_mainDeletionQueue.push_function([=]() {
+		vkDestroyDescriptorPool(_device, imguiPool, nullptr);
+		ImGui_ImplVulkan_Shutdown();
+	});
 }
 
 void VulkanEngine::init_scene()
@@ -825,101 +893,6 @@ void VulkanEngine::cleanup()
 	}
 }
 
-void VulkanEngine::draw()
-{
-	uint32_t msStartTime{ SDL_GetTicks() };
-
-	// wait until the gpu has finished rendering the last frame. Timeout of 1 second
-	VK_CHECK(vkWaitForFences(_device, 1, &get_current_frame()._renderFence, true, 1'000'000'000));
-	VK_CHECK(vkResetFences(_device, 1, &get_current_frame()._renderFence));
-
-	// request image from the swapchain, one second timeout. This is also where vsync happens according to vkguide, but for me it happens at present
-	uint32_t swapchainImageIndex;
-	VK_CHECK(vkAcquireNextImageKHR(_device, _swapchain, 1'000'000'000, get_current_frame()._presentSemaphore, VK_NULL_HANDLE, &swapchainImageIndex));
-
-	// now that we are sure that the commands finished executing, we can safely reset the command buffer to begin recording again
-	VK_CHECK(vkResetCommandBuffer(get_current_frame()._mainCommandBuffer, 0));
-
-	// begin the command buffer recording. We will use this command buffer exactly once, so we want to let Vulkan know that
-	VkCommandBufferBeginInfo cmdBeginInfo{};
-	cmdBeginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-	cmdBeginInfo.pNext = nullptr;
-	cmdBeginInfo.pInheritanceInfo = nullptr;
-	cmdBeginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
-
-	VK_CHECK(vkBeginCommandBuffer(get_current_frame()._mainCommandBuffer, &cmdBeginInfo));
-
-	// make a clear-color from the frame number. This will flash with a 120 * pi frame period.
-	VkClearValue clearValue{};
-	float flash = std::abs(std::sin(_frameNumber / 120.0f));
-	clearValue.color = { {0.0f, 0.0f, flash, 1.0f} };
-
-	VkClearValue depthClear{};
-	depthClear.depthStencil.depth = 1.0f;
-
-	std::array<VkClearValue, 2> clearValues{ clearValue, depthClear };
-
-	// start the main renderpass. we will use the clear color from above,
-	// and the framebuffer corresponding to the index the swapchain gave us
-	VkRenderPassBeginInfo rpInfo{};
-	rpInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-	rpInfo.pNext = nullptr;
-	rpInfo.renderPass = _renderPass;
-	rpInfo.renderArea.offset.x = 0;
-	rpInfo.renderArea.offset.y = 0;
-	rpInfo.renderArea.extent = _windowExtent;
-	rpInfo.framebuffer = _framebuffers[swapchainImageIndex];
-	rpInfo.clearValueCount = clearValues.size();
-	rpInfo.pClearValues = clearValues.data();
-
-	vkCmdBeginRenderPass(get_current_frame()._mainCommandBuffer, &rpInfo, VK_SUBPASS_CONTENTS_INLINE);
-
-	draw_objects(get_current_frame()._mainCommandBuffer, _renderables);
-
-	vkCmdEndRenderPass(get_current_frame()._mainCommandBuffer);
-	VK_CHECK(vkEndCommandBuffer(get_current_frame()._mainCommandBuffer));
-
-	// we want to wait on the _presentSemaphore, as that semaphore is signaled when the swapchain
-	// is ready. we will signal the _renderSemaphore, to signal that rendering has finished
-
-	VkPipelineStageFlags waitStage{ VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT };
-
-	VkSubmitInfo submit{};
-	submit.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-	submit.pNext = nullptr;
-	submit.pWaitDstStageMask = &waitStage;
-	submit.waitSemaphoreCount = 1;
-	submit.pWaitSemaphores = &get_current_frame()._presentSemaphore;
-	submit.signalSemaphoreCount = 1;
-	submit.pSignalSemaphores = &get_current_frame()._renderSemaphore;
-	submit.commandBufferCount = 1;
-	submit.pCommandBuffers = &get_current_frame()._mainCommandBuffer;
-
-	// submit command buffer to the queue and execute it.
-	// _renderFence will now block until the graphic commands finish execution
-	VK_CHECK(vkQueueSubmit(_graphicsQueue, 1, &submit, get_current_frame()._renderFence));
-
-	// this will put the image we just rendered into the visible window.
-	// we want to wait on the _renderSemaphore for that, as it's necessary that
-	// drawing commands have finished before the image is displayed to the user
-	VkPresentInfoKHR presentInfo{};
-	presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
-	presentInfo.pNext = nullptr;
-	presentInfo.swapchainCount = 1;
-	presentInfo.pSwapchains = &_swapchain;
-	presentInfo.waitSemaphoreCount = 1;
-	presentInfo.pWaitSemaphores = &get_current_frame()._renderSemaphore;
-	presentInfo.pImageIndices = &swapchainImageIndex;
-
-	uint32_t msEndTime{ SDL_GetTicks() };
-	_msDelta = msEndTime - msStartTime;
-
-	// This is what actually blocks for vsync at least on my system...
-	VK_CHECK(vkQueuePresentKHR(_graphicsQueue, &presentInfo));
-
-	++_frameNumber;
-}
-
 // does not enqueue deletion of buffer, this is caller's responsibility!
 AllocatedBuffer VulkanEngine::create_buffer(size_t allocSize, VkBufferUsageFlags usage, VmaMemoryUsage memoryUsage)
 {
@@ -1004,6 +977,103 @@ Mesh* VulkanEngine::get_mesh(const std::string& name)
 FrameData& VulkanEngine::get_current_frame()
 {
 	return _frames[_frameNumber % FRAME_OVERLAP];
+}
+
+void VulkanEngine::draw()
+{
+	uint32_t msStartTime{ SDL_GetTicks() };
+
+	// wait until the gpu has finished rendering the last frame. Timeout of 1 second
+	VK_CHECK(vkWaitForFences(_device, 1, &get_current_frame()._renderFence, true, 1'000'000'000));
+	VK_CHECK(vkResetFences(_device, 1, &get_current_frame()._renderFence));
+
+	// request image from the swapchain, one second timeout. This is also where vsync happens according to vkguide, but for me it happens at present
+	uint32_t swapchainImageIndex;
+	VK_CHECK(vkAcquireNextImageKHR(_device, _swapchain, 1'000'000'000, get_current_frame()._presentSemaphore, VK_NULL_HANDLE, &swapchainImageIndex));
+
+	// now that we are sure that the commands finished executing, we can safely reset the command buffer to begin recording again
+	VK_CHECK(vkResetCommandBuffer(get_current_frame()._mainCommandBuffer, 0));
+
+	// begin the command buffer recording. We will use this command buffer exactly once, so we want to let Vulkan know that
+	VkCommandBufferBeginInfo cmdBeginInfo{};
+	cmdBeginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+	cmdBeginInfo.pNext = nullptr;
+	cmdBeginInfo.pInheritanceInfo = nullptr;
+	cmdBeginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+
+	VK_CHECK(vkBeginCommandBuffer(get_current_frame()._mainCommandBuffer, &cmdBeginInfo));
+
+	// make a clear-color from the frame number. This will flash with a 120 * pi frame period.
+	VkClearValue clearValue{};
+	float flash = std::abs(std::sin(_frameNumber / 120.0f));
+	clearValue.color = { {0.0f, 0.0f, flash, 1.0f} };
+
+	VkClearValue depthClear{};
+	depthClear.depthStencil.depth = 1.0f;
+
+	std::array<VkClearValue, 2> clearValues{ clearValue, depthClear };
+
+	// start the main renderpass. we will use the clear color from above,
+	// and the framebuffer corresponding to the index the swapchain gave us
+	VkRenderPassBeginInfo rpInfo{};
+	rpInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
+	rpInfo.pNext = nullptr;
+	rpInfo.renderPass = _renderPass;
+	rpInfo.renderArea.offset.x = 0;
+	rpInfo.renderArea.offset.y = 0;
+	rpInfo.renderArea.extent = _windowExtent;
+	rpInfo.framebuffer = _framebuffers[swapchainImageIndex];
+	rpInfo.clearValueCount = clearValues.size();
+	rpInfo.pClearValues = clearValues.data();
+
+	vkCmdBeginRenderPass(get_current_frame()._mainCommandBuffer, &rpInfo, VK_SUBPASS_CONTENTS_INLINE);
+
+	draw_objects(get_current_frame()._mainCommandBuffer, _renderables);
+
+	ImGui_ImplVulkan_RenderDrawData(ImGui::GetDrawData(), get_current_frame()._mainCommandBuffer);
+
+	vkCmdEndRenderPass(get_current_frame()._mainCommandBuffer);
+	VK_CHECK(vkEndCommandBuffer(get_current_frame()._mainCommandBuffer));
+
+	// we want to wait on the _presentSemaphore, as that semaphore is signaled when the swapchain
+	// is ready. we will signal the _renderSemaphore, to signal that rendering has finished
+
+	VkPipelineStageFlags waitStage{ VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT };
+
+	VkSubmitInfo submit{};
+	submit.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+	submit.pNext = nullptr;
+	submit.pWaitDstStageMask = &waitStage;
+	submit.waitSemaphoreCount = 1;
+	submit.pWaitSemaphores = &get_current_frame()._presentSemaphore;
+	submit.signalSemaphoreCount = 1;
+	submit.pSignalSemaphores = &get_current_frame()._renderSemaphore;
+	submit.commandBufferCount = 1;
+	submit.pCommandBuffers = &get_current_frame()._mainCommandBuffer;
+
+	// submit command buffer to the queue and execute it.
+	// _renderFence will now block until the graphic commands finish execution
+	VK_CHECK(vkQueueSubmit(_graphicsQueue, 1, &submit, get_current_frame()._renderFence));
+
+	// this will put the image we just rendered into the visible window.
+	// we want to wait on the _renderSemaphore for that, as it's necessary that
+	// drawing commands have finished before the image is displayed to the user
+	VkPresentInfoKHR presentInfo{};
+	presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
+	presentInfo.pNext = nullptr;
+	presentInfo.swapchainCount = 1;
+	presentInfo.pSwapchains = &_swapchain;
+	presentInfo.waitSemaphoreCount = 1;
+	presentInfo.pWaitSemaphores = &get_current_frame()._renderSemaphore;
+	presentInfo.pImageIndices = &swapchainImageIndex;
+
+	uint32_t msEndTime{ SDL_GetTicks() };
+	_msDelta = msEndTime - msStartTime;
+
+	// This is what actually blocks for vsync at least on my system...
+	VK_CHECK(vkQueuePresentKHR(_graphicsQueue, &presentInfo));
+
+	++_frameNumber;
 }
 
 void VulkanEngine::draw_objects(VkCommandBuffer cmd, const std::multiset<RenderObject>& renderables)
@@ -1171,6 +1241,20 @@ bool VulkanEngine::process_input()
 	return bQuit;
 }
 
+void VulkanEngine::gui()
+{
+	// imgui new frame
+	ImGui_ImplVulkan_NewFrame();
+	ImGui_ImplSDL2_NewFrame(_window);
+	ImGui::NewFrame();
+
+	// imgui commands ---------------------------------------
+	ImGui::ShowDemoWindow();
+	// ------------------------------------------------------
+
+	ImGui::Render();
+}
+
 void VulkanEngine::run()
 {
 	bool bQuit{ false };
@@ -1178,6 +1262,7 @@ void VulkanEngine::run()
 	// main loop
 	while (!bQuit) {
 		bQuit = process_input();
+		gui();
 		draw();
 		showFPS();
 	}

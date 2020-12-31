@@ -255,6 +255,10 @@ private:
 	void init_descriptors();
 
 	size_t pad_uniform_buffer_size(size_t originalSize);
+
+	void init_imgui();
+
+	void gui();
 };
 
 class PipelineBuilder {
