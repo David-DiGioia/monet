@@ -38,8 +38,9 @@ struct Texture {
 
 struct GPUSceneData {
 	glm::vec4 ambientColor;
-	glm::vec4 sunDirection; // w for sun power
-	glm::vec4 sunColor;
+	glm::vec4 sunDirection;
+	glm::vec4 sunColor; // w is for sun power
+	glm::vec4 camPos; // w is unused
 	Light lights[MAX_NUM_TOTAL_LIGHTS];
 	int numLights;
 };

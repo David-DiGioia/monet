@@ -394,8 +394,8 @@ void VulkanEngine::init_descriptors()
 	});
 
 	// cameraBind needs to be accessed from fragment shader to get camPos
-	VkDescriptorSetLayoutBinding cameraBind{ vkinit::descriptorset_layout_binding(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, 0) };
-	VkDescriptorSetLayoutBinding sceneBind{ vkinit::descriptorset_layout_binding(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, VK_SHADER_STAGE_FRAGMENT_BIT, 1) };
+	VkDescriptorSetLayoutBinding cameraBind{ vkinit::descriptorset_layout_binding(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_VERTEX_BIT, 0) };
+	VkDescriptorSetLayoutBinding sceneBind{ vkinit::descriptorset_layout_binding(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, 1) };
 
 	std::array<VkDescriptorSetLayoutBinding, 2> bindings{ cameraBind, sceneBind };
 
@@ -1028,8 +1028,7 @@ void VulkanEngine::draw()
 
 	// make a clear-color from the frame number. This will flash with a 120 * pi frame period.
 	VkClearValue clearValue{};
-	float flash = std::abs(std::sin(_frameNumber / 120.0f));
-	clearValue.color = { {0.0f, 0.0f, flash, 1.0f} };
+	clearValue.color = { {0.01f, 0.01f, 0.02, 1.0f} };
 
 	VkClearValue depthClear{};
 	depthClear.depthStencil.depth = 1.0f;
@@ -1122,10 +1121,11 @@ void VulkanEngine::draw_objects(VkCommandBuffer cmd, const std::multiset<RenderO
 	// copy scene data to scene buffer
 	float framed{ _frameNumber / 120.0f };
 
-	_sceneParameters.ambientColor = { sin(framed), 0, cos(framed), 1 };
+	_sceneParameters.ambientColor = { glm::vec3{0.01f}, 1 };
 	_sceneParameters.numLights = 2;
 	_sceneParameters.lights[0] = _guiData.light0;
 	_sceneParameters.lights[1] = _guiData.light1;
+	_sceneParameters.camPos = -view[3];
 
 	char* sceneData;
 	vmaMapMemory(_allocator, _sceneParameterBuffer._allocation, (void**)&sceneData);

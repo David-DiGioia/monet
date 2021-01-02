@@ -17,29 +17,33 @@ VertexInputDescription Vertex::get_vertex_description()
 
 	description.bindings.push_back(mainBinding);
 
-	// position will be stored at location 0
 	VkVertexInputAttributeDescription positionAttribute{};
 	positionAttribute.binding = 0;
 	positionAttribute.location = 0;
 	positionAttribute.format = VK_FORMAT_R32G32B32_SFLOAT; // vec3
 	positionAttribute.offset = offsetof(Vertex, position);
 
-	// normal will be stored at location 1
 	VkVertexInputAttributeDescription normalAttribute{};
 	normalAttribute.binding = 0;
 	normalAttribute.location = 1;
 	normalAttribute.format = VK_FORMAT_R32G32B32_SFLOAT; // vec3
 	normalAttribute.offset = offsetof(Vertex, normal);
 
-	// uv will be stored at location 3
+	VkVertexInputAttributeDescription tangentAttribute{};
+	tangentAttribute.binding = 0;
+	tangentAttribute.location = 2;
+	tangentAttribute.format = VK_FORMAT_R32G32B32_SFLOAT; // vec3
+	tangentAttribute.offset = offsetof(Vertex, tangent);
+
 	VkVertexInputAttributeDescription uvAttribute{};
 	uvAttribute.binding = 0;
-	uvAttribute.location = 2;
+	uvAttribute.location = 3;
 	uvAttribute.format = VK_FORMAT_R32G32_SFLOAT; // vec2
 	uvAttribute.offset = offsetof(Vertex, uv);
 
 	description.attributes.push_back(positionAttribute);
 	description.attributes.push_back(normalAttribute);
+	description.attributes.push_back(tangentAttribute);
 	description.attributes.push_back(uvAttribute);
 
 	return description;
@@ -111,12 +115,37 @@ bool Mesh::load_from_obj(const std::string& filename)
 				new_vert.uv.x = ux;
 				new_vert.uv.y = 1.0f - uy; // Vulkan UV coordinates are flipped about y-axis
 
-				// we are setting the vertex color as the vertex normal.
-				// This is just for display purposes
-				//new_vert.color = new_vert.normal;
-
 				_vertices.push_back(new_vert);
 			}
+
+			// load tangent vectors
+			glm::vec3 pos1{ _vertices[(_vertices.size() - 1) - 2].position };
+			glm::vec3 pos2{ _vertices[(_vertices.size() - 1) - 1].position };
+			glm::vec3 pos3{ _vertices[(_vertices.size() - 1) - 0].position };
+
+			glm::vec2 uv1{ _vertices[(_vertices.size() - 1) - 2].uv };
+			glm::vec2 uv2{ _vertices[(_vertices.size() - 1) - 1].uv };
+			glm::vec2 uv3{ _vertices[(_vertices.size() - 1) - 0].uv };
+
+			glm::vec3 n{ _vertices[_vertices.size() - 1].normal };
+
+			glm::vec3 edge1{ pos2 - pos1 };
+			glm::vec3 edge2{ pos3 - pos1 };
+			glm::vec2 deltaUV1{ uv2 - uv1 };
+			glm::vec2 deltaUV2{ uv3 - uv1 };
+
+			float inv{ 1.0f / (deltaUV1.x * deltaUV2.y - deltaUV2.x * deltaUV1.y) };
+
+			glm::vec3 tangent{
+				inv * (deltaUV2.y * edge1.x - deltaUV1.y * edge2.x),
+				inv * (deltaUV2.y * edge1.y - deltaUV1.y * edge2.y),
+				inv * (deltaUV2.y * edge1.z - deltaUV1.y * edge2.z)
+			};
+
+			_vertices[(_vertices.size() - 1) - 2].tangent = tangent;
+			_vertices[(_vertices.size() - 1) - 1].tangent = tangent;
+			_vertices[(_vertices.size() - 1) - 0].tangent = tangent;
+
 			index_offset += fv;
 		}
 	}

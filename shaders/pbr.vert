@@ -1,18 +1,36 @@
 #version 460 // version 460 required for indexing into transform array with gl_BaseInstance
+#define MAX_NUM_TOTAL_LIGHTS 20
 
 layout (location = 0) in vec3 vPosition;
 layout (location = 1) in vec3 vNormal;
-layout (location = 2) in vec2 vTexCoord;
+layout (location = 2) in vec3 vTangent;
+layout (location = 3) in vec2 vTexCoord;
 
 layout (location = 0) out vec2 texCoord;
-layout (location = 1) out vec3 worldPos;
-layout (location = 2) out vec3 normal;
+layout (location = 1) out vec3 normal;
+layout (location = 2) out vec3 tangentWorldPos;
+layout (location = 3) out vec3 tangentCamPos;
+layout (location = 4) out vec3 tangentLightPos[MAX_NUM_TOTAL_LIGHTS];
 
 layout (set = 0, binding = 0) uniform CameraBuffer {
     mat4 view;
     mat4 proj;
     mat4 viewProj;
 } cameraData;
+
+struct Light {
+    vec4 position;  // w is unused
+    vec4 color;     // w is for intensity
+};
+
+layout (set = 0, binding = 1) uniform SceneData {
+    vec4 ambientColor;
+    vec4 sunDirection;
+    vec4 sunColor; // w is for sun power
+    vec4 camPos; // w is unused
+    Light lights[MAX_NUM_TOTAL_LIGHTS];
+    int numLights;
+} sceneData;
 
 struct ObjectData {
     mat4 model;
@@ -38,6 +56,20 @@ void main()
     vec4 worldPos4 = modelMatrix * vec4(vPosition, 1.0f);
     gl_Position = cameraData.viewProj * worldPos4;
     texCoord = vTexCoord;
-    worldPos = worldPos4.xyz;
     normal = vNormal;
+
+    // transform TBN vectors from model space to world space
+    vec3 T = normalize(vec3(modelMatrix * vec4(vTangent, 0.0)));
+    vec3 N = normalize(vec3(modelMatrix * vec4(vNormal, 0.0)));
+    vec3 B = cross(N, T); // bitangent vector
+    // this matrix transforms from tangent space to world space
+    mat3 TBN = mat3(T, B, N);
+    // transpose is the inverse since it's orthonormal
+    TBN = transpose(TBN);
+    tangentWorldPos = TBN * worldPos4.xyz;
+    tangentCamPos = TBN * sceneData.camPos.xyz;
+
+    for (int i = 0; i < MAX_NUM_TOTAL_LIGHTS; ++i) {
+        tangentLightPos[i] = TBN * sceneData.lights[i].position.xyz;
+    }
 }

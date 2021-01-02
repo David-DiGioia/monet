@@ -2,16 +2,12 @@
 #define MAX_NUM_TOTAL_LIGHTS 20
 
 layout (location = 0) in vec2 texCoord;
-layout (location = 1) in vec3 worldPos;
-layout (location = 2) in vec3 normal;
+layout (location = 1) in vec3 normal;
+layout (location = 2) in vec3 tangentWorldPos;
+layout (location = 3) in vec3 tangentCamPos;
+layout (location = 4) in vec3 tangentLightPos[MAX_NUM_TOTAL_LIGHTS];
 
 layout (location = 0) out vec4 outFragColor;
-
-layout (set = 0, binding = 0) uniform CameraBuffer {
-    mat4 view;
-    mat4 proj;
-    mat4 viewProj;
-} cameraData;
 
 struct Light {
     vec4 position;  // w is unused
@@ -20,11 +16,11 @@ struct Light {
 
 layout (set = 0, binding = 1) uniform SceneData {
     vec4 ambientColor;
-    vec4 sunDirection; // w for sun power
-    vec4 sunColor;
+    vec4 sunDirection;
+    vec4 sunColor; // w is for sun power
+    vec4 camPos; // w is unused
     Light lights[MAX_NUM_TOTAL_LIGHTS];
     int numLights;
-
 } sceneData;
 
 layout (set = 2, binding = 0) uniform sampler2D tex;
@@ -34,13 +30,6 @@ float roughness = 0.3f;
 float ao = 1.0f;
 
 const float PI = 3.14159265359;
-vec3 camPos = -cameraData.view[3].xyz;
-// vec3 lightPositions[] = {vec3(0.0, 16.0, 0.0), vec3(5.0, 8.0, 0.0),
-//     vec3(10.0, 10.0, 0.0), vec3(15.0, 10.0, 0.0)};
-// vec3 lightColors[] = {vec3(10.0, 10.0, 8.0), vec3(1.0, 1.0, 1.0),
-//     vec3(1.0, 0.0, 0.0), vec3(0.0, 1.0, 1.0)};
-
-
 
 // F0 is the surface reflection at zero incidence (looking directly at surface)
 vec3 fresnelSchlick(float cosTheta, vec3 F0)
@@ -87,14 +76,14 @@ void main()
 {
     vec3 albedo = texture(tex, texCoord).xyz;
     vec3 N = normalize(normal);
-    vec3 V = normalize(camPos - worldPos);
+    vec3 V = normalize(tangentCamPos - tangentWorldPos);
 
     vec3 Lo = vec3(0.0);
     for (int i = 0; i < sceneData.numLights; ++i) {
-        vec3 L = normalize(sceneData.lights[i].position.xyz - worldPos);
+        vec3 L = normalize(sceneData.lights[i].position.xyz - tangentWorldPos);
         vec3 H = normalize(V + L);
 
-        float dist = distance(worldPos, sceneData.lights[i].position.xyz);
+        float dist = distance(tangentWorldPos, sceneData.lights[i].position.xyz);
         float attentuation = 1.0 / (dist * dist);
         vec3 light = sceneData.lights[i].color.xyz * sceneData.lights[i].color.w;
         vec3 radiance = light * attentuation;
@@ -123,7 +112,7 @@ void main()
         Lo += (kD * albedo / PI + specular) * radiance * NdotL;
     }
 
-    vec3 ambient = vec3(0.01) * albedo * ao;
+    vec3 ambient = sceneData.ambientColor.xyz * albedo * ao;
     vec3 color = ambient + Lo;
     // tonemap using Reinhard operator (this should really be done in post probably)
     color = color / (color + 1.0);
