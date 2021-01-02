@@ -8,6 +8,7 @@
 #include <array>
 #include <sstream>
 #include <fstream>
+#include <string>
 
 #include "SDL.h"
 #include "SDL_vulkan.h"
@@ -145,7 +146,7 @@ void VulkanEngine::init_scene()
 	_camPos = glm::vec3{ 0.0f, 12.0f, 10.0f };
 	RenderObject minecraft{};
 	minecraft.mesh = get_mesh("minecraft");
-	minecraft.material = get_material("textured_lit");
+	minecraft.material = get_material("pbr");
 	minecraft.transformMatrix = glm::translate(glm::mat4{ 1.0 }, glm::vec3(0.0, 0.0, 0.0));
 	_renderables.insert(minecraft);
 
@@ -332,12 +333,21 @@ void VulkanEngine::load_mesh(const std::string& name, const std::string& path)
 
 void VulkanEngine::load_materials()
 {
-	std::string name, vertPath, fragPath, textureName;
+	std::string name, vertPath, fragPath, textureName, line;
 	std::string prefix{ "../../shaders/" };
 	std::string loadFile{ "_load_materials.txt" };
 	std::ifstream file{ prefix + loadFile };
-	while (file >> name >> vertPath >> fragPath >> textureName) {
-		init_pipeline(name, prefix + vertPath, prefix + fragPath, textureName);
+
+	while (std::getline(file, line)) {
+		if (line.size() < 2 || (line.substr(0, 2) == "//")) {
+			continue;
+		}
+
+		std::stringstream ss{ line };
+		while (ss >> name >> vertPath >> fragPath >> textureName) {
+			std::cout << "\nloading material '" << name << "'\n";
+			init_pipeline(name, prefix + vertPath, prefix + fragPath, textureName);
+		}
 	}
 }
 
@@ -481,14 +491,14 @@ void VulkanEngine::init_pipeline(const std::string& name, const std::string& ver
 	if (!load_shader_module(vertPath, &meshVertShader)) {
 		std::cout << "Error when building vertex shader module\n";
 	} else {
-		std::cout << "Vertex shader successfully loaded\n";
+		//std::cout << "Vertex shader successfully loaded\n";
 	}
 
 	VkShaderModule triangleFragShader;
 	if (!load_shader_module(fragPath, &triangleFragShader)) {
 		std::cout << "Error when building fragment shader module\n";
 	} else {
-		std::cout << "Fragment shader successfully loaded\n";
+		//std::cout << "Fragment shader successfully loaded\n";
 	}
 
 	VkPipelineLayoutCreateInfo pipeline_layout_info{ vkinit::pipeline_layout_create_info() };
