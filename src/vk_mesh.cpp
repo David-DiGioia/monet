@@ -31,23 +31,15 @@ VertexInputDescription Vertex::get_vertex_description()
 	normalAttribute.format = VK_FORMAT_R32G32B32_SFLOAT; // vec3
 	normalAttribute.offset = offsetof(Vertex, normal);
 
-	// color will be stored at location 2
-	VkVertexInputAttributeDescription colorAttribute{};
-	colorAttribute.binding = 0;
-	colorAttribute.location = 2;
-	colorAttribute.format = VK_FORMAT_R32G32B32_SFLOAT; // vec3
-	colorAttribute.offset = offsetof(Vertex, color);
-
 	// uv will be stored at location 3
 	VkVertexInputAttributeDescription uvAttribute{};
 	uvAttribute.binding = 0;
-	uvAttribute.location = 3;
+	uvAttribute.location = 2;
 	uvAttribute.format = VK_FORMAT_R32G32_SFLOAT; // vec2
 	uvAttribute.offset = offsetof(Vertex, uv);
 
 	description.attributes.push_back(positionAttribute);
 	description.attributes.push_back(normalAttribute);
-	description.attributes.push_back(colorAttribute);
 	description.attributes.push_back(uvAttribute);
 
 	return description;
@@ -121,7 +113,7 @@ bool Mesh::load_from_obj(const std::string& filename)
 
 				// we are setting the vertex color as the vertex normal.
 				// This is just for display purposes
-				new_vert.color = new_vert.normal;
+				//new_vert.color = new_vert.normal;
 
 				_vertices.push_back(new_vert);
 			}
