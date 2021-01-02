@@ -385,7 +385,7 @@ void VulkanEngine::init_descriptors()
 
 	// cameraBind needs to be accessed from fragment shader to get camPos
 	VkDescriptorSetLayoutBinding cameraBind{ vkinit::descriptorset_layout_binding(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, 0) };
-	VkDescriptorSetLayoutBinding sceneBind{ vkinit::descriptorset_layout_binding(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, 1) };
+	VkDescriptorSetLayoutBinding sceneBind{ vkinit::descriptorset_layout_binding(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, VK_SHADER_STAGE_FRAGMENT_BIT, 1) };
 
 	std::array<VkDescriptorSetLayoutBinding, 2> bindings{ cameraBind, sceneBind };
 
@@ -1092,9 +1092,6 @@ void VulkanEngine::draw_objects(VkCommandBuffer cmd, const std::multiset<RenderO
 	// negate _camPos since remeber we're actually translating everything in the scene, not the 'camera'
 	glm::mat4 view{ glm::translate(glm::mat4(1.0f), -_camPos) };
 
-	//std::cout << "_camPos: " << _camPos.x << " " << _camPos.y << " " << _camPos.z << "\n";
-	//std::cout << "view col: " << view[3][0] << " " << view[3][1] << " " << view[3][2] << "\n"; // view[col][row]
-
 	glm::mat4 projection{ glm::perspective(glm::radians(70.0f), 1700.0f / 900.0f, 0.1f, 200.0f) };
 	projection[1][1] *= -1;
 
@@ -1113,7 +1110,13 @@ void VulkanEngine::draw_objects(VkCommandBuffer cmd, const std::multiset<RenderO
 	// copy scene data to scene buffer
 	float framed{ _frameNumber / 120.0f };
 
+	Light light0{ {0.0f, 16.0f, 0.0f, 1.0f}, {1.0f, 1.0f, 0.8f, 10.0f} };
+	Light light1{ {10.0f, 10.0f, 0.0f, 1.0f}, {1.0f, 0.0f, 0.0f, 1.0f} };
 	_sceneParameters.ambientColor = { sin(framed), 0, cos(framed), 1 };
+	_sceneParameters.numLights = 2;
+	_sceneParameters.lights[0] = light0;
+	_sceneParameters.lights[1] = light1;
+
 	char* sceneData;
 	vmaMapMemory(_allocator, _sceneParameterBuffer._allocation, (void**)&sceneData);
 	int frameIndex{ _frameNumber % FRAME_OVERLAP };

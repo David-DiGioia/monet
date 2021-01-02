@@ -18,19 +18,25 @@
 #include "glm/glm.hpp"
 
 // number of frames to overlap when rendering
-constexpr unsigned int FRAME_OVERLAP{ 2 };
+constexpr uint32_t FRAME_OVERLAP{ 2 };
+constexpr size_t MAX_NUM_TOTAL_LIGHTS{ 20 }; // this must match glsl shader!
 
 struct Texture {
 	AllocatedImage image;
 	VkImageView imageView;
 };
 
+struct Light {
+	glm::vec4 position; // w is unused
+	glm::vec4 color;    // w is for intensity
+};
+
 struct GPUSceneData {
-	glm::vec4 fogColor; // w is for exponent
-	glm::vec4 fogDistance; // x for min, y for max, zw unused
 	glm::vec4 ambientColor;
-	glm::vec4 sunlightDirection; // w for sun power
-	glm::vec4 sunlightColor;
+	glm::vec4 sunDirection; // w for sun power
+	glm::vec4 sunColor;
+	Light lights[MAX_NUM_TOTAL_LIGHTS];
+	int numLights;
 };
 
 struct GPUCameraData {

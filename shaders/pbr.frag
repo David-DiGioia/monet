@@ -1,5 +1,5 @@
 #version 460
-#define MAX_NUM_TOTAL_LIGHTS 100
+#define MAX_NUM_TOTAL_LIGHTS 20
 
 layout (location = 0) in vec2 texCoord;
 layout (location = 1) in vec3 worldPos;
@@ -13,25 +13,34 @@ layout (set = 0, binding = 0) uniform CameraBuffer {
     mat4 viewProj;
 } cameraData;
 
+struct Light {
+    vec4 position;  // w is unused
+    vec4 color;     // w is for intensity
+};
+
 layout (set = 0, binding = 1) uniform SceneData {
-    vec4 fogColor; // w is for exponent
-    vec4 fogDistance; // x for min, y for max, zw unused
     vec4 ambientColor;
-    vec4 sunlightDirection; // w for sun power
-    vec4 sunlightColor;
+    vec4 sunDirection; // w for sun power
+    vec4 sunColor;
+    Light lights[MAX_NUM_TOTAL_LIGHTS];
+    int numLights;
+
 } sceneData;
 
 layout (set = 2, binding = 0) uniform sampler2D tex;
+
 float metallic = 0.0f;
 float roughness = 0.3f;
 float ao = 1.0f;
 
 const float PI = 3.14159265359;
 vec3 camPos = -cameraData.view[3].xyz;
-vec3 lightPositions[] = {vec3(0.0, 16.0, 0.0), vec3(5.0, 8.0, 0.0),
-    vec3(10.0, 10.0, 0.0), vec3(15.0, 10.0, 0.0)};
-vec3 lightColors[] = {vec3(10.0, 10.0, 8.0), vec3(1.0, 1.0, 1.0),
-    vec3(1.0, 0.0, 0.0), vec3(0.0, 1.0, 1.0)};
+// vec3 lightPositions[] = {vec3(0.0, 16.0, 0.0), vec3(5.0, 8.0, 0.0),
+//     vec3(10.0, 10.0, 0.0), vec3(15.0, 10.0, 0.0)};
+// vec3 lightColors[] = {vec3(10.0, 10.0, 8.0), vec3(1.0, 1.0, 1.0),
+//     vec3(1.0, 0.0, 0.0), vec3(0.0, 1.0, 1.0)};
+
+
 
 // F0 is the surface reflection at zero incidence (looking directly at surface)
 vec3 fresnelSchlick(float cosTheta, vec3 F0)
@@ -81,13 +90,14 @@ void main()
     vec3 V = normalize(camPos - worldPos);
 
     vec3 Lo = vec3(0.0);
-    for (int i = 0; i < 4; ++i) {
-        vec3 L = normalize(lightPositions[i] - worldPos);
+    for (int i = 0; i < sceneData.numLights; ++i) {
+        vec3 L = normalize(sceneData.lights[i].position.xyz - worldPos);
         vec3 H = normalize(V + L);
 
-        float dist = distance(worldPos, lightPositions[i]);
+        float dist = distance(worldPos, sceneData.lights[i].position.xyz);
         float attentuation = 1.0 / (dist * dist);
-        vec3 radiance = lightColors[i] * attentuation;
+        vec3 light = sceneData.lights[i].color.xyz * sceneData.lights[i].color.w;
+        vec3 radiance = light * attentuation;
 
         // approximate IOR of dialetric materials as 0.04
         vec3 F0 = vec3(0.04);
