@@ -1,0 +1,26 @@
+#version 460
+
+layout (location = 0) in vec2 texCoord;
+layout (location = 1) in vec3 worldPos;
+layout (location = 2) in vec3 normal;
+
+layout (location = 0) out vec4 outFragColor;
+
+layout (set = 0, binding = 1) uniform SceneData {
+    vec4 fogColor; // w is for exponent
+    vec4 fogDistance; // x for min, y for max, zw unused
+    vec4 ambientColor;
+    vec4 sunlightDirection; // w for sun power
+    vec4 sunlightColor;
+} sceneData;
+
+layout (set = 2, binding = 0) uniform sampler2D albedo;
+float metallic = 0.0f;
+float roughness = 0.3f;
+float ao = 1.0f;
+
+void main()
+{
+    vec3 color = texture(albedo, texCoord).xyz;
+    outFragColor = vec4(color, 1.0f);
+}
