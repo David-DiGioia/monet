@@ -21,14 +21,19 @@
 constexpr uint32_t FRAME_OVERLAP{ 2 };
 constexpr size_t MAX_NUM_TOTAL_LIGHTS{ 20 }; // this must match glsl shader!
 
-struct Texture {
-	AllocatedImage image;
-	VkImageView imageView;
-};
-
 struct Light {
 	glm::vec4 position; // w is unused
 	glm::vec4 color;    // w is for intensity
+};
+
+struct GuiData {
+	Light light0;
+	Light light1;
+};
+
+struct Texture {
+	AllocatedImage image;
+	VkImageView imageView;
 };
 
 struct GPUSceneData {
@@ -181,6 +186,8 @@ public:
 	// analagous to a template for descriptor sets
 	VkDescriptorSetLayout _singleTextureSetLayout;
 
+	GuiData _guiData;
+
 	// frame storage
 	FrameData _frames[FRAME_OVERLAP];
 
@@ -265,6 +272,8 @@ private:
 	void init_imgui();
 
 	void gui();
+
+	void init_gui_data();
 };
 
 class PipelineBuilder {

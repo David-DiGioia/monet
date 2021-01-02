@@ -71,9 +71,19 @@ void VulkanEngine::init()
 	load_meshes();
 	init_scene();
 	init_imgui();
+	init_gui_data();
 
 	// everything went fine
 	_isInitialized = true;
+}
+
+void VulkanEngine::init_gui_data()
+{
+	_guiData.light0.position = { 0.0f, 16.0f, 0.0f, 1.0f };
+	_guiData.light0.color = { 1.0f, 1.0f, 0.8f, 10.0f };
+
+	_guiData.light1.position = { 10.0f, 13.0f, 0.0f, 1.0f };
+	_guiData.light1.color = { 1.0f, 0.3f, 0.3f,3.0f };
 }
 
 void VulkanEngine::init_imgui()
@@ -992,6 +1002,8 @@ FrameData& VulkanEngine::get_current_frame()
 
 void VulkanEngine::draw()
 {
+	ImGui::Render();
+
 	uint32_t msStartTime{ SDL_GetTicks() };
 
 	// wait until the gpu has finished rendering the last frame. Timeout of 1 second
@@ -1110,12 +1122,10 @@ void VulkanEngine::draw_objects(VkCommandBuffer cmd, const std::multiset<RenderO
 	// copy scene data to scene buffer
 	float framed{ _frameNumber / 120.0f };
 
-	Light light0{ {0.0f, 16.0f, 0.0f, 1.0f}, {1.0f, 1.0f, 0.8f, 10.0f} };
-	Light light1{ {10.0f, 10.0f, 0.0f, 1.0f}, {1.0f, 0.0f, 0.0f, 1.0f} };
 	_sceneParameters.ambientColor = { sin(framed), 0, cos(framed), 1 };
 	_sceneParameters.numLights = 2;
-	_sceneParameters.lights[0] = light0;
-	_sceneParameters.lights[1] = light1;
+	_sceneParameters.lights[0] = _guiData.light0;
+	_sceneParameters.lights[1] = _guiData.light1;
 
 	char* sceneData;
 	vmaMapMemory(_allocator, _sceneParameterBuffer._allocation, (void**)&sceneData);
@@ -1267,10 +1277,32 @@ void VulkanEngine::gui()
 	ImGui::NewFrame();
 
 	// imgui commands ---------------------------------------
-	ImGui::ShowDemoWindow();
-	// ------------------------------------------------------
 
-	ImGui::Render();
+	//ImGui::ShowDemoWindow();
+	//return;
+
+	// Main body of the Demo window starts here.
+	if (!ImGui::Begin("Debug"))
+	{
+		// Early out if the window is collapsed, as an optimization.
+		ImGui::End();
+		return;
+	}
+
+	if (ImGui::CollapsingHeader("Lights"))
+	{
+		ImGui::Text("Light 0:");
+		ImGui::DragFloat3("position 0", (float*)&_guiData.light0.position, 0.005f);
+		ImGui::ColorEdit3("color 0", (float*)&_guiData.light0.color);
+		ImGui::DragFloat("intensity 0", &_guiData.light0.color.w, 0.02f);
+
+		ImGui::Text("Light 1:");
+		ImGui::DragFloat3("position 1", (float*)&_guiData.light1.position, 0.005f);
+		ImGui::ColorEdit3("color 1", (float*)&_guiData.light1.color);
+		ImGui::DragFloat("intensity 1", &_guiData.light1.color.w, 0.02f);
+	}
+
+	ImGui::End();
 }
 
 void VulkanEngine::run()
