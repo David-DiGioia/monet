@@ -169,6 +169,11 @@ public:
 	std::unordered_map<std::string, Mesh> _meshes;
 
 	glm::vec3 _camPos;
+	float _camRotPhi;
+	float _camRotTheta;
+	bool _camMouseControls;
+	glm::mat4 _rotPhi;
+	glm::mat4 _rotTheta;
 
 	VkDescriptorSetLayout _globalSetLayout;
 	VkDescriptorPool _descriptorPool;

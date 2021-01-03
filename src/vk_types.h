@@ -6,6 +6,8 @@
 #include <vulkan/vulkan.h>
 #include <vk_mem_alloc.h>
 
+static constexpr float pi{ 3.1415926535897932384626433832 };
+
 struct AllocatedBuffer {
 	VkBuffer _buffer;
 	VmaAllocation _allocation;

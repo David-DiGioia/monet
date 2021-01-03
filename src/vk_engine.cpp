@@ -9,6 +9,7 @@
 #include <sstream>
 #include <fstream>
 #include <string>
+#include <algorithm>
 
 #include "SDL.h"
 #include "SDL_vulkan.h"
@@ -43,10 +44,28 @@ bool RenderObject::operator<(const RenderObject& other) const
 	}
 }
 
+template<typename Mat, typename Stream>
+void printMat(const Mat& mat, Stream& out) {
+	for (auto col{ 0 }; col < mat.length(); ++col) {
+		for (auto row{ 0 }; row < mat.length(); ++row) {
+			out << mat[col][row] << '\t';
+		}
+		out << '\n';
+	}
+	out << '\n';
+}
+
+template<typename Mat>
+void printMat(const Mat& mat) {
+	printMat(mat, std::cout);
+}
+
 void VulkanEngine::init()
 {
 	// We initialize SDL and create a window with it. 
 	SDL_Init(SDL_INIT_VIDEO);
+	_camMouseControls = false;
+	SDL_SetRelativeMouseMode((SDL_bool)_camMouseControls);
 
 	SDL_WindowFlags window_flags{ (SDL_WindowFlags)(SDL_WINDOW_VULKAN) };
 
@@ -154,6 +173,9 @@ void VulkanEngine::init_scene()
 	// PBR rocks
 
 	_camPos = glm::vec3{ 0.0f, 2.0f, 5.0f };
+	_camRotPhi = 0.0f;
+	_camRotTheta = 0.0f;
+
 	RenderObject plane{};
 	plane.mesh = get_mesh("plane");
 	plane.material = get_material("pbr");
@@ -1128,8 +1150,12 @@ void VulkanEngine::draw()
 
 void VulkanEngine::draw_objects(VkCommandBuffer cmd, const std::multiset<RenderObject>& renderables)
 {
-	// negate _camPos since remeber we're actually translating everything in the scene, not the 'camera'
-	glm::mat4 view{ glm::translate(glm::mat4(1.0f), -_camPos) };
+	_rotTheta = glm::rotate(_camRotTheta, glm::vec3{ 1.0f, 0.0f, 0.0f });
+	_rotPhi = glm::rotate(_camRotPhi, glm::vec3{ 0.0f, 1.0f, 0.0f });
+	glm::mat4 translate{ glm::translate(glm::mat4(1.0f), _camPos) };
+	glm::mat4 view{ translate * _rotPhi * _rotTheta };
+	// find inverse since remember wer're actually transforming everything in the scene, not the 'camera'
+	view = glm::inverse(view);
 
 	glm::mat4 projection{ glm::perspective(glm::radians(70.0f), 1700.0f / 900.0f, 0.1f, 200.0f) };
 	projection[1][1] *= -1;
@@ -1283,15 +1309,22 @@ bool VulkanEngine::process_input()
 	{
 		switch (e.type)
 		{
+		case SDL_KEYDOWN:
+			if (e.key.keysym.sym == SDLK_f) {
+				_camMouseControls = !_camMouseControls;
+				SDL_SetRelativeMouseMode((SDL_bool)_camMouseControls);
+			}
+			break;
 		case SDL_MOUSEMOTION:
+			if (_camMouseControls) {
+				_camRotPhi += e.motion.xrel * delta;
+				_camRotTheta += e.motion.yrel * delta;
+				_camRotTheta = std::clamp(_camRotTheta, -pi / 2.0f, pi / 2.0f);
+			}
 			break;
 		case SDL_QUIT:
 			bQuit = true;
 			break;
-		case SDL_KEYDOWN:
-			if (e.key.keysym.sym == SDLK_f) {
-				std::cout << "Thank you for pressing F\n";
-			}
 		}
 	}
 	return bQuit;
@@ -1330,13 +1363,29 @@ void VulkanEngine::gui()
 		ImGui::DragFloat("intensity 1", &_guiData.light1.color.w, 0.02f);
 	}
 
+	if (ImGui::CollapsingHeader("Camera"))
+	{
+		ImGui::Text("Rotation:");
+		ImGui::DragFloat("phi", &_camRotPhi, 0.005f);
+		ImGui::DragFloat("theta", &_camRotTheta, 0.005f);
+
+		std::stringstream ss{};
+		ss << "phi:\n";
+		printMat(_rotPhi, ss);
+		ss << "theta:\n";
+		printMat(_rotTheta, ss);
+
+		ImGui::Text(ss.str().c_str());
+	}
+
 	ImGui::End();
 }
 
 void VulkanEngine::run()
 {
 	bool bQuit{ false };
-
+	glm::mat4 mat{};
+	std::cout << mat.length() << '\n';
 	// main loop
 	while (!bQuit) {
 		bQuit = process_input();
