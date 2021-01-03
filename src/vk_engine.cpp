@@ -79,7 +79,7 @@ void VulkanEngine::init()
 
 void VulkanEngine::init_gui_data()
 {
-	_guiData.light0.position = { 0.0f, 16.0f, 0.0f, 1.0f };
+	_guiData.light0.position = { 0.0f, 3.0f, 0.0f, 1.0f };
 	_guiData.light0.color = { 1.0f, 1.0f, 0.8f, 10.0f };
 
 	_guiData.light1.position = { 10.0f, 13.0f, 0.0f, 1.0f };
@@ -151,14 +151,23 @@ void VulkanEngine::init_imgui()
 
 void VulkanEngine::init_scene()
 {
+	// PBR rocks
+
+	_camPos = glm::vec3{ 0.0f, 2.0f, 0.0f };
+	RenderObject plane{};
+	plane.mesh = get_mesh("plane");
+	plane.material = get_material("pbr");
+	plane.transformMatrix = glm::translate(glm::mat4{ 1.0 }, glm::vec3(0.0, 0.0, 0.0));
+	_renderables.insert(plane);
+
 	// minecraft -------------------------------------------------------------------
 
-	_camPos = glm::vec3{ 0.0f, 12.0f, 10.0f };
-	RenderObject minecraft{};
-	minecraft.mesh = get_mesh("minecraft");
-	minecraft.material = get_material("pbr");
-	minecraft.transformMatrix = glm::translate(glm::mat4{ 1.0 }, glm::vec3(0.0, 0.0, 0.0));
-	_renderables.insert(minecraft);
+	//_camPos = glm::vec3{ 0.0f, 12.0f, 10.0f };
+	//RenderObject minecraft{};
+	//minecraft.mesh = get_mesh("minecraft");
+	//minecraft.material = get_material("pbr");
+	//minecraft.transformMatrix = glm::translate(glm::mat4{ 1.0 }, glm::vec3(0.0, 0.0, 0.0));
+	//_renderables.insert(minecraft);
 
 	// penguin monkey --------------------------------------------------------------
 
@@ -294,18 +303,18 @@ void VulkanEngine::upload_mesh(Mesh& mesh)
 	vmaDestroyBuffer(_allocator, stagingBuffer._buffer, stagingBuffer._allocation);
 }
 
-void VulkanEngine::load_textures(const std::string& fileExtension)
+void VulkanEngine::load_textures()
 {
 	_mapTypes.push_back("_diff");
 	_mapTypes.push_back("_norm");
 	_mapTypes.push_back("_roug");
 	_mapTypes.push_back("_ao__");
 
-	std::string name, path;
+	std::string name, path, fileExtension;
 	std::string prefix{ "../../assets/texture/" };
 	std::string loadFile{ "_load_textures.txt" };
 	std::ifstream file{ prefix + loadFile };
-	while (file >> name >> path) {
+	while (file >> name >> path >> fileExtension) {
 		for (const std::string& mapType : _mapTypes) {
 			Texture texture;
 			// if this texture doesn't exist, use default

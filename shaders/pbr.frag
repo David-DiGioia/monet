@@ -2,7 +2,7 @@
 #define MAX_NUM_TOTAL_LIGHTS 20
 
 layout (location = 0) in vec2 texCoord;
-// layout (location = 1) in vec3 normal;
+layout (location = 1) in vec3 tangent;
 layout (location = 2) in vec3 tangentWorldPos;
 layout (location = 3) in vec3 tangentCamPos;
 layout (location = 4) in vec3 tangentLightPos[MAX_NUM_TOTAL_LIGHTS];
@@ -126,4 +126,5 @@ void main()
     color = color / (color + 1.0);
 
     outFragColor = vec4(color, 1.0);
+    // outFragColor = vec4(tangent, 1.0);
 }

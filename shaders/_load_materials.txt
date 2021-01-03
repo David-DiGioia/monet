@@ -1,6 +1,7 @@
+// name		vertex shader		fragment shader		texture name
+
 //default 	projection.vert.spv	default_lit.frag.spv	null
 //red 		projection.vert.spv	red.frag.spv		null
 //green		projection.vert.spv	green.frag.spv		null
 //textured_lit	projection.vert.spv	textured_lit.frag.spv	minecraft
-
-pbr		pbr.vert.spv		pbr.frag.spv		minecraft
+pbr		pbr.vert.spv		pbr.frag.spv		rocks

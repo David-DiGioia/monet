@@ -7,7 +7,7 @@ layout (location = 2) in vec3 vTangent;
 layout (location = 3) in vec2 vTexCoord;
 
 layout (location = 0) out vec2 texCoord;
-layout (location = 1) out vec3 normal;
+layout (location = 1) out vec3 tangent;
 layout (location = 2) out vec3 tangentWorldPos;
 layout (location = 3) out vec3 tangentCamPos;
 layout (location = 4) out vec3 tangentLightPos[MAX_NUM_TOTAL_LIGHTS];
@@ -56,7 +56,6 @@ void main()
     vec4 worldPos4 = modelMatrix * vec4(vPosition, 1.0f);
     gl_Position = cameraData.viewProj * worldPos4;
     texCoord = vTexCoord;
-    normal = vNormal;
 
     // transform TBN vectors from model space to world space
     vec3 T = normalize(vec3(modelMatrix * vec4(vTangent, 0.0)));
@@ -70,6 +69,8 @@ void main()
     TBN = transpose(TBN);
     tangentWorldPos = TBN * worldPos4.xyz;
     tangentCamPos = TBN * sceneData.camPos.xyz;
+
+    tangent = T;
 
     for (int i = 0; i < MAX_NUM_TOTAL_LIGHTS; ++i) {
         tangentLightPos[i] = TBN * sceneData.lights[i].position.xyz;

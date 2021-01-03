@@ -219,7 +219,7 @@ public:
 
 	void immediate_submit(std::function<void(VkCommandBuffer cmd)>&& function);
 
-	void load_textures(const std::string& fileExtension = ".png");
+	void load_textures();
 
 private:
 
