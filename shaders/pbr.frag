@@ -2,7 +2,7 @@
 #define MAX_NUM_TOTAL_LIGHTS 20
 
 layout (location = 0) in vec2 texCoord;
-layout (location = 1) in vec3 normal;
+// layout (location = 1) in vec3 normal;
 layout (location = 2) in vec3 tangentWorldPos;
 layout (location = 3) in vec3 tangentCamPos;
 layout (location = 4) in vec3 tangentLightPos[MAX_NUM_TOTAL_LIGHTS];
@@ -76,7 +76,10 @@ float geometrySmith(vec3 N, vec3 V, vec3 L, float roughness)
 void main()
 {
     vec3 diffuse = texture(diffuseTex, texCoord).rgb;
+    // obtain normal from normal map in range [0,1]
     vec3 normal = texture(normalTex, texCoord).rgb;
+    // transform normal vector to range [-1, 1]
+    normal = normalize(normal * 2.0 - 1.0);
     float roughness = texture(roughnessTex, texCoord).r;
     float ao = texture(aoTex, texCoord).r;
 
@@ -85,10 +88,10 @@ void main()
 
     vec3 Lo = vec3(0.0);
     for (int i = 0; i < sceneData.numLights; ++i) {
-        vec3 L = normalize(sceneData.lights[i].position.xyz - tangentWorldPos);
+        vec3 L = normalize(tangentLightPos[i] - tangentWorldPos);
         vec3 H = normalize(V + L);
 
-        float dist = distance(tangentWorldPos, sceneData.lights[i].position.xyz);
+        float dist = distance(tangentWorldPos, tangentLightPos[i]);
         float attentuation = 1.0 / (dist * dist);
         vec3 light = sceneData.lights[i].color.xyz * sceneData.lights[i].color.w;
         vec3 radiance = light * attentuation;

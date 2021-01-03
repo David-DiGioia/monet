@@ -61,6 +61,8 @@ void main()
     // transform TBN vectors from model space to world space
     vec3 T = normalize(vec3(modelMatrix * vec4(vTangent, 0.0)));
     vec3 N = normalize(vec3(modelMatrix * vec4(vNormal, 0.0)));
+    // re-orthogonalize T with respect to N
+    T = normalize(T - dot(T, N) * N);
     vec3 B = cross(N, T); // bitangent vector
     // this matrix transforms from tangent space to world space
     mat3 TBN = mat3(T, B, N);
