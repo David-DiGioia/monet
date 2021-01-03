@@ -34,6 +34,7 @@ struct GuiData {
 struct Texture {
 	AllocatedImage image;
 	VkImageView imageView;
+	uint32_t mipLevels;
 };
 
 struct GPUSceneData {

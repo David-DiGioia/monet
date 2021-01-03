@@ -317,17 +317,20 @@ void VulkanEngine::load_textures()
 	while (file >> name >> path >> fileExtension) {
 		for (const std::string& mapType : _mapTypes) {
 			Texture texture;
+			uint32_t mipLevels;
 			// if this texture doesn't exist, use default
-			if (!vkutil::load_image_from_file(*this, (prefix + path + mapType + fileExtension).c_str(), texture.image, true)) {
-				vkutil::load_image_from_file(*this, (prefix + "default_maps/" + mapType + fileExtension).c_str(), texture.image);
+			if (!vkutil::load_image_from_file(*this, (prefix + path + mapType + fileExtension).c_str(), texture.image, &mipLevels, true)) {
+				vkutil::load_image_from_file(*this, (prefix + "default_maps/" + mapType + fileExtension).c_str(), texture.image, &mipLevels);
 			}
 
-			VkImageViewCreateInfo imageInfo{ vkinit::imageview_create_info(VK_FORMAT_R8G8B8A8_UNORM, texture.image._image, VK_IMAGE_ASPECT_COLOR_BIT) };
+			VkImageViewCreateInfo imageInfo{ vkinit::imageview_create_info(VK_FORMAT_R8G8B8A8_UNORM, texture.image._image, VK_IMAGE_ASPECT_COLOR_BIT, mipLevels) };
 			vkCreateImageView(_device, &imageInfo, nullptr, &texture.imageView);
 
 			_mainDeletionQueue.push_function([=]() {
 				vkDestroyImageView(_device, texture.imageView, nullptr);
 			});
+
+			texture.mipLevels = mipLevels;
 
 			_loadedTextures[name + mapType] = texture;
 		}
@@ -794,7 +797,7 @@ void VulkanEngine::init_swapchain()
 	_depthFormat = VK_FORMAT_D32_SFLOAT;
 
 	// the depth image will be an image with the format we selected and Depth Attachment usage flag
-	VkImageCreateInfo dimg_info{ vkinit::image_create_info(_depthFormat, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, depthImageExtent) };
+	VkImageCreateInfo dimg_info{ vkinit::image_create_info(_depthFormat, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, depthImageExtent, 1) };
 
 	// for the depth image, we want to allocate it from GPU local memory
 	VmaAllocationCreateInfo dimg_allocinfo{};
@@ -804,7 +807,7 @@ void VulkanEngine::init_swapchain()
 	// allocate and create the image
 	vmaCreateImage(_allocator, &dimg_info, &dimg_allocinfo, &_depthImage._image, &_depthImage._allocation, nullptr);
 	// build an imageView for the depth image to use for rendering
-	VkImageViewCreateInfo dview_info{ vkinit::imageview_create_info(_depthFormat, _depthImage._image, VK_IMAGE_ASPECT_DEPTH_BIT) };
+	VkImageViewCreateInfo dview_info{ vkinit::imageview_create_info(_depthFormat, _depthImage._image, VK_IMAGE_ASPECT_DEPTH_BIT, 1) };
 
 	VK_CHECK(vkCreateImageView(_device, &dview_info, nullptr, &_depthImageView));
 
@@ -975,7 +978,8 @@ Material* VulkanEngine::create_material(VkPipeline pipeline, VkPipelineLayout la
 	vkAllocateDescriptorSets(_device, &allocInfo, &mat.textureSet);
 
 	for (auto i{ 0 }; i < _mapTypes.size(); ++i) {
-		VkSamplerCreateInfo samplerInfo{ vkinit::sampler_create_info(VK_FILTER_LINEAR) };
+		Texture& texture{ _loadedTextures[textureName + _mapTypes[i]] };
+		VkSamplerCreateInfo samplerInfo{ vkinit::sampler_create_info(VK_FILTER_LINEAR, texture.mipLevels) };
 		VkSampler sampler;
 		vkCreateSampler(_device, &samplerInfo, nullptr, &sampler);
 
@@ -985,7 +989,7 @@ Material* VulkanEngine::create_material(VkPipeline pipeline, VkPipelineLayout la
 
 		VkDescriptorImageInfo imageBufferInfo{};
 		imageBufferInfo.sampler = sampler;
-		imageBufferInfo.imageView = _loadedTextures[textureName + _mapTypes[i]].imageView;
+		imageBufferInfo.imageView = texture.imageView;
 		imageBufferInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 
 		VkWriteDescriptorSet textureWrite{ vkinit::write_descriptor_image(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, mat.textureSet, &imageBufferInfo, i) };

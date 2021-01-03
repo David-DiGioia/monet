@@ -117,7 +117,7 @@ VkPipelineLayoutCreateInfo vkinit::pipeline_layout_create_info() {
 	return info;
 }
 
-VkImageCreateInfo vkinit::image_create_info(VkFormat format, VkImageUsageFlags usageFlags, VkExtent3D extent)
+VkImageCreateInfo vkinit::image_create_info(VkFormat format, VkImageUsageFlags usageFlags, VkExtent3D extent, uint32_t mipLevels)
 {
 	VkImageCreateInfo info{};
 	info.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
@@ -125,7 +125,7 @@ VkImageCreateInfo vkinit::image_create_info(VkFormat format, VkImageUsageFlags u
 	info.imageType = VK_IMAGE_TYPE_2D;
 	info.format = format;
 	info.extent = extent;
-	info.mipLevels = 1;
+	info.mipLevels = mipLevels;
 	// we could set array layers to 6 for cubemaps! but here we only need 1
 	info.arrayLayers = 1;
 	info.samples = VK_SAMPLE_COUNT_1_BIT;
@@ -134,7 +134,7 @@ VkImageCreateInfo vkinit::image_create_info(VkFormat format, VkImageUsageFlags u
 	return info;
 }
 
-VkImageViewCreateInfo vkinit::imageview_create_info(VkFormat format, VkImage image, VkImageAspectFlags aspectFlags)
+VkImageViewCreateInfo vkinit::imageview_create_info(VkFormat format, VkImage image, VkImageAspectFlags aspectFlags, uint32_t mipLevels)
 {
 	VkImageViewCreateInfo info{};
 	info.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
@@ -144,7 +144,7 @@ VkImageViewCreateInfo vkinit::imageview_create_info(VkFormat format, VkImage ima
 	info.format = format;
 	// using subresourceRange you can let the image view look at only particular layers of the image
 	info.subresourceRange.baseMipLevel = 0;
-	info.subresourceRange.levelCount = 1;
+	info.subresourceRange.levelCount = mipLevels;
 	info.subresourceRange.baseArrayLayer = 0;
 	info.subresourceRange.layerCount = 1;
 	info.subresourceRange.aspectMask = aspectFlags;
@@ -190,7 +190,7 @@ VkWriteDescriptorSet vkinit::write_descriptor_buffer(VkDescriptorType type, VkDe
 	return write;
 }
 
-VkSamplerCreateInfo vkinit::sampler_create_info(VkFilter filters, VkSamplerAddressMode samplerAddressMode)
+VkSamplerCreateInfo vkinit::sampler_create_info(VkFilter filters, uint32_t mipLevels, VkSamplerAddressMode samplerAddressMode)
 {
 	VkSamplerCreateInfo info{};
 	info.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
@@ -200,6 +200,11 @@ VkSamplerCreateInfo vkinit::sampler_create_info(VkFilter filters, VkSamplerAddre
 	info.addressModeU = samplerAddressMode;
 	info.addressModeV = samplerAddressMode;
 	info.addressModeW = samplerAddressMode;
+
+	info.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
+	info.minLod = 0.0f;
+	info.maxLod = static_cast<float>(mipLevels);
+	info.mipLodBias = 0.0f;
 
 	return info;
 }
