@@ -5,6 +5,6 @@
 
 namespace vkutil {
 
-	bool load_image_from_file(VulkanEngine& engine, const char* file, AllocatedImage& outImage);
+	bool load_image_from_file(VulkanEngine& engine, const char* file, AllocatedImage& outImage, bool okToFail = false);
 
 }

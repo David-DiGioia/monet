@@ -185,7 +185,8 @@ public:
 	std::unordered_map<std::string, Texture> _loadedTextures;
 
 	// analagous to a template for descriptor sets
-	VkDescriptorSetLayout _singleTextureSetLayout;
+	VkDescriptorSetLayout _pbrSetLayout;
+	std::vector<std::string> _mapTypes;
 
 	GuiData _guiData;
 
@@ -218,7 +219,7 @@ public:
 
 	void immediate_submit(std::function<void(VkCommandBuffer cmd)>&& function);
 
-	void load_textures();
+	void load_textures(const std::string& fileExtension = ".png");
 
 private:
 

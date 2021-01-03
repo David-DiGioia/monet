@@ -7,14 +7,18 @@
 #define STB_IMAGE_IMPLEMENTATION
 #include "stb_image.h"
 
-bool vkutil::load_image_from_file(VulkanEngine& engine, const char* file, AllocatedImage& outImage)
+bool vkutil::load_image_from_file(VulkanEngine& engine, const char* file, AllocatedImage& outImage, bool okToFail)
 {
 	int texWidth, texHeight, texChannels;
 
 	stbi_uc* pixels{ stbi_load(file, &texWidth, &texHeight, &texChannels, STBI_rgb_alpha) };
 
 	if (!pixels) {
-		std::cout << "Failed to load texture file " << file << '\n';
+		if (okToFail) {
+			std::cout << "Using default texture instead of '" << file << "'\n";
+		} else {
+			std::cout << "Error: Failed to load texture file '" << file << "'\n";
+		}
 		return false;
 	}
 

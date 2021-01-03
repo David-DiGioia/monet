@@ -294,24 +294,34 @@ void VulkanEngine::upload_mesh(Mesh& mesh)
 	vmaDestroyBuffer(_allocator, stagingBuffer._buffer, stagingBuffer._allocation);
 }
 
-void VulkanEngine::load_textures()
+void VulkanEngine::load_textures(const std::string& fileExtension)
 {
+	_mapTypes.push_back("_diff");
+	_mapTypes.push_back("_norm");
+	_mapTypes.push_back("_roug");
+	_mapTypes.push_back("_ao__");
+
 	std::string name, path;
 	std::string prefix{ "../../assets/texture/" };
 	std::string loadFile{ "_load_textures.txt" };
 	std::ifstream file{ prefix + loadFile };
 	while (file >> name >> path) {
-		Texture texture;
-		vkutil::load_image_from_file(*this, (prefix + path).c_str(), texture.image);
+		for (const std::string& mapType : _mapTypes) {
+			Texture texture;
+			// if this texture doesn't exist, use default
+			if (!vkutil::load_image_from_file(*this, (prefix + path + mapType + fileExtension).c_str(), texture.image, true)) {
+				vkutil::load_image_from_file(*this, (prefix + "default_maps/" + mapType + fileExtension).c_str(), texture.image);
+			}
 
-		VkImageViewCreateInfo imageInfo{ vkinit::imageview_create_info(VK_FORMAT_R8G8B8A8_UNORM, texture.image._image, VK_IMAGE_ASPECT_COLOR_BIT) };
-		vkCreateImageView(_device, &imageInfo, nullptr, &texture.imageView);
+			VkImageViewCreateInfo imageInfo{ vkinit::imageview_create_info(VK_FORMAT_R8G8B8A8_UNORM, texture.image._image, VK_IMAGE_ASPECT_COLOR_BIT) };
+			vkCreateImageView(_device, &imageInfo, nullptr, &texture.imageView);
 
-		_mainDeletionQueue.push_function([=]() {
-			vkDestroyImageView(_device, texture.imageView, nullptr);
-		});
+			_mainDeletionQueue.push_function([=]() {
+				vkDestroyImageView(_device, texture.imageView, nullptr);
+			});
 
-		_loadedTextures[name] = texture;
+			_loadedTextures[name + mapType] = texture;
+		}
 	}
 }
 
@@ -415,23 +425,28 @@ void VulkanEngine::init_descriptors()
 	setInfo2.bindingCount = 1;
 	setInfo2.pBindings = &objectBind;
 
-	VkDescriptorSetLayoutBinding textureBind{ vkinit::descriptorset_layout_binding(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT, 0) };
+	VkDescriptorSetLayoutBinding diffuseBind{ vkinit::descriptorset_layout_binding(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT, 0) };
+	VkDescriptorSetLayoutBinding normalBind{ vkinit::descriptorset_layout_binding(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT, 1) };
+	VkDescriptorSetLayoutBinding roughnessBind{ vkinit::descriptorset_layout_binding(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT, 2) };
+	VkDescriptorSetLayoutBinding aoBind{ vkinit::descriptorset_layout_binding(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT, 3) };
+
+	std::array<VkDescriptorSetLayoutBinding, 4> bindings3{ diffuseBind, normalBind, roughnessBind, aoBind };
 
 	VkDescriptorSetLayoutCreateInfo setInfo3{};
 	setInfo3.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
 	setInfo3.pNext = nullptr;
 	setInfo3.flags = 0;
-	setInfo3.bindingCount = 1;
-	setInfo3.pBindings = &textureBind;
+	setInfo3.bindingCount = bindings3.size();
+	setInfo3.pBindings = bindings3.data();
 
 	VK_CHECK(vkCreateDescriptorSetLayout(_device, &setInfo, nullptr, &_globalSetLayout));
 	VK_CHECK(vkCreateDescriptorSetLayout(_device, &setInfo2, nullptr, &_objectSetLayout));
-	VK_CHECK(vkCreateDescriptorSetLayout(_device, &setInfo3, nullptr, &_singleTextureSetLayout));
+	VK_CHECK(vkCreateDescriptorSetLayout(_device, &setInfo3, nullptr, &_pbrSetLayout));
 
 	_mainDeletionQueue.push_function([=]() {
 		vkDestroyDescriptorSetLayout(_device, _globalSetLayout, nullptr);
 		vkDestroyDescriptorSetLayout(_device, _objectSetLayout, nullptr);
-		vkDestroyDescriptorSetLayout(_device, _singleTextureSetLayout, nullptr);
+		vkDestroyDescriptorSetLayout(_device, _pbrSetLayout, nullptr);
 	});
 
 	const size_t sceneParamBufferSize{ FRAME_OVERLAP * pad_uniform_buffer_size(sizeof(GPUSceneData)) };
@@ -520,7 +535,7 @@ void VulkanEngine::init_pipeline(const std::string& name, const std::string& ver
 	// this push constant range is accessible only in the vertex shader
 	push_constant.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
 
-	std::array<VkDescriptorSetLayout, 3> setLayouts{ _globalSetLayout, _objectSetLayout, _singleTextureSetLayout };
+	std::array<VkDescriptorSetLayout, 3> setLayouts{ _globalSetLayout, _objectSetLayout, _pbrSetLayout };
 
 	pipeline_layout_info.pPushConstantRanges = &push_constant;
 	pipeline_layout_info.pushConstantRangeCount = 1;
@@ -941,33 +956,32 @@ Material* VulkanEngine::create_material(VkPipeline pipeline, VkPipelineLayout la
 	mat.pipeline = pipeline;
 	mat.pipelineLayout = layout;
 
-	if (textureName != "null") {
-		// create a sampler for the texture
-		VkSamplerCreateInfo samplerInfo{ vkinit::sampler_create_info(VK_FILTER_NEAREST) };
-		VkSampler blockySampler;
-		vkCreateSampler(_device, &samplerInfo, nullptr, &blockySampler);
+	VkDescriptorSetAllocateInfo allocInfo{};
+	allocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
+	allocInfo.pNext = nullptr;
+	allocInfo.descriptorPool = _descriptorPool;
+	allocInfo.descriptorSetCount = 1;
+	allocInfo.pSetLayouts = &_pbrSetLayout;
+
+	vkAllocateDescriptorSets(_device, &allocInfo, &mat.textureSet);
+
+	for (auto i{ 0 }; i < _mapTypes.size(); ++i) {
+		VkSamplerCreateInfo samplerInfo{ vkinit::sampler_create_info(VK_FILTER_LINEAR) };
+		VkSampler sampler;
+		vkCreateSampler(_device, &samplerInfo, nullptr, &sampler);
 
 		_mainDeletionQueue.push_function([=]() {
-			vkDestroySampler(_device, blockySampler, nullptr);
+			vkDestroySampler(_device, sampler, nullptr);
 		});
 
-		VkDescriptorSetAllocateInfo allocInfo{};
-		allocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
-		allocInfo.pNext = nullptr;
-		allocInfo.descriptorPool = _descriptorPool;
-		allocInfo.descriptorSetCount = 1;
-		allocInfo.pSetLayouts = &_singleTextureSetLayout;
-
-		vkAllocateDescriptorSets(_device, &allocInfo, &mat.textureSet);
-
 		VkDescriptorImageInfo imageBufferInfo{};
-		imageBufferInfo.sampler = blockySampler;
-		imageBufferInfo.imageView = _loadedTextures[textureName].imageView;
+		imageBufferInfo.sampler = sampler;
+		imageBufferInfo.imageView = _loadedTextures[textureName + _mapTypes[i]].imageView;
 		imageBufferInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 
-		VkWriteDescriptorSet texture1{ vkinit::write_descriptor_image(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, mat.textureSet, &imageBufferInfo, 0) };
+		VkWriteDescriptorSet textureWrite{ vkinit::write_descriptor_image(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, mat.textureSet, &imageBufferInfo, i) };
 
-		vkUpdateDescriptorSets(_device, 1, &texture1, 0, nullptr);
+		vkUpdateDescriptorSets(_device, 1, &textureWrite, 0, nullptr);
 	}
 
 	_materials[name] = mat;

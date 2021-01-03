@@ -23,11 +23,12 @@ layout (set = 0, binding = 1) uniform SceneData {
     int numLights;
 } sceneData;
 
-layout (set = 2, binding = 0) uniform sampler2D tex;
+layout (set = 2, binding = 0) uniform sampler2D diffuseTex;
+layout (set = 2, binding = 1) uniform sampler2D normalTex;
+layout (set = 2, binding = 2) uniform sampler2D roughnessTex;
+layout (set = 2, binding = 3) uniform sampler2D aoTex;
 
 float metallic = 0.0f;
-float roughness = 0.3f;
-float ao = 1.0f;
 
 const float PI = 3.14159265359;
 
@@ -62,7 +63,7 @@ float geometrySchlickGGX(float NdotV, float roughness)
     return num / denom;
 }
 
-float geometrySmith(vec3 N, vec3 V, vec3 L, float roughenss)
+float geometrySmith(vec3 N, vec3 V, vec3 L, float roughness)
 {
     float NdotV = max(dot(N, V), 0.0);
     float NdotL = max(dot(N, L), 0.0);
@@ -74,7 +75,11 @@ float geometrySmith(vec3 N, vec3 V, vec3 L, float roughenss)
 
 void main()
 {
-    vec3 albedo = texture(tex, texCoord).xyz;
+    vec3 diffuse = texture(diffuseTex, texCoord).rgb;
+    vec3 normal = texture(normalTex, texCoord).rgb;
+    float roughness = texture(roughnessTex, texCoord).r;
+    float ao = texture(aoTex, texCoord).r;
+
     vec3 N = normalize(normal);
     vec3 V = normalize(tangentCamPos - tangentWorldPos);
 
@@ -90,7 +95,7 @@ void main()
 
         // approximate IOR of dialetric materials as 0.04
         vec3 F0 = vec3(0.04);
-        F0 = mix(F0, albedo, metallic);
+        F0 = mix(F0, diffuse, metallic);
         vec3 F = fresnelSchlick(max(dot(H, V), 0.0), F0);
 
         float NDF = distributionGGX(N, H, roughness);
@@ -109,10 +114,10 @@ void main()
         kD *= 1.0 - metallic;
 
         float NdotL = max(dot(N, L), 0.0);
-        Lo += (kD * albedo / PI + specular) * radiance * NdotL;
+        Lo += (kD * diffuse / PI + specular) * radiance * NdotL;
     }
 
-    vec3 ambient = sceneData.ambientColor.xyz * albedo * ao;
+    vec3 ambient = sceneData.ambientColor.xyz * diffuse * ao;
     vec3 color = ambient + Lo;
     // tonemap using Reinhard operator (this should really be done in post probably)
     color = color / (color + 1.0);
