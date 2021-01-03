@@ -77,7 +77,7 @@ void vkutil::generateMipmaps(VkCommandBuffer cmd, VkImage image, int32_t texWidt
 		1, &barrier);
 }
 
-bool vkutil::load_image_from_file(VulkanEngine& engine, const char* file, AllocatedImage& outImage, uint32_t* outMipLevels, bool okToFail)
+bool vkutil::load_image_from_file(VulkanEngine& engine, const char* file, AllocatedImage& outImage, uint32_t* outMipLevels, VkFormat format, bool okToFail)
 {
 	int texWidth, texHeight, texChannels;
 
@@ -94,9 +94,6 @@ bool vkutil::load_image_from_file(VulkanEngine& engine, const char* file, Alloca
 
 	void* pixel_ptr{ pixels };
 	VkDeviceSize imageSize{ static_cast<VkDeviceSize>(texWidth * texHeight * 4) };
-
-	// the format R8G8B8A8 matches exactly with the pixels loaded from stb_image library
-	VkFormat image_format{ VK_FORMAT_R8G8B8A8_UNORM };
 
 	// allocate temporary buffer for holding texture data to upload
 	AllocatedBuffer stagingBuffer{ engine.create_buffer(imageSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VMA_MEMORY_USAGE_CPU_ONLY) };
@@ -115,7 +112,7 @@ bool vkutil::load_image_from_file(VulkanEngine& engine, const char* file, Alloca
 	uint32_t mipLevels{ static_cast<uint32_t>(std::floor(std::log2((std::max(texWidth, texHeight))))) + 1 };
 	*outMipLevels = mipLevels;
 
-	VkImageCreateInfo dimg_info{ vkinit::image_create_info(image_format, VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_TRANSFER_SRC_BIT, imageExtent, mipLevels) };
+	VkImageCreateInfo dimg_info{ vkinit::image_create_info(format, VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_TRANSFER_SRC_BIT, imageExtent, mipLevels) };
 
 	AllocatedImage newImage;
 

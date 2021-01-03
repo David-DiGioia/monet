@@ -153,7 +153,7 @@ void VulkanEngine::init_scene()
 {
 	// PBR rocks
 
-	_camPos = glm::vec3{ 0.0f, 2.0f, 0.0f };
+	_camPos = glm::vec3{ 0.0f, 2.0f, 5.0f };
 	RenderObject plane{};
 	plane.mesh = get_mesh("plane");
 	plane.material = get_material("pbr");
@@ -318,12 +318,13 @@ void VulkanEngine::load_textures()
 		for (const std::string& mapType : _mapTypes) {
 			Texture texture;
 			uint32_t mipLevels;
+			VkFormat format{ mapType == "_diff" ? VK_FORMAT_R8G8B8A8_SRGB : VK_FORMAT_R8G8B8A8_UNORM };
 			// if this texture doesn't exist, use default
-			if (!vkutil::load_image_from_file(*this, (prefix + path + mapType + fileExtension).c_str(), texture.image, &mipLevels, true)) {
-				vkutil::load_image_from_file(*this, (prefix + "default_maps/" + mapType + fileExtension).c_str(), texture.image, &mipLevels);
+			if (!vkutil::load_image_from_file(*this, (prefix + path + mapType + fileExtension).c_str(), texture.image, &mipLevels, format, true)) {
+				vkutil::load_image_from_file(*this, (prefix + "default_maps/" + mapType + fileExtension).c_str(), texture.image, &mipLevels, format);
 			}
 
-			VkImageViewCreateInfo imageInfo{ vkinit::imageview_create_info(VK_FORMAT_R8G8B8A8_UNORM, texture.image._image, VK_IMAGE_ASPECT_COLOR_BIT, mipLevels) };
+			VkImageViewCreateInfo imageInfo{ vkinit::imageview_create_info(format, texture.image._image, VK_IMAGE_ASPECT_COLOR_BIT, mipLevels) };
 			vkCreateImageView(_device, &imageInfo, nullptr, &texture.imageView);
 
 			_mainDeletionQueue.push_function([=]() {

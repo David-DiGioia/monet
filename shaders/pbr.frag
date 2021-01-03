@@ -126,5 +126,4 @@ void main()
     color = color / (color + 1.0);
 
     outFragColor = vec4(color, 1.0);
-    // outFragColor = vec4(tangent, 1.0);
 }
