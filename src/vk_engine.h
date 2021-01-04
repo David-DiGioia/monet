@@ -172,8 +172,7 @@ public:
 	float _camRotPhi;
 	float _camRotTheta;
 	bool _camMouseControls;
-	glm::mat4 _rotPhi;
-	glm::mat4 _rotTheta;
+	glm::mat4 _camRot;
 
 	VkDescriptorSetLayout _globalSetLayout;
 	VkDescriptorPool _descriptorPool;

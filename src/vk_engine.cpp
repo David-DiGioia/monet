@@ -175,6 +175,7 @@ void VulkanEngine::init_scene()
 	_camPos = glm::vec3{ 0.0f, 2.0f, 5.0f };
 	_camRotPhi = 0.0f;
 	_camRotTheta = 0.0f;
+	_camRot = glm::mat4{ 1.0f };
 
 	RenderObject plane{};
 	plane.mesh = get_mesh("plane");
@@ -1150,10 +1151,11 @@ void VulkanEngine::draw()
 
 void VulkanEngine::draw_objects(VkCommandBuffer cmd, const std::multiset<RenderObject>& renderables)
 {
-	_rotTheta = glm::rotate(_camRotTheta, glm::vec3{ 1.0f, 0.0f, 0.0f });
-	_rotPhi = glm::rotate(_camRotPhi, glm::vec3{ 0.0f, 1.0f, 0.0f });
+	glm::mat4 rotTheta{ glm::rotate(_camRotTheta, glm::vec3{ 1.0f, 0.0f, 0.0f }) };
+	glm::mat4 rotPhi{ glm::rotate(_camRotPhi, glm::vec3{ 0.0f, 1.0f, 0.0f }) };
+	_camRot = rotPhi * rotTheta;
 	glm::mat4 translate{ glm::translate(glm::mat4(1.0f), _camPos) };
-	glm::mat4 view{ translate * _rotPhi * _rotTheta };
+	glm::mat4 view{ translate * _camRot };
 	// find inverse since remember wer're actually transforming everything in the scene, not the 'camera'
 	view = glm::inverse(view);
 
@@ -1278,29 +1280,10 @@ bool VulkanEngine::process_input()
 	double delta{ currentTime - _lastTime };
 	_lastTime = currentTime;
 
-	double speed{ 3.0f };
+	float speed{ 3.0f };
+	float camSensitivity{ 0.3f };
 
 	const Uint8* keystate{ SDL_GetKeyboardState(nullptr) };
-
-	// continuous-response keys
-	if (keystate[SDL_SCANCODE_W]) {
-		_camPos.z -= speed * delta;
-	}
-	if (keystate[SDL_SCANCODE_A]) {
-		_camPos.x -= speed * delta;
-	}
-	if (keystate[SDL_SCANCODE_S]) {
-		_camPos.z += speed * delta;
-	}
-	if (keystate[SDL_SCANCODE_D]) {
-		_camPos.x += speed * delta;
-	}
-	if (keystate[SDL_SCANCODE_E]) {
-		_camPos.y += speed * delta;
-	}
-	if (keystate[SDL_SCANCODE_Q]) {
-		_camPos.y -= speed * delta;
-	}
 
 	bool bQuit{ false };
 	SDL_Event e;
@@ -1317,8 +1300,8 @@ bool VulkanEngine::process_input()
 			break;
 		case SDL_MOUSEMOTION:
 			if (_camMouseControls) {
-				_camRotPhi += e.motion.xrel * delta;
-				_camRotTheta += e.motion.yrel * delta;
+				_camRotPhi -= e.motion.xrel * camSensitivity * delta;
+				_camRotTheta -= e.motion.yrel * camSensitivity * delta;
 				_camRotTheta = std::clamp(_camRotTheta, -pi / 2.0f, pi / 2.0f);
 			}
 			break;
@@ -1327,6 +1310,31 @@ bool VulkanEngine::process_input()
 			break;
 		}
 	}
+
+	glm::vec4 translate{ 0.0f };
+
+	// continuous-response keys
+	if (keystate[SDL_SCANCODE_W]) {
+		translate.z -= speed * delta;
+	}
+	if (keystate[SDL_SCANCODE_A]) {
+		translate.x -= speed * delta;
+	}
+	if (keystate[SDL_SCANCODE_S]) {
+		translate.z += speed * delta;
+	}
+	if (keystate[SDL_SCANCODE_D]) {
+		translate.x += speed * delta;
+	}
+	if (keystate[SDL_SCANCODE_E]) {
+		translate.y += speed * delta;
+	}
+	if (keystate[SDL_SCANCODE_Q]) {
+		translate.y -= speed * delta;
+	}
+
+	_camPos += glm::vec3{ _camRot * translate };
+
 	return bQuit;
 }
 
@@ -1368,14 +1376,6 @@ void VulkanEngine::gui()
 		ImGui::Text("Rotation:");
 		ImGui::DragFloat("phi", &_camRotPhi, 0.005f);
 		ImGui::DragFloat("theta", &_camRotTheta, 0.005f);
-
-		std::stringstream ss{};
-		ss << "phi:\n";
-		printMat(_rotPhi, ss);
-		ss << "theta:\n";
-		printMat(_rotTheta, ss);
-
-		ImGui::Text(ss.str().c_str());
 	}
 
 	ImGui::End();
@@ -1384,8 +1384,7 @@ void VulkanEngine::gui()
 void VulkanEngine::run()
 {
 	bool bQuit{ false };
-	glm::mat4 mat{};
-	std::cout << mat.length() << '\n';
+
 	// main loop
 	while (!bQuit) {
 		bQuit = process_input();
