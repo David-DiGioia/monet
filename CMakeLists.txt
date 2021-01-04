@@ -23,6 +23,10 @@ else()
   set(GLSL_VALIDATOR "$ENV{VULKAN_SDK}/Bin32/glslangValidator.exe")
 endif()
 
+## We're gonna use glslc instead of glslang
+##set(GLSLC "C:/VulkanSDK/1.2.162.0/Bin/glslc.exe")
+set(GLSLC "${Vulkan_GLSLC_EXECUTABLE}")
+
 ## find all the shader files under the shaders folder
 file(GLOB_RECURSE GLSL_SOURCE_FILES
     "${PROJECT_SOURCE_DIR}/shaders/*.frag"
@@ -39,7 +43,8 @@ foreach(GLSL ${GLSL_SOURCE_FILES})
   ##execute glslang command to compile that specific shader
   add_custom_command(
     OUTPUT ${SPIRV}
-    COMMAND ${GLSL_VALIDATOR} -V ${GLSL} -o ${SPIRV}
+##    COMMAND ${GLSL_VALIDATOR} -V ${GLSL} -o ${SPIRV}
+    COMMAND ${GLSLC} ${GLSL} -o ${SPIRV}
     DEPENDS ${GLSL})
   list(APPEND SPIRV_BINARY_FILES ${SPIRV})
 endforeach(GLSL)

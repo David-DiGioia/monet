@@ -177,10 +177,21 @@ void VulkanEngine::init_scene()
 	_camRotTheta = 0.0f;
 	_camRot = glm::mat4{ 1.0f };
 
+	RenderObject penguin{};
+	penguin.mesh = get_mesh("penguin");
+	penguin.material = get_material("pbr");
+	glm::mat4 translate{ glm::translate(glm::mat4{ 1.0 }, glm::vec3(0.0, 0.0, 0.0)) };
+	glm::mat4 scale{ glm::scale(glm::mat4{1.0}, glm::vec3{3.0, 3.0, 3.0}) };
+	penguin.transformMatrix = translate * scale;
+	_renderables.insert(penguin);
+
 	RenderObject plane{};
 	plane.mesh = get_mesh("plane");
 	plane.material = get_material("pbr");
-	plane.transformMatrix = glm::translate(glm::mat4{ 1.0 }, glm::vec3(0.0, 0.0, 0.0));
+	glm::mat4 translate2{ glm::translate(glm::mat4{ 1.0 }, glm::vec3(0.0, 0.0, 0.0)) };
+	glm::mat4 scale2{ glm::scale(glm::mat4{1.0}, glm::vec3{3.0, 3.0, 3.0}) };
+	//glm::mat4 rot2{ glm::rotate(pi, glm::vec3{1.0, 0.0, 0.0}) };
+	plane.transformMatrix = translate2 * scale2;
 	_renderables.insert(plane);
 
 	// minecraft -------------------------------------------------------------------
@@ -344,7 +355,7 @@ void VulkanEngine::load_textures()
 			VkFormat format{ mapType == "_diff" ? VK_FORMAT_R8G8B8A8_SRGB : VK_FORMAT_R8G8B8A8_UNORM };
 			// if this texture doesn't exist, use default
 			if (!vkutil::load_image_from_file(*this, (prefix + path + mapType + fileExtension).c_str(), texture.image, &mipLevels, format, true)) {
-				vkutil::load_image_from_file(*this, (prefix + "default_maps/" + mapType + fileExtension).c_str(), texture.image, &mipLevels, format);
+				vkutil::load_image_from_file(*this, (prefix + "default_maps/" + mapType + ".png").c_str(), texture.image, &mipLevels, format);
 			}
 
 			VkImageViewCreateInfo imageInfo{ vkinit::imageview_create_info(format, texture.image._image, VK_IMAGE_ASPECT_COLOR_BIT, mipLevels) };

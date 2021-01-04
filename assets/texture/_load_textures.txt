@@ -1,1 +1,1 @@
-rocks	rocks_ground_06_4k	.jpg
+rocks	rocks_ground_06_4kX	.jpg

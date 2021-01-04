@@ -83,6 +83,11 @@ void main()
     float roughness = texture(roughnessTex, texCoord).r;
     float ao = texture(aoTex, texCoord).r;
 
+    diffuse = vec3(1.0, 1.0, 1.0);
+    normal = vec3(0.0, 0.0, 1.0);
+    roughness = 0.3;
+    ao = 1.0;
+
     vec3 N = normalize(normal);
     vec3 V = normalize(tangentCamPos - tangentWorldPos);
 
@@ -126,4 +131,5 @@ void main()
     color = color / (color + 1.0);
 
     outFragColor = vec4(color, 1.0);
+    // outFragColor = vec4(normal, 1.0);
 }
