@@ -2,10 +2,9 @@
 #define MAX_NUM_TOTAL_LIGHTS 20
 
 layout (location = 0) in vec2 texCoord;
-layout (location = 1) in vec3 tangent;
-layout (location = 2) in vec3 tangentWorldPos;
-layout (location = 3) in vec3 tangentCamPos;
-layout (location = 4) in vec3 tangentLightPos[MAX_NUM_TOTAL_LIGHTS];
+layout (location = 1) in vec3 tangentFragPos;
+layout (location = 2) in vec3 tangentCamPos;
+layout (location = 3) in vec3 tangentLightPos[MAX_NUM_TOTAL_LIGHTS];
 
 layout (location = 0) out vec4 outFragColor;
 
@@ -83,20 +82,15 @@ void main()
     float roughness = texture(roughnessTex, texCoord).r;
     float ao = texture(aoTex, texCoord).r;
 
-    diffuse = vec3(1.0, 1.0, 1.0);
-    normal = vec3(0.0, 0.0, 1.0);
-    roughness = 0.3;
-    ao = 1.0;
-
-    vec3 N = normalize(normal);
-    vec3 V = normalize(tangentCamPos - tangentWorldPos);
+    vec3 N = normal;
+    vec3 V = normalize(tangentCamPos - tangentFragPos);
 
     vec3 Lo = vec3(0.0);
     for (int i = 0; i < sceneData.numLights; ++i) {
-        vec3 L = normalize(tangentLightPos[i] - tangentWorldPos);
+        vec3 L = normalize(tangentLightPos[i] - tangentFragPos);
         vec3 H = normalize(V + L);
 
-        float dist = distance(tangentWorldPos, tangentLightPos[i]);
+        float dist = distance(tangentFragPos, tangentLightPos[i]);
         float attentuation = 1.0 / (dist * dist);
         vec3 light = sceneData.lights[i].color.xyz * sceneData.lights[i].color.w;
         vec3 radiance = light * attentuation;
@@ -131,5 +125,4 @@ void main()
     color = color / (color + 1.0);
 
     outFragColor = vec4(color, 1.0);
-    // outFragColor = vec4(normal, 1.0);
 }

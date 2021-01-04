@@ -7,10 +7,9 @@ layout (location = 2) in vec3 vTangent;
 layout (location = 3) in vec2 vTexCoord;
 
 layout (location = 0) out vec2 texCoord;
-layout (location = 1) out vec3 tangent;
-layout (location = 2) out vec3 tangentWorldPos;
-layout (location = 3) out vec3 tangentCamPos;
-layout (location = 4) out vec3 tangentLightPos[MAX_NUM_TOTAL_LIGHTS];
+layout (location = 1) out vec3 tangentFragPos;
+layout (location = 2) out vec3 tangentCamPos;
+layout (location = 3) out vec3 tangentLightPos[MAX_NUM_TOTAL_LIGHTS];
 
 layout (set = 0, binding = 0) uniform CameraBuffer {
     mat4 view;
@@ -67,10 +66,9 @@ void main()
     mat3 TBN = mat3(T, B, N);
     // transpose is the inverse since it's orthonormal
     TBN = transpose(TBN);
-    tangentWorldPos = TBN * worldPos4.xyz;
-    tangentCamPos = TBN * sceneData.camPos.xyz;
 
-    tangent = T;
+    tangentFragPos = TBN * worldPos4.xyz;
+    tangentCamPos = TBN * sceneData.camPos.xyz;
 
     for (int i = 0; i < MAX_NUM_TOTAL_LIGHTS; ++i) {
         tangentLightPos[i] = TBN * sceneData.lights[i].position.xyz;

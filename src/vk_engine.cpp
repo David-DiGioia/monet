@@ -46,8 +46,8 @@ bool RenderObject::operator<(const RenderObject& other) const
 
 template<typename Mat, typename Stream>
 void printMat(const Mat& mat, Stream& out) {
-	for (auto col{ 0 }; col < mat.length(); ++col) {
-		for (auto row{ 0 }; row < mat.length(); ++row) {
+	for (auto row{ 0 }; row < mat.length(); ++row) {
+		for (auto col{ 0 }; col < mat.length(); ++col) {
 			out << mat[col][row] << '\t';
 		}
 		out << '\n';
@@ -170,7 +170,7 @@ void VulkanEngine::init_imgui()
 
 void VulkanEngine::init_scene()
 {
-	// PBR rocks
+	// penguin on plane
 
 	_camPos = glm::vec3{ 0.0f, 2.0f, 5.0f };
 	_camRotPhi = 0.0f;
@@ -190,8 +190,8 @@ void VulkanEngine::init_scene()
 	plane.material = get_material("pbr");
 	glm::mat4 translate2{ glm::translate(glm::mat4{ 1.0 }, glm::vec3(0.0, 0.0, 0.0)) };
 	glm::mat4 scale2{ glm::scale(glm::mat4{1.0}, glm::vec3{3.0, 3.0, 3.0}) };
-	//glm::mat4 rot2{ glm::rotate(pi, glm::vec3{1.0, 0.0, 0.0}) };
-	plane.transformMatrix = translate2 * scale2;
+	glm::mat4 rot2{ glm::rotate(0.0f, glm::vec3{1.0, 0.0, 0.0}) };
+	plane.transformMatrix = translate2 * scale2 * rot2;
 	_renderables.insert(plane);
 
 	// minecraft -------------------------------------------------------------------
@@ -1090,7 +1090,7 @@ void VulkanEngine::draw()
 
 	// make a clear-color from the frame number. This will flash with a 120 * pi frame period.
 	VkClearValue clearValue{};
-	clearValue.color = { {0.01f, 0.01f, 0.02, 1.0f} };
+	clearValue.color = { {0.01, 0.01, 0.02, 1.0} };
 
 	VkClearValue depthClear{};
 	depthClear.depthStencil.depth = 1.0f;
@@ -1167,8 +1167,20 @@ void VulkanEngine::draw_objects(VkCommandBuffer cmd, const std::multiset<RenderO
 	_camRot = rotPhi * rotTheta;
 	glm::mat4 translate{ glm::translate(glm::mat4(1.0f), _camPos) };
 	glm::mat4 view{ translate * _camRot };
-	// find inverse since remember wer're actually transforming everything in the scene, not the 'camera'
+
+	_sceneParameters.camPos = view[3];
+
+	//for (auto i{ 0 }; i < 4; ++i) {
+	//	std::cout << view[3][i] << '\n';
+	//}
+
+	//std::cout << "before inverse:\n";
+	//printMat(view);
+	// find inverse since remember we're actually transforming everything in the scene, not the 'camera'
 	view = glm::inverse(view);
+	//std::cout << "after inverse:\n";
+	//printMat(view);
+	//std::cout << "\n\n";
 
 	glm::mat4 projection{ glm::perspective(glm::radians(70.0f), 1700.0f / 900.0f, 0.1f, 200.0f) };
 	projection[1][1] *= -1;
@@ -1192,7 +1204,7 @@ void VulkanEngine::draw_objects(VkCommandBuffer cmd, const std::multiset<RenderO
 	_sceneParameters.numLights = 2;
 	_sceneParameters.lights[0] = _guiData.light0;
 	_sceneParameters.lights[1] = _guiData.light1;
-	_sceneParameters.camPos = -view[3];
+
 
 	char* sceneData;
 	vmaMapMemory(_allocator, _sceneParameterBuffer._allocation, (void**)&sceneData);
