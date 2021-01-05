@@ -98,11 +98,11 @@ void VulkanEngine::init()
 
 void VulkanEngine::init_gui_data()
 {
-	_guiData.light0.position = { 0.0f, 3.0f, 0.0f, 1.0f };
-	_guiData.light0.color = { 1.0f, 1.0f, 0.8f, 10.0f };
+	_guiData.light0.position = { 1.0, 3.9, 3.3, 1.0 };
+	_guiData.light0.color = { 1.0, 1.0, 0.8, 67.0 };
 
-	_guiData.light1.position = { 10.0f, 13.0f, 0.0f, 1.0f };
-	_guiData.light1.color = { 1.0f, 0.3f, 0.3f,3.0f };
+	_guiData.light1.position = { 7.5, 10.0, 0.0, 1.0 };
+	_guiData.light1.color = { 1.0, 0.3, 0.3, 47.0 };
 }
 
 void VulkanEngine::init_imgui()
@@ -178,8 +178,8 @@ void VulkanEngine::init_scene()
 	_camRot = glm::mat4{ 1.0f };
 
 	RenderObject penguin{};
-	penguin.mesh = get_mesh("penguin");
-	penguin.material = get_material("pbr");
+	penguin.mesh = get_mesh("bed");
+	penguin.material = get_material("bed");
 	glm::mat4 translate{ glm::translate(glm::mat4{ 1.0 }, glm::vec3(0.0, 0.0, 0.0)) };
 	glm::mat4 scale{ glm::scale(glm::mat4{1.0}, glm::vec3{3.0, 3.0, 3.0}) };
 	penguin.transformMatrix = translate * scale;
@@ -189,7 +189,7 @@ void VulkanEngine::init_scene()
 	plane.mesh = get_mesh("plane");
 	plane.material = get_material("pbr");
 	glm::mat4 translate2{ glm::translate(glm::mat4{ 1.0 }, glm::vec3(0.0, 0.0, 0.0)) };
-	glm::mat4 scale2{ glm::scale(glm::mat4{1.0}, glm::vec3{3.0, 3.0, 3.0}) };
+	glm::mat4 scale2{ glm::scale(glm::mat4{1.0}, glm::vec3{3.0}) };
 	glm::mat4 rot2{ glm::rotate(0.0f, glm::vec3{1.0, 0.0, 0.0}) };
 	plane.transformMatrix = translate2 * scale2 * rot2;
 	_renderables.insert(plane);
@@ -873,12 +873,16 @@ void VulkanEngine::init_vulkan()
 	// get the surface of the window we opened with SDL
 	SDL_Vulkan_CreateSurface(_window, _instance, &_surface);
 
+	//VkPhysicalDeviceFeatures features{};
+	//features.shaderFloat64 = VK_TRUE;
+
 	// use vkbootstrap to select a gpu.
 	// we want a gpu that can write to the SDL surface and supports Vulkan 1.1
 	vkb::PhysicalDeviceSelector selector{ vkb_inst };
 	vkb::PhysicalDevice physicalDevice{ selector
 		.set_minimum_version(1, 1)
 		.set_surface(_surface)
+		//.set_required_features(features)
 		.select()
 		.value() };
 

@@ -19,7 +19,7 @@
 
 // number of frames to overlap when rendering
 constexpr uint32_t FRAME_OVERLAP{ 2 };
-constexpr size_t MAX_NUM_TOTAL_LIGHTS{ 20 }; // this must match glsl shader!
+constexpr size_t MAX_NUM_TOTAL_LIGHTS{ 10 }; // this must match glsl shader!
 
 struct Light {
 	glm::vec4 position; // w is unused

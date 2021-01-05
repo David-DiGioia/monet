@@ -2,3 +2,4 @@ monkey		monkey_smooth.obj
 penguin		penguin.obj
 minecraft	lost_empire.obj
 plane		rocky_plane.obj
+bed		GothicBed_01.obj

@@ -1,10 +1,11 @@
 #version 460
-#define MAX_NUM_TOTAL_LIGHTS 20
+#define MAX_NUM_TOTAL_LIGHTS 10
 
 layout (location = 0) in vec2 texCoord;
-layout (location = 1) in vec3 tangentFragPos;
-layout (location = 2) in vec3 tangentCamPos;
-layout (location = 3) in vec3 tangentLightPos[MAX_NUM_TOTAL_LIGHTS];
+layout (location = 1) in vec3 fragPos;
+layout (location = 2) in vec3 camPos;
+layout (location = 3) in mat3 TBN;
+layout (location = 6) in vec3 lightPos[MAX_NUM_TOTAL_LIGHTS];
 
 layout (location = 0) out vec4 outFragColor;
 
@@ -79,18 +80,22 @@ void main()
     vec3 normal = texture(normalTex, texCoord).rgb;
     // transform normal vector to range [-1, 1]
     normal = normalize(normal * 2.0 - 1.0);
-    float roughness = texture(roughnessTex, texCoord).r;
+    float roughness = texture(roughnessTex, texCoord).g;
     float ao = texture(aoTex, texCoord).r;
 
-    vec3 N = normal;
-    vec3 V = normalize(tangentCamPos - tangentFragPos);
+    // transform normal from tangent space to world space
+    vec3 N = TBN * normal;
+    vec3 V = normalize(camPos - fragPos);
+
+    vec3 outVar;
 
     vec3 Lo = vec3(0.0);
     for (int i = 0; i < sceneData.numLights; ++i) {
-        vec3 L = normalize(tangentLightPos[i] - tangentFragPos);
+        // vec3 L = normalize(lightPos[i] - fragPos);
+        vec3 L = normalize(lightPos[i] - fragPos);
         vec3 H = normalize(V + L);
 
-        float dist = distance(tangentFragPos, tangentLightPos[i]);
+        float dist = distance(fragPos, lightPos[i]);
         float attentuation = 1.0 / (dist * dist);
         vec3 light = sceneData.lights[i].color.xyz * sceneData.lights[i].color.w;
         vec3 radiance = light * attentuation;
@@ -102,6 +107,8 @@ void main()
 
         float NDF = distributionGGX(N, H, roughness);
         float G = geometrySmith(N, V, L, roughness);
+
+        outVar = vec3(N);
 
         vec3 numerator = NDF * G * F;
         float denominator = 4.0 * max(dot(N, V), 0.0) * max(dot(N, L), 0.0);

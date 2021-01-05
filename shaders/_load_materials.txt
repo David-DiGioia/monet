@@ -4,4 +4,6 @@
 //red 		projection.vert.spv	red.frag.spv		null
 //green		projection.vert.spv	green.frag.spv		null
 //textured_lit	projection.vert.spv	textured_lit.frag.spv	minecraft
+// pbrd		pbr_double.vert.spv	pbr_double.frag.spv	null
 pbr		pbr.vert.spv		pbr.frag.spv		rocks
+bed		pbr.vert.spv		pbr.frag.spv		bed

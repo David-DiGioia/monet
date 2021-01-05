@@ -125,7 +125,7 @@ bool vkutil::load_image_from_file(VulkanEngine& engine, const char* file, Alloca
 		&newImage._allocation,
 		nullptr);
 
-	// we must transfer the image to linear layout before copying the buffer to the image
+	// we must transfer the image to transfer dst layout before copying the buffer to the image
 	engine.immediate_submit([=](VkCommandBuffer cmd) {
 		VkImageSubresourceRange range{};
 		range.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
