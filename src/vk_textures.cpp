@@ -85,10 +85,12 @@ bool vkutil::load_image_from_file(VulkanEngine& engine, const char* file, Alloca
 
 	// if we're loading an hdri we handle the special case
 	if (format == VK_FORMAT_R32G32B32A32_SFLOAT) {
+		stbi_set_flip_vertically_on_load(true);
 		float* pixels{ stbi_loadf(file, &texWidth, &texHeight, &texChannels, STBI_rgb_alpha) };
 		pixelBytes = 16;
 		pixel_ptr = pixels;
 	} else {
+		stbi_set_flip_vertically_on_load(false);
 		stbi_uc* pixels{ stbi_load(file, &texWidth, &texHeight, &texChannels, STBI_rgb_alpha) };
 		pixel_ptr = pixels;
 	}
