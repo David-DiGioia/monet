@@ -350,6 +350,7 @@ void VulkanEngine::load_meshes()
 
 				if (filepath.size() >= 4 && filepath.substr(filepath.size() - 4) == ".obj") {
 					std::string name{ modelDir.path().filename().generic_string() };
+					std::cout << "Loading mesh '" << name << "'\n";
 					load_mesh(name, filepath);
 				}
 			}
@@ -430,7 +431,7 @@ void VulkanEngine::load_materials()
 			if (field == "name:") {
 				ss >> info.name;
 				if (info.name != "") {
-					std::cout << "loading material '" << info.name << "'\n";
+					std::cout << "Loading material '" << info.name << "'\n";
 				}
 			} else if (field == "vert:") {
 				std::string shader;
