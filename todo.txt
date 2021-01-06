@@ -1,0 +1,10 @@
+- Eventually hash descriptor set layouts to reuse them when possible so we can bind pipelines less often (if two pipelines are compatible we don't have to rebind when we change materials)
+examples: https://github.com/martty/vuk/blob/c395af9bfe44fd8519336a8a491942c9aace984b/include/vuk/Pipeline.hpp#L777 and https://github.com/martty/vuk/blob/c395af9bfe44fd8519336a8a491942c9aace984b/include/vuk/Pipeline.hpp#L418 also maybe relevant for hashing vulkan objects: https://github.com/ValveSoftware/Fossilize
+
+- convert models to custom format so we don't need to load an .obj file every time we run the program. example: https://vkguide.dev/docs/extra-chapter/asset_system/
+
+- hdri environment maps for lighting
+
+- shadow maps
+
+- restructure how models and textures are loaded, it's a bit tedious atm

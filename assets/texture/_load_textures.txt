@@ -1,3 +1,0 @@
-null	null			.png
-rocks	rocks_ground_06_4kX	.jpg
-bed	GothicBed_01_8-bit	.png

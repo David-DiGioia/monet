@@ -10,6 +10,7 @@
 #include <fstream>
 #include <string>
 #include <algorithm>
+#include <filesystem>
 
 #include "SDL.h"
 #include "SDL_vulkan.h"
@@ -85,7 +86,6 @@ void VulkanEngine::init()
 	init_framebuffers();
 	init_sync_structures();
 	init_descriptors(); // descriptors are needed at pipeline create, so before materials
-	load_textures();
 	load_materials();
 	load_meshes();
 	init_scene();
@@ -177,22 +177,22 @@ void VulkanEngine::init_scene()
 	_camRotTheta = 0.0f;
 	_camRot = glm::mat4{ 1.0f };
 
-	RenderObject penguin{};
-	penguin.mesh = get_mesh("bed");
-	penguin.material = get_material("bed");
+	RenderObject bed{};
+	bed.mesh = get_mesh("bed");
+	bed.material = get_material("bed");
 	glm::mat4 translate{ glm::translate(glm::mat4{ 1.0 }, glm::vec3(0.0, 0.0, 0.0)) };
 	glm::mat4 scale{ glm::scale(glm::mat4{1.0}, glm::vec3{3.0, 3.0, 3.0}) };
-	penguin.transformMatrix = translate * scale;
-	_renderables.insert(penguin);
+	bed.transformMatrix = translate * scale;
+	_renderables.insert(bed);
 
-	RenderObject plane{};
-	plane.mesh = get_mesh("plane");
-	plane.material = get_material("pbr");
-	glm::mat4 translate2{ glm::translate(glm::mat4{ 1.0 }, glm::vec3(0.0, 0.0, 0.0)) };
-	glm::mat4 scale2{ glm::scale(glm::mat4{1.0}, glm::vec3{3.0}) };
-	glm::mat4 rot2{ glm::rotate(0.0f, glm::vec3{1.0, 0.0, 0.0}) };
-	plane.transformMatrix = translate2 * scale2 * rot2;
-	_renderables.insert(plane);
+	//RenderObject plane{};
+	//plane.mesh = get_mesh("plane");
+	//plane.material = get_material("pbr");
+	//glm::mat4 translate2{ glm::translate(glm::mat4{ 1.0 }, glm::vec3(0.0, 0.0, 0.0)) };
+	//glm::mat4 scale2{ glm::scale(glm::mat4{1.0}, glm::vec3{3.0}) };
+	//glm::mat4 rot2{ glm::rotate(0.0f, glm::vec3{1.0, 0.0, 0.0}) };
+	//plane.transformMatrix = translate2 * scale2 * rot2;
+	//_renderables.insert(plane);
 
 	// minecraft -------------------------------------------------------------------
 
@@ -337,49 +337,23 @@ void VulkanEngine::upload_mesh(Mesh& mesh)
 	vmaDestroyBuffer(_allocator, stagingBuffer._buffer, stagingBuffer._allocation);
 }
 
-void VulkanEngine::load_textures()
-{
-	_mapTypes.push_back("_diff");
-	_mapTypes.push_back("_norm");
-	_mapTypes.push_back("_roug");
-	_mapTypes.push_back("_ao__");
-
-	std::string name, path, fileExtension;
-	std::string prefix{ "../../assets/texture/" };
-	std::string loadFile{ "_load_textures.txt" };
-	std::ifstream file{ prefix + loadFile };
-	while (file >> name >> path >> fileExtension) {
-		for (const std::string& mapType : _mapTypes) {
-			Texture texture;
-			uint32_t mipLevels;
-			VkFormat format{ mapType == "_diff" ? VK_FORMAT_R8G8B8A8_SRGB : VK_FORMAT_R8G8B8A8_UNORM };
-			// if this texture doesn't exist, use default
-			if (!vkutil::load_image_from_file(*this, (prefix + path + mapType + fileExtension).c_str(), texture.image, &mipLevels, format, true)) {
-				vkutil::load_image_from_file(*this, (prefix + "default_maps/" + mapType + ".png").c_str(), texture.image, &mipLevels, format);
-			}
-
-			VkImageViewCreateInfo imageInfo{ vkinit::imageview_create_info(format, texture.image._image, VK_IMAGE_ASPECT_COLOR_BIT, mipLevels) };
-			vkCreateImageView(_device, &imageInfo, nullptr, &texture.imageView);
-
-			_mainDeletionQueue.push_function([=]() {
-				vkDestroyImageView(_device, texture.imageView, nullptr);
-			});
-
-			texture.mipLevels = mipLevels;
-
-			_loadedTextures[name + mapType] = texture;
-		}
-	}
-}
-
 void VulkanEngine::load_meshes()
 {
-	std::string name, path;
-	std::string prefix{ "../../assets/mesh/" };
-	std::string loadFile{ "_load_meshes.txt" };
-	std::ifstream file{ prefix + loadFile };
-	while (file >> name >> path) {
-		load_mesh(name, prefix + path);
+	namespace fs = std::filesystem;
+	std::string modelsPath{ "../../assets/models/" };
+
+	for (const auto& modelDir : fs::directory_iterator(modelsPath)) {
+		if (modelDir.is_directory()) {
+
+			for (const auto& file : fs::directory_iterator(modelDir)) {
+				std::string filepath{ file.path().generic_string() };
+
+				if (filepath.size() >= 4 && filepath.substr(filepath.size() - 4) == ".obj") {
+					std::string name{ modelDir.path().filename().generic_string() };
+					load_mesh(name, filepath);
+				}
+			}
+		}
 	}
 }
 
@@ -398,12 +372,46 @@ void VulkanEngine::load_mesh(const std::string& name, const std::string& path)
 	_meshes[name] = mesh;
 }
 
+void VulkanEngine::load_texture(const std::string& path, VkFormat format)
+{
+	Texture texture;
+	uint32_t mipLevels;
+	std::string prefix{ "../../assets/models/" };
+
+	if (!vkutil::load_image_from_file(*this, (prefix + path).c_str(), texture.image, &mipLevels, format)) {
+		std::cout << "Failed to load texture: " << path << "\n";
+	}
+
+	VkImageViewCreateInfo imageInfo{ vkinit::imageview_create_info(format, texture.image._image, VK_IMAGE_ASPECT_COLOR_BIT, mipLevels) };
+	vkCreateImageView(_device, &imageInfo, nullptr, &texture.imageView);
+
+	_mainDeletionQueue.push_function([=]() {
+		vkDestroyImageView(_device, texture.imageView, nullptr);
+	});
+
+	texture.mipLevels = mipLevels;
+
+	_loadedTextures[path] = texture;
+}
+
 void VulkanEngine::load_materials()
 {
-	std::string name, vertPath, fragPath, textureName, line;
 	std::string prefix{ "../../shaders/" };
 	std::string loadFile{ "_load_materials.txt" };
 	std::ifstream file{ prefix + loadFile };
+	std::string line;
+
+	std::unordered_map<std::string, VkDescriptorType> stringToType;
+	stringToType["COMBINED_IMAGE_SAMPLER"] = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+	std::unordered_map<std::string, VkShaderStageFlagBits> stringToStage;
+	stringToStage["VERTEX"] = VK_SHADER_STAGE_VERTEX_BIT;
+	stringToStage["FRAGMENT"] = VK_SHADER_STAGE_FRAGMENT_BIT;
+	std::unordered_map<std::string, VkFormat> stringToFormat;
+	stringToFormat["R8G8B8A8_SRGB"] = VK_FORMAT_R8G8B8A8_SRGB;
+	stringToFormat["R8G8B8A8_UNORM"] = VK_FORMAT_R8G8B8A8_UNORM;
+
+	MaterialCreateInfo info{};
+	uint32_t bindingIdx{ 0 };
 
 	while (std::getline(file, line)) {
 		if (line.size() < 2 || (line.substr(0, 2) == "//")) {
@@ -411,11 +419,155 @@ void VulkanEngine::load_materials()
 		}
 
 		std::stringstream ss{ line };
-		while (ss >> name >> vertPath >> fragPath >> textureName) {
-			std::cout << "\nloading material '" << name << "'\n";
-			init_pipeline(name, prefix + vertPath, prefix + fragPath, textureName);
+
+		std::string field;
+		ss >> field;
+
+		if (field == "name:") {
+			ss >> info.name;
+		} else if (field == "vert:") {
+			std::string shader;
+			ss >> shader;
+			info.vertPath = prefix + shader;
+		} else if (field == "frag:") {
+			std::string shader;
+			ss >> shader;
+			info.fragPath = prefix + shader;
+		} else if (field == "bind:") {
+			VkDescriptorSetLayoutBinding binding{};
+			binding.descriptorCount = 1;
+			binding.binding = bindingIdx;
+			++bindingIdx;
+
+			std::string lineBind;
+
+			while (std::getline(file, lineBind)) {
+				std::stringstream ssBind{ lineBind };
+				std::string fieldBind;
+				ssBind >> fieldBind;
+
+				if (fieldBind == "type:") {
+					std::string type;
+					ssBind >> type;
+					binding.descriptorType = stringToType[type];
+				} else if (fieldBind == "stage:") {
+					std::string stage;
+					VkShaderStageFlags flags{};
+
+					while (ssBind >> stage) {
+						flags |= stringToStage[stage];
+					}
+
+					binding.stageFlags = flags;
+				} else if (fieldBind == "path:") {
+					std::string path;
+					ssBind >> path;
+					info.bindingPaths.push_back(path);
+				} else if (fieldBind == "format:") {
+					std::string format;
+					ssBind >> format;
+					load_texture(info.bindingPaths.back(), stringToFormat[format]);
+					break;
+				}
+			}
+
+			info.bindings.push_back(binding);
 		}
 	}
+	std::cout << "\nloading material '" << info.name << "'\n";
+	init_pipeline(info, prefix);
+}
+
+void VulkanEngine::init_pipeline(const MaterialCreateInfo& info, const std::string& prefix)
+{
+	VkShaderModule vertShader;
+	if (!load_shader_module(info.vertPath, &vertShader)) {
+		std::cout << "Error when building vertex shader module: " << info.vertPath << "\n";
+	}
+
+	VkShaderModule fragShader;
+	if (!load_shader_module(info.fragPath, &fragShader)) {
+		std::cout << "Error when building fragment shader module: " << info.fragPath << "\n";
+	}
+
+	VkPipelineLayoutCreateInfo pipeline_layout_info{ vkinit::pipeline_layout_create_info() };
+	VkPushConstantRange push_constant{};
+	// this push constant range starts at the beginning
+	push_constant.offset = 0;
+	push_constant.size = sizeof(MeshPushConstants);
+	// this push constant range is accessible only in the vertex shader
+	push_constant.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
+
+	// create the descriptor set layout specific to the material we're making
+
+	VkDescriptorSetLayoutCreateInfo materialSetLayoutInfo{};
+	materialSetLayoutInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
+	materialSetLayoutInfo.pNext = nullptr;
+	materialSetLayoutInfo.bindingCount = info.bindings.size();
+	materialSetLayoutInfo.pBindings = info.bindings.data();
+
+	VkDescriptorSetLayout materialSetLayout;
+	VK_CHECK(vkCreateDescriptorSetLayout(_device, &materialSetLayoutInfo, nullptr, &materialSetLayout));
+
+	_mainDeletionQueue.push_function([=]() {
+		vkDestroyDescriptorSetLayout(_device, materialSetLayout, nullptr);
+	});
+
+	std::array<VkDescriptorSetLayout, 3> setLayouts{ _globalSetLayout, _objectSetLayout, materialSetLayout };
+
+	pipeline_layout_info.pPushConstantRanges = &push_constant;
+	pipeline_layout_info.pushConstantRangeCount = 1;
+	pipeline_layout_info.setLayoutCount = setLayouts.size();
+	pipeline_layout_info.pSetLayouts = setLayouts.data();
+
+	VkPipelineLayout layout;
+	VK_CHECK(vkCreatePipelineLayout(_device, &pipeline_layout_info, nullptr, &layout));
+
+	PipelineBuilder pipelineBuilder;
+	// vertex input controls how to read vertices from vertex buffers
+	pipelineBuilder._vertexInputInfo = vkinit::vertex_input_state_create_info();
+	// input assembly is the configuration for drawing triangle lists, strips, or individual points
+	pipelineBuilder._inputAssembly = vkinit::input_assembly_create_info(VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST);
+	// build viewport and scissor from the swapchain extents
+	pipelineBuilder._viewport.x = 0.0f;
+	pipelineBuilder._viewport.y = 0.0f;
+	pipelineBuilder._viewport.width = (float)_windowExtent.width;
+	pipelineBuilder._viewport.height = (float)_windowExtent.height;
+	pipelineBuilder._viewport.minDepth = 0.0f;
+	pipelineBuilder._viewport.maxDepth = 1.0f;
+	pipelineBuilder._scissor.offset = { 0, 0 };
+	pipelineBuilder._scissor.extent = _windowExtent;
+	pipelineBuilder._rasterizer = vkinit::rasterization_state_create_info(VK_POLYGON_MODE_FILL);
+	pipelineBuilder._multisampling = vkinit::multisampling_state_create_info();
+	pipelineBuilder._colorBlendAttachment = vkinit::color_blend_attachment_state();
+	pipelineBuilder._depthStencil = vkinit::depth_stencil_create_info(true, true, VK_COMPARE_OP_LESS_OR_EQUAL);
+	VertexInputDescription vertexDescription{ Vertex::get_vertex_description() };
+	// connect the pipeline builder vertex input info to the one we get from Vertex
+	pipelineBuilder._vertexInputInfo.vertexAttributeDescriptionCount = vertexDescription.attributes.size();
+	pipelineBuilder._vertexInputInfo.pVertexAttributeDescriptions = vertexDescription.attributes.data();
+	pipelineBuilder._vertexInputInfo.vertexBindingDescriptionCount = vertexDescription.bindings.size();
+	pipelineBuilder._vertexInputInfo.pVertexBindingDescriptions = vertexDescription.bindings.data();
+	pipelineBuilder._pipelineLayout = layout;
+
+	pipelineBuilder._shaderStages.push_back(
+		vkinit::pipeline_shader_stage_create_info(VK_SHADER_STAGE_VERTEX_BIT, vertShader)
+	);
+
+	pipelineBuilder._shaderStages.push_back(
+		vkinit::pipeline_shader_stage_create_info(VK_SHADER_STAGE_FRAGMENT_BIT, fragShader)
+	);
+
+	VkPipeline pipeline{ pipelineBuilder.build_pipeline(_device, _renderPass) };
+
+	create_material(info, pipeline, layout, materialSetLayout);
+
+	vkDestroyShaderModule(_device, vertShader, nullptr);
+	vkDestroyShaderModule(_device, fragShader, nullptr);
+
+	_mainDeletionQueue.push_function([=]() {
+		vkDestroyPipeline(_device, pipeline, nullptr);
+		vkDestroyPipelineLayout(_device, layout, nullptr);
+	});
 }
 
 size_t VulkanEngine::pad_uniform_buffer_size(size_t originalSize)
@@ -472,28 +624,12 @@ void VulkanEngine::init_descriptors()
 	setInfo2.bindingCount = 1;
 	setInfo2.pBindings = &objectBind;
 
-	VkDescriptorSetLayoutBinding diffuseBind{ vkinit::descriptorset_layout_binding(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT, 0) };
-	VkDescriptorSetLayoutBinding normalBind{ vkinit::descriptorset_layout_binding(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT, 1) };
-	VkDescriptorSetLayoutBinding roughnessBind{ vkinit::descriptorset_layout_binding(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT, 2) };
-	VkDescriptorSetLayoutBinding aoBind{ vkinit::descriptorset_layout_binding(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT, 3) };
-
-	std::array<VkDescriptorSetLayoutBinding, 4> bindings3{ diffuseBind, normalBind, roughnessBind, aoBind };
-
-	VkDescriptorSetLayoutCreateInfo setInfo3{};
-	setInfo3.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
-	setInfo3.pNext = nullptr;
-	setInfo3.flags = 0;
-	setInfo3.bindingCount = bindings3.size();
-	setInfo3.pBindings = bindings3.data();
-
 	VK_CHECK(vkCreateDescriptorSetLayout(_device, &setInfo, nullptr, &_globalSetLayout));
 	VK_CHECK(vkCreateDescriptorSetLayout(_device, &setInfo2, nullptr, &_objectSetLayout));
-	VK_CHECK(vkCreateDescriptorSetLayout(_device, &setInfo3, nullptr, &_pbrSetLayout));
 
 	_mainDeletionQueue.push_function([=]() {
 		vkDestroyDescriptorSetLayout(_device, _globalSetLayout, nullptr);
 		vkDestroyDescriptorSetLayout(_device, _objectSetLayout, nullptr);
-		vkDestroyDescriptorSetLayout(_device, _pbrSetLayout, nullptr);
 	});
 
 	const size_t sceneParamBufferSize{ FRAME_OVERLAP * pad_uniform_buffer_size(sizeof(GPUSceneData)) };
@@ -555,88 +691,6 @@ void VulkanEngine::init_descriptors()
 		std::array<VkWriteDescriptorSet, 3> setWrites{ cameraWrite, sceneWrite, objectWrite };
 		vkUpdateDescriptorSets(_device, setWrites.size(), setWrites.data(), 0, nullptr);
 	}
-}
-
-// name must be unique!
-void VulkanEngine::init_pipeline(const std::string& name, const std::string& vertPath, const std::string& fragPath, const std::string& textureName)
-{
-	VkShaderModule meshVertShader;
-	if (!load_shader_module(vertPath, &meshVertShader)) {
-		std::cout << "Error when building vertex shader module\n";
-	} else {
-		//std::cout << "Vertex shader successfully loaded\n";
-	}
-
-	VkShaderModule triangleFragShader;
-	if (!load_shader_module(fragPath, &triangleFragShader)) {
-		std::cout << "Error when building fragment shader module\n";
-	} else {
-		//std::cout << "Fragment shader successfully loaded\n";
-	}
-
-	VkPipelineLayoutCreateInfo pipeline_layout_info{ vkinit::pipeline_layout_create_info() };
-	VkPushConstantRange push_constant{};
-	// this push constant range starts at the beginning
-	push_constant.offset = 0;
-	push_constant.size = sizeof(MeshPushConstants);
-	// this push constant range is accessible only in the vertex shader
-	push_constant.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
-
-	std::array<VkDescriptorSetLayout, 3> setLayouts{ _globalSetLayout, _objectSetLayout, _pbrSetLayout };
-
-	pipeline_layout_info.pPushConstantRanges = &push_constant;
-	pipeline_layout_info.pushConstantRangeCount = 1;
-	pipeline_layout_info.setLayoutCount = setLayouts.size();
-	pipeline_layout_info.pSetLayouts = setLayouts.data();
-
-	VkPipelineLayout layout;
-	VK_CHECK(vkCreatePipelineLayout(_device, &pipeline_layout_info, nullptr, &layout));
-
-	PipelineBuilder pipelineBuilder;
-	// vertex input controls how to read vertices from vertex buffers
-	pipelineBuilder._vertexInputInfo = vkinit::vertex_input_state_create_info();
-	// input assembly is the configuration for drawing triangle lists, strips, or individual points
-	pipelineBuilder._inputAssembly = vkinit::input_assembly_create_info(VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST);
-	// build viewport and scissor from the swapchain extents
-	pipelineBuilder._viewport.x = 0.0f;
-	pipelineBuilder._viewport.y = 0.0f;
-	pipelineBuilder._viewport.width = (float)_windowExtent.width;
-	pipelineBuilder._viewport.height = (float)_windowExtent.height;
-	pipelineBuilder._viewport.minDepth = 0.0f;
-	pipelineBuilder._viewport.maxDepth = 1.0f;
-	pipelineBuilder._scissor.offset = { 0, 0 };
-	pipelineBuilder._scissor.extent = _windowExtent;
-	pipelineBuilder._rasterizer = vkinit::rasterization_state_create_info(VK_POLYGON_MODE_FILL);
-	pipelineBuilder._multisampling = vkinit::multisampling_state_create_info();
-	pipelineBuilder._colorBlendAttachment = vkinit::color_blend_attachment_state();
-	pipelineBuilder._depthStencil = vkinit::depth_stencil_create_info(true, true, VK_COMPARE_OP_LESS_OR_EQUAL);
-	VertexInputDescription vertexDescription{ Vertex::get_vertex_description() };
-	// connect the pipeline builder vertex input info to the one we get from Vertex
-	pipelineBuilder._vertexInputInfo.vertexAttributeDescriptionCount = vertexDescription.attributes.size();
-	pipelineBuilder._vertexInputInfo.pVertexAttributeDescriptions = vertexDescription.attributes.data();
-	pipelineBuilder._vertexInputInfo.vertexBindingDescriptionCount = vertexDescription.bindings.size();
-	pipelineBuilder._vertexInputInfo.pVertexBindingDescriptions = vertexDescription.bindings.data();
-	pipelineBuilder._pipelineLayout = layout;
-
-	pipelineBuilder._shaderStages.push_back(
-		vkinit::pipeline_shader_stage_create_info(VK_SHADER_STAGE_VERTEX_BIT, meshVertShader)
-	);
-
-	pipelineBuilder._shaderStages.push_back(
-		vkinit::pipeline_shader_stage_create_info(VK_SHADER_STAGE_FRAGMENT_BIT, triangleFragShader)
-	);
-
-	VkPipeline pipeline{ pipelineBuilder.build_pipeline(_device, _renderPass) };
-
-	create_material(pipeline, layout, name, textureName);
-
-	vkDestroyShaderModule(_device, meshVertShader, nullptr);
-	vkDestroyShaderModule(_device, triangleFragShader, nullptr);
-
-	_mainDeletionQueue.push_function([=]() {
-		vkDestroyPipeline(_device, pipeline, nullptr);
-		vkDestroyPipelineLayout(_device, layout, nullptr);
-	});
 }
 
 void VulkanEngine::init_sync_structures()
@@ -1001,7 +1055,7 @@ AllocatedBuffer VulkanEngine::create_buffer(size_t allocSize, VkBufferUsageFlags
 	return newBuffer;
 }
 
-Material* VulkanEngine::create_material(VkPipeline pipeline, VkPipelineLayout layout, const std::string& name, const std::string& textureName)
+Material* VulkanEngine::create_material(const MaterialCreateInfo& info, VkPipeline pipeline, VkPipelineLayout layout, VkDescriptorSetLayout materialSetLayout)
 {
 	Material mat{};
 	mat.pipeline = pipeline;
@@ -1012,12 +1066,12 @@ Material* VulkanEngine::create_material(VkPipeline pipeline, VkPipelineLayout la
 	allocInfo.pNext = nullptr;
 	allocInfo.descriptorPool = _descriptorPool;
 	allocInfo.descriptorSetCount = 1;
-	allocInfo.pSetLayouts = &_pbrSetLayout;
+	allocInfo.pSetLayouts = &materialSetLayout;
 
 	vkAllocateDescriptorSets(_device, &allocInfo, &mat.textureSet);
 
-	for (auto i{ 0 }; i < _mapTypes.size(); ++i) {
-		Texture& texture{ _loadedTextures[textureName + _mapTypes[i]] };
+	for (auto i{ 0 }; i < info.bindings.size(); ++i) {
+		Texture& texture{ _loadedTextures[info.bindingPaths[i]] };
 		VkSamplerCreateInfo samplerInfo{ vkinit::sampler_create_info(VK_FILTER_LINEAR, texture.mipLevels) };
 		VkSampler sampler;
 		vkCreateSampler(_device, &samplerInfo, nullptr, &sampler);
@@ -1036,8 +1090,8 @@ Material* VulkanEngine::create_material(VkPipeline pipeline, VkPipelineLayout la
 		vkUpdateDescriptorSets(_device, 1, &textureWrite, 0, nullptr);
 	}
 
-	_materials[name] = mat;
-	return &_materials[name];
+	_materials[info.name] = mat;
+	return &_materials[info.name];
 }
 
 Material* VulkanEngine::get_material(const std::string& name)
@@ -1238,6 +1292,7 @@ void VulkanEngine::draw_objects(VkCommandBuffer cmd, const std::multiset<RenderO
 	for (const RenderObject& object : renderables) {
 		// only bind the pipeline if it doesn't match with the already bound one
 		if (object.material != lastMaterial) {
+			// if this material has the same descriptor set layout then the pipelines might be the same and we don't have to rebind??
 			vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, object.material->pipeline);
 			lastMaterial = object.material;
 

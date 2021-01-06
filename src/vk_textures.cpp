@@ -77,18 +77,13 @@ void vkutil::generateMipmaps(VkCommandBuffer cmd, VkImage image, int32_t texWidt
 		1, &barrier);
 }
 
-bool vkutil::load_image_from_file(VulkanEngine& engine, const char* file, AllocatedImage& outImage, uint32_t* outMipLevels, VkFormat format, bool okToFail)
+bool vkutil::load_image_from_file(VulkanEngine& engine, const char* file, AllocatedImage& outImage, uint32_t* outMipLevels, VkFormat format)
 {
 	int texWidth, texHeight, texChannels;
 
 	stbi_uc* pixels{ stbi_load(file, &texWidth, &texHeight, &texChannels, STBI_rgb_alpha) };
 
 	if (!pixels) {
-		if (okToFail) {
-			std::cout << "Using default texture instead of '" << file << "'\n";
-		} else {
-			std::cout << "Error: Failed to load texture file '" << file << "'\n";
-		}
 		return false;
 	}
 

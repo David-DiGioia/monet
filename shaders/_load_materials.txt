@@ -1,9 +1,28 @@
-// name		vertex shader		fragment shader		texture name
-
-//default 	projection.vert.spv	default_lit.frag.spv	null
-//red 		projection.vert.spv	red.frag.spv		null
-//green		projection.vert.spv	green.frag.spv		null
-//textured_lit	projection.vert.spv	textured_lit.frag.spv	minecraft
-// pbrd		pbr_double.vert.spv	pbr_double.frag.spv	null
-pbr		pbr.vert.spv		pbr.frag.spv		rocks
-bed		pbr.vert.spv		pbr.frag.spv		bed
+name:	bed
+vert:	pbr.vert.spv
+frag:	pbr.frag.spv
+// This is actually the only set we need to specify as the other 2 sets are common to all objects!!!!
+// diffuse
+bind:	0
+	type:	COMBINED_IMAGE_SAMPLER
+	stage:	FRAGMENT
+	path:	bed/textures/GothicBed_01_8-bit_diff.png
+	format:	R8G8B8A8_SRGB
+// normal
+bind:	1
+	type:	COMBINED_IMAGE_SAMPLER
+	stage:	FRAGMENT
+	path:	bed/textures/GothicBed_01_8-bit_norm.png
+	format:	R8G8B8A8_UNORM
+// roughness
+bind:	2
+	type:	COMBINED_IMAGE_SAMPLER
+	stage:	FRAGMENT
+	path:	bed/textures/GothicBed_01_8-bit_roug.png
+	format:	R8G8B8A8_UNORM
+// ao
+bind:	3
+	type:	COMBINED_IMAGE_SAMPLER
+	stage:	FRAGMENT
+	path:	bed/textures/GothicBed_01_8-bit_ao__.png
+	format:	R8G8B8A8_UNORM
