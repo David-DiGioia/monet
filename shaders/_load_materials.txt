@@ -1,7 +1,9 @@
+// The first two descriptor sets (for camera and scene data) are common to all objects, so for the material we only describe the bindings to descriptor set 2
+
+
 name:	bed
 vert:	pbr.vert.spv
 frag:	pbr.frag.spv
-// This is actually the only set we need to specify as the other 2 sets are common to all objects!!!!
 // diffuse
 bind:	0
 	type:	COMBINED_IMAGE_SAMPLER
@@ -26,3 +28,36 @@ bind:	3
 	stage:	FRAGMENT
 	path:	bed/textures/GothicBed_01_8-bit_ao__.png
 	format:	R8G8B8A8_UNORM
+END
+
+
+name:	default
+vert:	pbr.vert.spv
+frag:	pbr.frag.spv
+// diffuse
+bind:	0
+	type:	COMBINED_IMAGE_SAMPLER
+	stage:	FRAGMENT
+	path:	default/textures/_diff.png
+	format:	R8G8B8A8_SRGB
+// normal
+bind:	1
+	type:	COMBINED_IMAGE_SAMPLER
+	stage:	FRAGMENT
+	path:	default/textures/_norm.png
+	format:	R8G8B8A8_UNORM
+// roughness
+bind:	2
+	type:	COMBINED_IMAGE_SAMPLER
+	stage:	FRAGMENT
+	path:	default/textures/_roug.png
+	format:	R8G8B8A8_UNORM
+// ao
+bind:	3
+	type:	COMBINED_IMAGE_SAMPLER
+	stage:	FRAGMENT
+	path:	default/textures/_ao__.png
+	format:	R8G8B8A8_UNORM
+END
+
+

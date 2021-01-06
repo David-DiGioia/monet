@@ -32,7 +32,7 @@
 		VkResult err = x;\
 		if (err) {\
 			std::cout << "Detected Vulkan error: " << err << '\n';\
-			abort();\
+			__debugbreak();\
 		}\
 	} while (0)\
 
@@ -185,14 +185,14 @@ void VulkanEngine::init_scene()
 	bed.transformMatrix = translate * scale;
 	_renderables.insert(bed);
 
-	//RenderObject plane{};
-	//plane.mesh = get_mesh("plane");
-	//plane.material = get_material("pbr");
-	//glm::mat4 translate2{ glm::translate(glm::mat4{ 1.0 }, glm::vec3(0.0, 0.0, 0.0)) };
-	//glm::mat4 scale2{ glm::scale(glm::mat4{1.0}, glm::vec3{3.0}) };
-	//glm::mat4 rot2{ glm::rotate(0.0f, glm::vec3{1.0, 0.0, 0.0}) };
-	//plane.transformMatrix = translate2 * scale2 * rot2;
-	//_renderables.insert(plane);
+	RenderObject plane{};
+	plane.mesh = get_mesh("plane");
+	plane.material = get_material("default");
+	glm::mat4 translate2{ glm::translate(glm::mat4{ 1.0 }, glm::vec3(0.0, 0.0, 0.0)) };
+	glm::mat4 scale2{ glm::scale(glm::mat4{1.0}, glm::vec3{3.0}) };
+	glm::mat4 rot2{ glm::rotate(0.0f, glm::vec3{1.0, 0.0, 0.0}) };
+	plane.transformMatrix = translate2 * scale2 * rot2;
+	_renderables.insert(plane);
 
 	// minecraft -------------------------------------------------------------------
 
@@ -410,72 +410,86 @@ void VulkanEngine::load_materials()
 	stringToFormat["R8G8B8A8_SRGB"] = VK_FORMAT_R8G8B8A8_SRGB;
 	stringToFormat["R8G8B8A8_UNORM"] = VK_FORMAT_R8G8B8A8_UNORM;
 
-	MaterialCreateInfo info{};
-	uint32_t bindingIdx{ 0 };
 
-	while (std::getline(file, line)) {
-		if (line.size() < 2 || (line.substr(0, 2) == "//")) {
-			continue;
-		}
+	while (true) {
 
-		std::stringstream ss{ line };
+		MaterialCreateInfo info{};
+		uint32_t bindingIdx{ 0 };
 
-		std::string field;
-		ss >> field;
-
-		if (field == "name:") {
-			ss >> info.name;
-		} else if (field == "vert:") {
-			std::string shader;
-			ss >> shader;
-			info.vertPath = prefix + shader;
-		} else if (field == "frag:") {
-			std::string shader;
-			ss >> shader;
-			info.fragPath = prefix + shader;
-		} else if (field == "bind:") {
-			VkDescriptorSetLayoutBinding binding{};
-			binding.descriptorCount = 1;
-			binding.binding = bindingIdx;
-			++bindingIdx;
-
-			std::string lineBind;
-
-			while (std::getline(file, lineBind)) {
-				std::stringstream ssBind{ lineBind };
-				std::string fieldBind;
-				ssBind >> fieldBind;
-
-				if (fieldBind == "type:") {
-					std::string type;
-					ssBind >> type;
-					binding.descriptorType = stringToType[type];
-				} else if (fieldBind == "stage:") {
-					std::string stage;
-					VkShaderStageFlags flags{};
-
-					while (ssBind >> stage) {
-						flags |= stringToStage[stage];
-					}
-
-					binding.stageFlags = flags;
-				} else if (fieldBind == "path:") {
-					std::string path;
-					ssBind >> path;
-					info.bindingPaths.push_back(path);
-				} else if (fieldBind == "format:") {
-					std::string format;
-					ssBind >> format;
-					load_texture(info.bindingPaths.back(), stringToFormat[format]);
-					break;
-				}
+		while (std::getline(file, line)) {
+			// skip comments and blank lines
+			if (line.size() < 2 || (line.substr(0, 2) == "//")) {
+				continue;
 			}
 
-			info.bindings.push_back(binding);
+			std::stringstream ss{ line };
+
+			std::string field;
+			ss >> field;
+
+			if (field == "name:") {
+				ss >> info.name;
+				if (info.name != "") {
+					std::cout << "loading material '" << info.name << "'\n";
+				}
+			} else if (field == "vert:") {
+				std::string shader;
+				ss >> shader;
+				info.vertPath = prefix + shader;
+			} else if (field == "frag:") {
+				std::string shader;
+				ss >> shader;
+				info.fragPath = prefix + shader;
+			} else if (field == "bind:") {
+				VkDescriptorSetLayoutBinding binding{};
+				binding.descriptorCount = 1;
+				binding.binding = bindingIdx;
+				++bindingIdx;
+
+				std::string lineBind;
+
+				while (std::getline(file, lineBind)) {
+					std::stringstream ssBind{ lineBind };
+					std::string fieldBind;
+					ssBind >> fieldBind;
+
+					if (fieldBind == "type:") {
+						std::string type;
+						ssBind >> type;
+						binding.descriptorType = stringToType[type];
+					} else if (fieldBind == "stage:") {
+						std::string stage;
+						VkShaderStageFlags flags{};
+
+						while (ssBind >> stage) {
+							flags |= stringToStage[stage];
+						}
+
+						binding.stageFlags = flags;
+					} else if (fieldBind == "path:") {
+						std::string path;
+						ssBind >> path;
+						info.bindingPaths.push_back(path);
+					} else if (fieldBind == "format:") {
+						std::string format;
+						ssBind >> format;
+						load_texture(info.bindingPaths.back(), stringToFormat[format]);
+						break;
+					}
+				}
+				info.bindings.push_back(binding);
+
+			} else if (field == "END") {
+				break;
+			}
 		}
+		if (info.name == "") {
+			break;
+		}
+		init_pipeline(info, prefix);
 	}
-	std::cout << "\nloading material '" << info.name << "'\n";
-	init_pipeline(info, prefix);
+
+	file.close();
 }
 
 void VulkanEngine::init_pipeline(const MaterialCreateInfo& info, const std::string& prefix)
