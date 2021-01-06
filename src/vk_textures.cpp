@@ -80,15 +80,25 @@ void vkutil::generateMipmaps(VkCommandBuffer cmd, VkImage image, int32_t texWidt
 bool vkutil::load_image_from_file(VulkanEngine& engine, const char* file, AllocatedImage& outImage, uint32_t* outMipLevels, VkFormat format)
 {
 	int texWidth, texHeight, texChannels;
+	uint32_t pixelBytes{ 4 };
+	void* pixel_ptr{ nullptr };
 
-	stbi_uc* pixels{ stbi_load(file, &texWidth, &texHeight, &texChannels, STBI_rgb_alpha) };
+	// if we're loading an hdri we handle the special case
+	if (format == VK_FORMAT_R32G32B32A32_SFLOAT) {
+		float* pixels{ stbi_loadf(file, &texWidth, &texHeight, &texChannels, STBI_rgb_alpha) };
+		pixelBytes = 16;
+		pixel_ptr = pixels;
+	} else {
+		stbi_uc* pixels{ stbi_load(file, &texWidth, &texHeight, &texChannels, STBI_rgb_alpha) };
+		pixel_ptr = pixels;
+	}
 
-	if (!pixels) {
+	if (!pixel_ptr) {
 		return false;
 	}
 
-	void* pixel_ptr{ pixels };
-	VkDeviceSize imageSize{ static_cast<VkDeviceSize>(texWidth * texHeight * 4) };
+
+	VkDeviceSize imageSize{ static_cast<VkDeviceSize>(texWidth * texHeight * pixelBytes) };
 
 	// allocate temporary buffer for holding texture data to upload
 	AllocatedBuffer stagingBuffer{ engine.create_buffer(imageSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VMA_MEMORY_USAGE_CPU_ONLY) };
@@ -98,7 +108,7 @@ bool vkutil::load_image_from_file(VulkanEngine& engine, const char* file, Alloca
 	std::memcpy(data, pixel_ptr, static_cast<size_t>(imageSize));
 	vmaUnmapMemory(engine._allocator, stagingBuffer._allocation);
 	// pixels was copied to staging buffer so we free it
-	stbi_image_free(pixels);
+	stbi_image_free(pixel_ptr);
 
 	VkExtent3D imageExtent{};
 	imageExtent.width = static_cast<uint32_t>(texWidth);

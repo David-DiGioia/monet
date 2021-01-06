@@ -177,22 +177,28 @@ void VulkanEngine::init_scene()
 	_camRotTheta = 0.0f;
 	_camRot = glm::mat4{ 1.0f };
 
-	RenderObject bed{};
-	bed.mesh = get_mesh("bed");
-	bed.material = get_material("bed");
-	glm::mat4 translate{ glm::translate(glm::mat4{ 1.0 }, glm::vec3(0.0, 0.0, 0.0)) };
-	glm::mat4 scale{ glm::scale(glm::mat4{1.0}, glm::vec3{3.0, 3.0, 3.0}) };
-	bed.transformMatrix = translate * scale;
-	_renderables.insert(bed);
+	RenderObject cube{};
+	cube.mesh = get_mesh("cube");
+	cube.material = get_material("equirectangular");
+	cube.transformMatrix = glm::mat4{ 1.0 };
+	_renderables.insert(cube);
 
-	RenderObject plane{};
-	plane.mesh = get_mesh("plane");
-	plane.material = get_material("default");
-	glm::mat4 translate2{ glm::translate(glm::mat4{ 1.0 }, glm::vec3(0.0, 0.0, 0.0)) };
-	glm::mat4 scale2{ glm::scale(glm::mat4{1.0}, glm::vec3{3.0}) };
-	glm::mat4 rot2{ glm::rotate(0.0f, glm::vec3{1.0, 0.0, 0.0}) };
-	plane.transformMatrix = translate2 * scale2 * rot2;
-	_renderables.insert(plane);
+	//RenderObject bed{};
+	//bed.mesh = get_mesh("bed");
+	//bed.material = get_material("bed");
+	//glm::mat4 translate{ glm::translate(glm::mat4{ 1.0 }, glm::vec3(0.0, 0.0, 0.0)) };
+	//glm::mat4 scale{ glm::scale(glm::mat4{1.0}, glm::vec3{3.0, 3.0, 3.0}) };
+	//bed.transformMatrix = translate * scale;
+	//_renderables.insert(bed);
+
+	//RenderObject plane{};
+	//plane.mesh = get_mesh("plane");
+	//plane.material = get_material("default");
+	//glm::mat4 translate2{ glm::translate(glm::mat4{ 1.0 }, glm::vec3(0.0, 0.0, 0.0)) };
+	//glm::mat4 scale2{ glm::scale(glm::mat4{1.0}, glm::vec3{3.0}) };
+	//glm::mat4 rot2{ glm::rotate(0.0f, glm::vec3{1.0, 0.0, 0.0}) };
+	//plane.transformMatrix = translate2 * scale2 * rot2;
+	//_renderables.insert(plane);
 
 	// minecraft -------------------------------------------------------------------
 
@@ -410,6 +416,7 @@ void VulkanEngine::load_materials()
 	std::unordered_map<std::string, VkFormat> stringToFormat;
 	stringToFormat["R8G8B8A8_SRGB"] = VK_FORMAT_R8G8B8A8_SRGB;
 	stringToFormat["R8G8B8A8_UNORM"] = VK_FORMAT_R8G8B8A8_UNORM;
+	stringToFormat["R32G32B32A32_SFLOAT"] = VK_FORMAT_R32G32B32A32_SFLOAT;
 
 
 	while (true) {
