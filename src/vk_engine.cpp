@@ -183,22 +183,22 @@ void VulkanEngine::init_scene()
 	cube.transformMatrix = glm::mat4{ 1.0 };
 	_renderables.insert(cube);
 
-	//RenderObject bed{};
-	//bed.mesh = get_mesh("bed");
-	//bed.material = get_material("bed");
-	//glm::mat4 translate{ glm::translate(glm::mat4{ 1.0 }, glm::vec3(0.0, 0.0, 0.0)) };
-	//glm::mat4 scale{ glm::scale(glm::mat4{1.0}, glm::vec3{3.0, 3.0, 3.0}) };
-	//bed.transformMatrix = translate * scale;
-	//_renderables.insert(bed);
+	RenderObject bed{};
+	bed.mesh = get_mesh("bed");
+	bed.material = get_material("bed");
+	glm::mat4 translate{ glm::translate(glm::mat4{ 1.0 }, glm::vec3(0.0, 0.0, 0.0)) };
+	glm::mat4 scale{ glm::scale(glm::mat4{1.0}, glm::vec3{3.0, 3.0, 3.0}) };
+	bed.transformMatrix = translate * scale;
+	_renderables.insert(bed);
 
-	//RenderObject plane{};
-	//plane.mesh = get_mesh("plane");
-	//plane.material = get_material("default");
-	//glm::mat4 translate2{ glm::translate(glm::mat4{ 1.0 }, glm::vec3(0.0, 0.0, 0.0)) };
-	//glm::mat4 scale2{ glm::scale(glm::mat4{1.0}, glm::vec3{3.0}) };
-	//glm::mat4 rot2{ glm::rotate(0.0f, glm::vec3{1.0, 0.0, 0.0}) };
-	//plane.transformMatrix = translate2 * scale2 * rot2;
-	//_renderables.insert(plane);
+	RenderObject plane{};
+	plane.mesh = get_mesh("plane");
+	plane.material = get_material("default");
+	glm::mat4 translate2{ glm::translate(glm::mat4{ 1.0 }, glm::vec3(0.0, 0.0, 0.0)) };
+	glm::mat4 scale2{ glm::scale(glm::mat4{1.0}, glm::vec3{3.0}) };
+	glm::mat4 rot2{ glm::rotate(0.0f, glm::vec3{1.0, 0.0, 0.0}) };
+	plane.transformMatrix = translate2 * scale2 * rot2;
+	_renderables.insert(plane);
 
 	// minecraft -------------------------------------------------------------------
 
@@ -1247,28 +1247,18 @@ void VulkanEngine::draw_objects(VkCommandBuffer cmd, const std::multiset<RenderO
 	_camRot = rotPhi * rotTheta;
 	glm::mat4 translate{ glm::translate(glm::mat4(1.0f), _camPos) };
 	glm::mat4 view{ translate * _camRot };
+	glm::mat4 viewOrigin{ _camRot };
 
-	_sceneParameters.camPos = view[3];
-
-	//for (auto i{ 0 }; i < 4; ++i) {
-	//	std::cout << view[3][i] << '\n';
-	//}
-
-	//std::cout << "before inverse:\n";
-	//printMat(view);
-	// find inverse since remember we're actually transforming everything in the scene, not the 'camera'
 	view = glm::inverse(view);
-	//std::cout << "after inverse:\n";
-	//printMat(view);
-	//std::cout << "\n\n";
+	viewOrigin = glm::inverse(viewOrigin);
 
 	glm::mat4 projection{ glm::perspective(glm::radians(70.0f), 1700.0f / 900.0f, 0.1f, 200.0f) };
 	projection[1][1] *= -1;
 
 	// fill a GPU camera data struct
 	GPUCameraData camData{};
+	camData.viewProjOrigin = projection * viewOrigin; // for skybox
 	camData.projection = projection;
-	camData.view = view;
 	camData.viewProj = projection * view;
 
 	// copy camera data to camera buffer
@@ -1284,6 +1274,7 @@ void VulkanEngine::draw_objects(VkCommandBuffer cmd, const std::multiset<RenderO
 	_sceneParameters.numLights = 2;
 	_sceneParameters.lights[0] = _guiData.light0;
 	_sceneParameters.lights[1] = _guiData.light1;
+	_sceneParameters.camPos = glm::vec4(_camPos, 1.0);
 
 
 	char* sceneData;

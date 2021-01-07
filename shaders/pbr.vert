@@ -13,7 +13,7 @@ layout (location = 3) out mat3 outTBN;
 layout (location = 6) out vec3 lightPos[MAX_NUM_TOTAL_LIGHTS];
 
 layout (set = 0, binding = 0) uniform CameraBuffer {
-    mat4 view;
+    mat4 viewProjOrigin;
     mat4 proj;
     mat4 viewProj;
 } cameraData;
