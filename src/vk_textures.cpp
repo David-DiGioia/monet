@@ -83,8 +83,10 @@ bool vkutil::load_image_from_file(VulkanEngine& engine, const char* file, Alloca
 	uint32_t pixelBytes{ 4 };
 	void* pixel_ptr{ nullptr };
 
+	bool hdri{ format == VK_FORMAT_R32G32B32A32_SFLOAT };
+
 	// if we're loading an hdri we handle the special case
-	if (format == VK_FORMAT_R32G32B32A32_SFLOAT) {
+	if (hdri) {
 		stbi_set_flip_vertically_on_load(true);
 		float* pixels{ stbi_loadf(file, &texWidth, &texHeight, &texChannels, STBI_rgb_alpha) };
 		pixelBytes = 16;
@@ -116,7 +118,8 @@ bool vkutil::load_image_from_file(VulkanEngine& engine, const char* file, Alloca
 	imageExtent.width = static_cast<uint32_t>(texWidth);
 	imageExtent.height = static_cast<uint32_t>(texHeight);
 	imageExtent.depth = 1;
-	uint32_t mipLevels{ static_cast<uint32_t>(std::floor(std::log2((std::max(texWidth, texHeight))))) + 1 };
+	// HDRIs should not be mipmapped
+	uint32_t mipLevels{ hdri ? 1 : static_cast<uint32_t>(std::floor(std::log2((std::max(texWidth, texHeight))))) + 1 };
 	*outMipLevels = mipLevels;
 
 	VkImageCreateInfo dimg_info{ vkinit::image_create_info(format, VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_TRANSFER_SRC_BIT, imageExtent, mipLevels) };

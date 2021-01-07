@@ -16,14 +16,18 @@ vec2 sampleSphericalMap(vec3 v)
     // since v is a unit vector. note that phi is the angle between x-z plane and v, which
     // is different than the wikipedia article.
     // so we see uv.y = phi = asin(y)
+    // vec2 uv = vec2(atan(v.z, v.x), asin(v.y));
     vec2 uv = vec2(atan(v.z, v.x), asin(v.y));
+
     // atan gives value in [-pi, pi] and asin gives value in [-pi/2, pi/2]
     // so we normalize to get value in [-0.5, 0.5]
     uv *= invAtan;
     // then shift to get in range [0, 1]
     uv += 0.5;
+
     return uv;
 }
+
 
 void main()
 {
@@ -31,4 +35,5 @@ void main()
     vec3 color = texture(equirectangularMap, uv).rgb;
 
     outFragColor = vec4(color, 1.0);
+    // outFragColor = vec4(localPos.x, 0.0, localPos.z, 1.0);
 }

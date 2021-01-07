@@ -1094,7 +1094,7 @@ Material* VulkanEngine::create_material(const MaterialCreateInfo& info, VkPipeli
 
 	for (auto i{ 0 }; i < info.bindings.size(); ++i) {
 		Texture& texture{ _loadedTextures[info.bindingPaths[i]] };
-		VkSamplerCreateInfo samplerInfo{ vkinit::sampler_create_info(VK_FILTER_LINEAR, texture.mipLevels) };
+		VkSamplerCreateInfo samplerInfo{ vkinit::sampler_create_info(VK_FILTER_LINEAR, texture.mipLevels, VK_SAMPLER_ADDRESS_MODE_REPEAT) };
 		VkSampler sampler;
 		vkCreateSampler(_device, &samplerInfo, nullptr, &sampler);
 
