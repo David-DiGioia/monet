@@ -4,7 +4,7 @@ examples: https://github.com/martty/vuk/blob/c395af9bfe44fd8519336a8a491942c9aac
 - convert models to custom format so we don't need to load an .obj file every time we run the program. example: https://vkguide.dev/docs/extra-chapter/asset_system/
 
 - hdri environment maps for lighting
+	- DONE: environment map
+	- TODO: make it affect lighting
 
 - shadow maps
-
-- restructure how models and textures are loaded, it's a bit tedious atm
