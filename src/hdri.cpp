@@ -76,7 +76,7 @@ void create_e2c_renderpass(VulkanEngine& engine, VkFormat format, VkRenderPass* 
 	// since the implementation will know the layout it writes to it
 	attachment.initialLayout - VK_IMAGE_LAYOUT_UNDEFINED;
 	// final layout is automatically transitioned to at end of renderpass
-	attachment.finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+	attachment.finalLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 
 	VkAttachmentReference attachmentRef{};
 	attachmentRef.attachment = 0;
@@ -224,7 +224,7 @@ void create_e2c_cubemap(VulkanEngine& engine, VkExtent2D extent, VkFormat format
 	cubemapInfo.mipLevels = 1;
 	cubemapInfo.samples = VK_SAMPLE_COUNT_1_BIT;
 	cubemapInfo.tiling = VK_IMAGE_TILING_OPTIMAL;
-	cubemapInfo.usage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
+	cubemapInfo.usage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT;
 
 	VmaAllocationCreateInfo allocInfo{};
 	allocInfo.usage = VMA_MEMORY_USAGE_GPU_ONLY;
@@ -270,10 +270,15 @@ Texture equirectangular_to_cubemap(VulkanEngine& engine, VkDescriptorSet equirec
 
 	for (auto layer{ 0 }; layer < 6; ++layer) {
 
+		VkImageViewUsageCreateInfo viewUsage{};
+		viewUsage.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_USAGE_CREATE_INFO;
+		viewUsage.pNext = nullptr;
+		viewUsage.usage = VK_IMAGE_USAGE_SAMPLED_BIT;
+
 		// This is a temporary image view only used as an attachment to the framebuffer
 		VkImageViewCreateInfo attachmentViewInfo{};
 		attachmentViewInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
-		attachmentViewInfo.pNext = nullptr;
+		attachmentViewInfo.pNext = &viewUsage;
 		attachmentViewInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
 		attachmentViewInfo.image = cubemapImage._image;
 		attachmentViewInfo.format = hdriFormat;
@@ -337,17 +342,31 @@ Texture equirectangular_to_cubemap(VulkanEngine& engine, VkDescriptorSet equirec
 	}
 
 	// This is the final image view, viewing all 6 layers of the image as a cube
+	//VkImageViewCreateInfo cubemapViewInfo{};
+	//cubemapViewInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+	//cubemapViewInfo.pNext = nullptr;
+	//cubemapViewInfo.viewType = VK_IMAGE_VIEW_TYPE_CUBE;
+	//cubemapViewInfo.image = cubemapImage._image;
+	//cubemapViewInfo.format = hdriFormat;
+	//cubemapViewInfo.subresourceRange.baseMipLevel = 0;
+	//cubemapViewInfo.subresourceRange.levelCount = 1;
+	//cubemapViewInfo.subresourceRange.baseArrayLayer = 0;
+	//cubemapViewInfo.subresourceRange.layerCount = 6;
+	//cubemapViewInfo.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+
+	// DEBUG!!! USE PREVIOUS VERSION FOR ACTUAL CUBEMAP
 	VkImageViewCreateInfo cubemapViewInfo{};
 	cubemapViewInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
 	cubemapViewInfo.pNext = nullptr;
-	cubemapViewInfo.viewType = VK_IMAGE_VIEW_TYPE_CUBE;
+	cubemapViewInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
 	cubemapViewInfo.image = cubemapImage._image;
 	cubemapViewInfo.format = hdriFormat;
 	cubemapViewInfo.subresourceRange.baseMipLevel = 0;
 	cubemapViewInfo.subresourceRange.levelCount = 1;
 	cubemapViewInfo.subresourceRange.baseArrayLayer = 0;
-	cubemapViewInfo.subresourceRange.layerCount = 6;
+	cubemapViewInfo.subresourceRange.layerCount = 1;
 	cubemapViewInfo.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+
 
 	VkImageView cubemapView;
 	VK_CHECK(vkCreateImageView(engine._device, &cubemapViewInfo, nullptr, &cubemapView));

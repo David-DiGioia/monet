@@ -296,8 +296,6 @@ private:
 
 	void init_gui_data();
 
-	void init_cubemap(uint32_t resolution);
-
 	std::vector<Texture> textures_from_binding_paths(const std::vector<std::string>& bindingPaths);
 
 };

@@ -79,28 +79,12 @@ void VulkanEngine::init()
 	init_descriptors(); // descriptors are needed at pipeline create, so before materials
 	load_materials();
 	load_meshes();
-	init_cubemap(1024);
 	init_scene();
 	init_imgui();
 	init_gui_data();
 
 	// everything went fine
 	_isInitialized = true;
-}
-
-void VulkanEngine::init_cubemap(uint32_t resolution)
-{
-	Material* equirect{ get_material("equirectangular") };
-
-
-	VkExtent2D textureRes{};
-	textureRes.width = resolution;
-	textureRes.height = resolution;
-
-	Texture cubemap{ equirectangular_to_cubemap(*this, equirect->textureSet, textureRes) };
-
-	_loadedTextures["cubemap"] = cubemap;
-
 }
 
 void VulkanEngine::init_gui_data()
@@ -431,6 +415,8 @@ void VulkanEngine::load_materials()
 		MaterialCreateInfo info{};
 		std::vector<std::string> bindingPaths;
 		uint32_t bindingIdx{ 0 };
+		std::string cubemapTexName{};
+		uint32_t cubemapRes{};
 
 		while (std::getline(file, line)) {
 			// skip comments and blank lines
@@ -456,6 +442,11 @@ void VulkanEngine::load_materials()
 				std::string shader;
 				ss >> shader;
 				info.fragPath = prefix + shader;
+			} else if (field == "cube:") {
+				std::string cubemapResStr;
+				ss >> cubemapTexName;
+				ss >> cubemapResStr;
+				cubemapRes = static_cast<uint32_t>(std::stoul(cubemapResStr));
 			} else if (field == "bind:") {
 				VkDescriptorSetLayoutBinding binding{};
 				binding.descriptorCount = 1;
@@ -489,7 +480,10 @@ void VulkanEngine::load_materials()
 					} else if (fieldBind == "format:") {
 						std::string format;
 						ssBind >> format;
-						load_texture(bindingPaths.back(), stringToFormat[format]);
+						// If this texture is not already loaded (via cubemap), load it
+						if (_loadedTextures.find(bindingPaths.back()) == _loadedTextures.end()) {
+							load_texture(bindingPaths.back(), stringToFormat[format]);
+						}
 						break;
 					}
 				}
@@ -504,6 +498,17 @@ void VulkanEngine::load_materials()
 		}
 		info.bindingTextures = textures_from_binding_paths(bindingPaths);
 		init_pipeline(info, prefix);
+
+		if (cubemapTexName != "") {
+			VkExtent2D textureRes{};
+			textureRes.width = cubemapRes;
+			textureRes.height = cubemapRes;
+
+			Material* equirectMat{ get_material(info.name) };
+			Texture cubemap{ equirectangular_to_cubemap(*this, equirectMat->textureSet, textureRes) };
+
+			_loadedTextures[cubemapTexName] = cubemap;
+		}
 	}
 
 	file.close();
