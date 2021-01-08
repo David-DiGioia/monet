@@ -26,16 +26,6 @@
 #define VMA_IMPLEMENTATION
 #include "vk_mem_alloc.h"
 
-#define VK_CHECK(x)\
-	do\
-	{\
-		VkResult err = x;\
-		if (err) {\
-			std::cout << "Detected Vulkan error: " << err << '\n';\
-			__debugbreak();\
-		}\
-	} while (0)\
-
 bool RenderObject::operator<(const RenderObject& other) const
 {
 	if (material->pipeline == other.material->pipeline) {
@@ -1168,7 +1158,6 @@ void VulkanEngine::draw()
 
 	VK_CHECK(vkBeginCommandBuffer(get_current_frame()._mainCommandBuffer, &cmdBeginInfo));
 
-	// make a clear-color from the frame number. This will flash with a 120 * pi frame period.
 	VkClearValue clearValue{};
 	clearValue.color = { {0.01, 0.01, 0.02, 1.0} };
 

@@ -4,7 +4,7 @@
 #pragma once
 #pragma warning(disable : 26812) // The enum type * is unscoped. Prefer 'enum class' over 'enum'.
 
-#include <vk_types.h>
+#include "vk_types.h"
 
 namespace vkinit {
 

@@ -67,6 +67,6 @@ frag:	equirectangular.frag.spv
 bind:	0
 	type:	COMBINED_IMAGE_SAMPLER
 	stage:	FRAGMENT
-	path:	../hdri/forest_slope_1k.hdr
+	path:	../hdri/forest_slope_8k.hdr
 	format:	R32G32B32A32_SFLOAT
 END

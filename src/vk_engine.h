@@ -17,6 +17,16 @@
 #include "vk_mesh.h"
 #include "glm/glm.hpp"
 
+#define VK_CHECK(x)\
+	do\
+	{\
+		VkResult err = x;\
+		if (err) {\
+			std::cout << "Detected Vulkan error: " << err << '\n';\
+			__debugbreak();\
+		}\
+	} while (0)\
+
 // number of frames to overlap when rendering
 constexpr uint32_t FRAME_OVERLAP{ 2 };
 constexpr size_t MAX_NUM_TOTAL_LIGHTS{ 10 }; // this must match glsl shader!
