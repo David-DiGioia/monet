@@ -105,7 +105,7 @@ struct MaterialCreateInfo {
 	std::string vertPath;
 	std::string fragPath;
 	std::vector<VkDescriptorSetLayoutBinding> bindings;
-	std::vector<std::string> bindingPaths;
+	std::vector<Texture> bindingTextures;
 };
 
 struct RenderObject {
@@ -240,6 +240,11 @@ public:
 
 	void load_texture(const std::string& path, VkFormat format);
 
+	bool load_shader_module(const std::string& filePath, VkShaderModule* outShaderModule);
+
+	// create material and add it to the map
+	Material* create_material(const MaterialCreateInfo& info, VkPipeline pipeline, VkPipelineLayout layout, VkDescriptorSetLayout materialSetLayout);
+
 private:
 
 	void init_vulkan();
@@ -255,8 +260,6 @@ private:
 	void init_sync_structures();
 
 	void init_pipeline(const MaterialCreateInfo& info, const std::string& prefix);
-
-	bool load_shader_module(const std::string& filePath, VkShaderModule* outShaderModule);
 
 	void load_meshes();
 
@@ -275,9 +278,6 @@ private:
 	// getter for the frame we are rendering to right now
 	FrameData& get_current_frame();
 
-	// create material and add it to the map
-	Material* create_material(const MaterialCreateInfo& info, VkPipeline pipeline, VkPipelineLayout layout, VkDescriptorSetLayout materialSetLayout);
-
 	// returns nullptr if it can't be found
 	Material* get_material(const std::string& name);
 
@@ -295,6 +295,11 @@ private:
 	void gui();
 
 	void init_gui_data();
+
+	void init_cubemap(uint32_t resolution);
+
+	std::vector<Texture> textures_from_binding_paths(const std::vector<std::string>& bindingPaths);
+
 };
 
 class PipelineBuilder {

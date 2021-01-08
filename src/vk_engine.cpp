@@ -22,6 +22,7 @@
 #include "imgui.h"
 #include "imgui_impl_sdl.h"
 #include "imgui_impl_vulkan.h"
+#include "hdri.h"
 
 #define VMA_IMPLEMENTATION
 #include "vk_mem_alloc.h"
@@ -78,12 +79,28 @@ void VulkanEngine::init()
 	init_descriptors(); // descriptors are needed at pipeline create, so before materials
 	load_materials();
 	load_meshes();
+	init_cubemap(1024);
 	init_scene();
 	init_imgui();
 	init_gui_data();
 
 	// everything went fine
 	_isInitialized = true;
+}
+
+void VulkanEngine::init_cubemap(uint32_t resolution)
+{
+	Material* equirect{ get_material("equirectangular") };
+
+
+	VkExtent2D textureRes{};
+	textureRes.width = resolution;
+	textureRes.height = resolution;
+
+	Texture cubemap{ equirectangular_to_cubemap(*this, equirect->textureSet, textureRes) };
+
+	_loadedTextures["cubemap"] = cubemap;
+
 }
 
 void VulkanEngine::init_gui_data()
@@ -173,13 +190,13 @@ void VulkanEngine::init_scene()
 	cube.transformMatrix = glm::mat4{ 1.0 };
 	_renderables.insert(cube);
 
-	RenderObject bed{};
-	bed.mesh = get_mesh("bed");
-	bed.material = get_material("bed");
-	glm::mat4 translate{ glm::translate(glm::mat4{ 1.0 }, glm::vec3(0.0, 0.0, 0.0)) };
-	glm::mat4 scale{ glm::scale(glm::mat4{1.0}, glm::vec3{3.0, 3.0, 3.0}) };
-	bed.transformMatrix = translate * scale;
-	_renderables.insert(bed);
+	//RenderObject bed{};
+	//bed.mesh = get_mesh("bed");
+	//bed.material = get_material("bed");
+	//glm::mat4 translate{ glm::translate(glm::mat4{ 1.0 }, glm::vec3(0.0, 0.0, 0.0)) };
+	//glm::mat4 scale{ glm::scale(glm::mat4{1.0}, glm::vec3{3.0, 3.0, 3.0}) };
+	//bed.transformMatrix = translate * scale;
+	//_renderables.insert(bed);
 
 	RenderObject plane{};
 	plane.mesh = get_mesh("plane");
@@ -412,6 +429,7 @@ void VulkanEngine::load_materials()
 	while (true) {
 
 		MaterialCreateInfo info{};
+		std::vector<std::string> bindingPaths;
 		uint32_t bindingIdx{ 0 };
 
 		while (std::getline(file, line)) {
@@ -467,11 +485,11 @@ void VulkanEngine::load_materials()
 					} else if (fieldBind == "path:") {
 						std::string path;
 						ssBind >> path;
-						info.bindingPaths.push_back(path);
+						bindingPaths.push_back(path);
 					} else if (fieldBind == "format:") {
 						std::string format;
 						ssBind >> format;
-						load_texture(info.bindingPaths.back(), stringToFormat[format]);
+						load_texture(bindingPaths.back(), stringToFormat[format]);
 						break;
 					}
 				}
@@ -484,6 +502,7 @@ void VulkanEngine::load_materials()
 		if (info.name == "") {
 			break;
 		}
+		info.bindingTextures = textures_from_binding_paths(bindingPaths);
 		init_pipeline(info, prefix);
 	}
 
@@ -1083,7 +1102,7 @@ Material* VulkanEngine::create_material(const MaterialCreateInfo& info, VkPipeli
 	vkAllocateDescriptorSets(_device, &allocInfo, &mat.textureSet);
 
 	for (auto i{ 0 }; i < info.bindings.size(); ++i) {
-		Texture& texture{ _loadedTextures[info.bindingPaths[i]] };
+		const Texture& texture{ info.bindingTextures[i] };
 		VkSamplerCreateInfo samplerInfo{ vkinit::sampler_create_info(VK_FILTER_LINEAR, texture.mipLevels, VK_SAMPLER_ADDRESS_MODE_REPEAT) };
 		VkSampler sampler;
 		vkCreateSampler(_device, &samplerInfo, nullptr, &sampler);
@@ -1104,6 +1123,18 @@ Material* VulkanEngine::create_material(const MaterialCreateInfo& info, VkPipeli
 
 	_materials[info.name] = mat;
 	return &_materials[info.name];
+}
+
+std::vector<Texture> VulkanEngine::textures_from_binding_paths(const std::vector<std::string>& bindingPaths)
+{
+	std::vector<Texture> result;
+	result.reserve(bindingPaths.size());
+
+	for (const std::string& bindingPath : bindingPaths) {
+		result.push_back(_loadedTextures[bindingPath]);
+	}
+
+	return result;
 }
 
 Material* VulkanEngine::get_material(const std::string& name)
