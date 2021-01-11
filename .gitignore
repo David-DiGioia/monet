@@ -1,3 +1,9 @@
 /build
 /bin
+
+# Ignore all HDRIs (files are too big)
 /assets/hdri
+
+# Ignore all model files except the default folder
+/assets/models/*
+!/assets/models/_default
