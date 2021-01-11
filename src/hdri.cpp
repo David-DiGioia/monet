@@ -14,36 +14,67 @@ struct CubeFaceData {
 
 };
 
+//glm::vec3 vertexData[NUM_VERTICES]{
+//	// front
+//	{-1.0, -1.0, -1.0}, { 1.0, -1.0,  1.0}, {-1.0, -1.0,  1.0},
+//	{-1.0, -1.0, -1.0}, { 1.0, -1.0, -1.0}, { 1.0, -1.0,  1.0},
+//
+//	// back
+//	{ 1.0,  1.0, -1.0}, {-1.0,  1.0,  1.0}, { 1.0,  1.0,  1.0},
+//	{ 1.0,  1.0, -1.0}, {-1.0,  1.0, -1.0}, {-1.0,  1.0,  1.0},
+//
+//	// up
+//	{ 1.0, -1.0,  1.0}, {-1.0,  1.0,  1.0}, {-1.0, -1.0,  1.0},
+//	{ 1.0, -1.0,  1.0}, { 1.0,  1.0,  1.0}, {-1.0,  1.0,  1.0},
+//
+//	// down
+//	{ 1.0,  1.0, -1.0}, {-1.0, -1.0, -1.0}, {-1.0,  1.0, -1.0},
+//	{ 1.0,  1.0, -1.0}, { 1.0, -1.0, -1.0}, {-1.0, -1.0, -1.0},
+//
+//	// right
+//	{ 1.0, -1.0, -1.0}, { 1.0,  1.0,  1.0}, { 1.0, -1.0,  1.0},
+//	{ 1.0, -1.0, -1.0}, { 1.0,  1.0, -1.0}, { 1.0,  1.0,  1.0},
+//
+//	// left
+//	{-1.0,  1.0, -1.0}, {-1.0, -1.0,  1.0}, {-1.0,  1.0,  1.0},
+//	{-1.0,  1.0, -1.0}, {-1.0, -1.0, -1.0}, {-1.0, -1.0,  1.0},
+//};
+
+float unit{ 1.0f };
+
 glm::vec3 vertexData[NUM_VERTICES]{
 	// front
-	{-1.0, -1.0, -1.0}, { 1.0, -1.0,  1.0}, {-1.0, -1.0,  1.0},
-	{-1.0, -1.0, -1.0}, { 1.0, -1.0, -1.0}, { 1.0, -1.0,  1.0},
+	{ unit, -unit,  unit}, {-unit,  unit,  unit}, {-unit, -unit,  unit},
+	{ unit, -unit,  unit}, { unit,  unit,  unit}, {-unit,  unit,  unit},
 
 	// back
-	{ 1.0,  1.0, -1.0}, {-1.0,  1.0,  1.0}, { 1.0,  1.0,  1.0},
-	{ 1.0,  1.0, -1.0}, {-1.0,  1.0, -1.0}, {-1.0,  1.0,  1.0},
+	{ unit,  unit, -unit}, {-unit, -unit, -unit}, {-unit,  unit, -unit},
+	{ unit,  unit, -unit}, { unit, -unit, -unit}, {-unit, -unit, -unit},
 
 	// up
-	{ 1.0, -1.0,  1.0}, {-1.0,  1.0,  1.0}, {-1.0, -1.0,  1.0},
-	{ 1.0, -1.0,  1.0}, { 1.0,  1.0,  1.0}, {-1.0,  1.0,  1.0},
+	{ unit,  unit, -unit}, {-unit,  unit,  unit}, { unit,  unit,  unit},
+	{ unit,  unit, -unit}, {-unit,  unit, -unit}, {-unit,  unit,  unit},
 
 	// down
-	{ 1.0,  1.0, -1.0}, {-1.0, -1.0, -1.0}, {-1.0,  1.0, -1.0},
-	{ 1.0,  1.0, -1.0}, { 1.0, -1.0, -1.0}, {-1.0, -1.0, -1.0},
+	{-unit, -unit, -unit}, { unit, -unit,  unit}, {-unit, -unit,  unit},
+	{-unit, -unit, -unit}, { unit, -unit, -unit}, { unit, -unit,  unit},
 
 	// right
-	{ 1.0, -1.0, -1.0}, { 1.0,  1.0,  1.0}, { 1.0, -1.0,  1.0},
-	{ 1.0, -1.0, -1.0}, { 1.0,  1.0, -1.0}, { 1.0,  1.0,  1.0},
+	{ unit, -unit, -unit}, { unit,  unit,  unit}, { unit, -unit,  unit},
+	{ unit, -unit, -unit}, { unit,  unit, -unit}, { unit,  unit,  unit},
 
 	// left
-	{-1.0,  1.0, -1.0}, {-1.0, -1.0,  1.0}, {-1.0,  1.0,  1.0},
-	{-1.0,  1.0, -1.0}, {-1.0, -1.0, -1.0}, {-1.0, -1.0,  1.0},
+	{-unit,  unit, -unit}, {-unit, -unit,  unit}, {-unit,  unit,  unit},
+	{-unit,  unit, -unit}, {-unit, -unit, -unit}, {-unit, -unit,  unit},
 };
 
 glm::mat4 rotationMatrices[6]{
-	glm::mat4(1.0), // front
-	glm::rotate(glm::radians(90.0f), glm::vec3{0.0, 1.0, 0.0}),
-	// finish the other 4
+	glm::mat4(1.0),													// front
+	glm::rotate(glm::radians(180.0f), glm::vec3{0.0, 1.0, 0.0}),	// back
+	glm::rotate(glm::radians(90.0f), glm::vec3{1.0, 0.0, 0.0}),		// up
+	glm::rotate(glm::radians(-90.0f), glm::vec3{1.0, 0.0, 0.0}),	// down
+	glm::rotate(glm::radians(-90.0f), glm::vec3{0.0, 1.0, 0.0}),	// right
+	glm::rotate(glm::radians(90.0f), glm::vec3{0.0, 1.0, 0.0}),		// left
 };
 
 void create_e2c_framebuffer(VulkanEngine& engine, VkRenderPass renderpass, VkExtent2D extent, VkImageView attachment, VkFramebuffer* outFramebuffer)
@@ -373,7 +404,7 @@ Texture equirectangular_to_cubemap(VulkanEngine& engine, VkDescriptorSet equirec
 	cubemapViewInfo.format = hdriFormat;
 	cubemapViewInfo.subresourceRange.baseMipLevel = 0;
 	cubemapViewInfo.subresourceRange.levelCount = 1;
-	cubemapViewInfo.subresourceRange.baseArrayLayer = 0;
+	cubemapViewInfo.subresourceRange.baseArrayLayer = 1;
 	cubemapViewInfo.subresourceRange.layerCount = 1;
 	cubemapViewInfo.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
 

@@ -38,6 +38,7 @@ layout (std140, set = 1, binding = 0) readonly buffer ObjectBuffer {
 void main()
 {
     localPos = vPosition;
-    vec4 pos = cameraData.viewProjOrigin * vec4(localPos, 1.0);
-    gl_Position = pos.xyww; // so the depth is always 1.0
+    vec4 pos = cameraData.viewProj * vec4(localPos, 1.0);
+    // gl_Position = pos.xyww; // so the depth is always 1.0
+    gl_Position = pos.xyzw; // so the depth is always 1.0
 }

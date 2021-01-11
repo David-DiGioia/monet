@@ -12,5 +12,7 @@ layout (push_constant) uniform PushConstants
 void main()
 {
     localPos = vPosition;
-    gl_Position = constants.rotationMatrix * vec4(vPosition, 1.0);
+    vec4 pos = constants.rotationMatrix * vec4(vPosition, 1.0);
+    pos.z -= 0.01; // account for floating point error at far plane (shift cube forward a little)
+    gl_Position = pos;
 }

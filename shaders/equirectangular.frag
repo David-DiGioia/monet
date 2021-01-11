@@ -35,5 +35,4 @@ void main()
     vec3 color = texture(equirectangularMap, uv).rgb;
 
     outFragColor = vec4(color, 1.0);
-    // outFragColor = vec4(localPos.x, 0.0, localPos.z, 1.0);
 }

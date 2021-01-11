@@ -179,13 +179,14 @@ void VulkanEngine::init_scene()
 	//bed.material = get_material("bed");
 	//glm::mat4 translate{ glm::translate(glm::mat4{ 1.0 }, glm::vec3(0.0, 0.0, 0.0)) };
 	//glm::mat4 scale{ glm::scale(glm::mat4{1.0}, glm::vec3{3.0, 3.0, 3.0}) };
-	//bed.transformMatrix = translate * scale;
+	//glm::mat4 rotate{ glm::rotate(glm::radians(0.0f), glm::vec3{ 0.0, 1.0, 0.0 }) };
+	//bed.transformMatrix = translate * scale * rotate;
 	//_renderables.insert(bed);
 
 	RenderObject plane{};
 	plane.mesh = get_mesh("plane");
 	plane.material = get_material("default");
-	glm::mat4 translate2{ glm::translate(glm::mat4{ 1.0 }, glm::vec3(0.0, 0.0, 0.0)) };
+	glm::mat4 translate2{ glm::translate(glm::mat4{ 1.0 }, glm::vec3(0.0, -2.0, 0.0)) };
 	glm::mat4 scale2{ glm::scale(glm::mat4{1.0}, glm::vec3{3.0}) };
 	glm::mat4 rot2{ glm::rotate(0.0f, glm::vec3{1.0, 0.0, 0.0}) };
 	plane.transformMatrix = translate2 * scale2 * rot2;
