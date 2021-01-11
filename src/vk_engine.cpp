@@ -411,17 +411,30 @@ void VulkanEngine::load_materials()
 	stringToFormat["R32G32B32A32_SFLOAT"] = VK_FORMAT_R32G32B32A32_SFLOAT;
 
 
-	while (true) {
+	while (file) {
 
 		MaterialCreateInfo info{};
 		std::vector<std::string> bindingPaths;
 		uint32_t bindingIdx{ 0 };
-		std::string cubemapTexName{};
+
+		// cubemap variables
+		std::string cubemapMaterial, cubemapTexName, cubeVertPath, cubeFragPath;
 		uint32_t cubemapRes{};
 
+		bool blockComment{ false };
+
 		while (std::getline(file, line)) {
+
+			if (line == "/*") {
+				blockComment = true;
+				continue;
+			} else if (line == "*/") {
+				blockComment = false;
+				continue;
+			}
+
 			// skip comments and blank lines
-			if (line.size() < 2 || (line.substr(0, 2) == "//")) {
+			if (blockComment || line.size() < 2 || (line.substr(0, 2) == "//")) {
 				continue;
 			}
 
@@ -445,8 +458,8 @@ void VulkanEngine::load_materials()
 				info.fragPath = prefix + shader;
 			} else if (field == "cube:") {
 				std::string cubemapResStr;
-				ss >> cubemapTexName;
-				ss >> cubemapResStr;
+				file >> cubemapMaterial >> cubemapTexName >> cubemapResStr >> cubeVertPath >> cubeFragPath;
+				std::cout << "Loading cubemap '" << cubemapTexName << "'\n";
 				cubemapRes = static_cast<uint32_t>(std::stoul(cubemapResStr));
 			} else if (field == "bind:") {
 				VkDescriptorSetLayoutBinding binding{};
@@ -494,19 +507,18 @@ void VulkanEngine::load_materials()
 				break;
 			}
 		}
-		if (info.name == "") {
-			break;
+		if (info.name != "") {
+			info.bindingTextures = textures_from_binding_paths(bindingPaths);
+			init_pipeline(info, prefix);
 		}
-		info.bindingTextures = textures_from_binding_paths(bindingPaths);
-		init_pipeline(info, prefix);
 
 		if (cubemapTexName != "") {
 			VkExtent2D textureRes{};
 			textureRes.width = cubemapRes;
 			textureRes.height = cubemapRes;
 
-			Material* equirectMat{ get_material(info.name) };
-			Texture cubemap{ equirectangular_to_cubemap(*this, equirectMat->textureSet, textureRes) };
+			Material* cubemapMat{ get_material(cubemapMaterial) };
+			Texture cubemap{ create_cubemap(*this, cubemapMat->textureSet, textureRes, cubeVertPath, cubeFragPath) };
 
 			_loadedTextures[cubemapTexName] = cubemap;
 		}

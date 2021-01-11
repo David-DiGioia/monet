@@ -4,4 +4,4 @@
 #include "vk_engine.h"
 
 // return texture with 6 layers, representing each face of cube
-Texture equirectangular_to_cubemap(VulkanEngine& engine, VkDescriptorSet equirectangularSet, VkExtent2D extent);
+Texture create_cubemap(VulkanEngine& engine, VkDescriptorSet equirectangularSet, VkExtent2D extent, const std::string& vertPath, const std::string& fragPath);

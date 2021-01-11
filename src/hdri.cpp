@@ -51,7 +51,7 @@ glm::mat4 rotationMatrices[6]{
 	rotate180 * glm::rotate(glm::radians(90.0f), glm::vec3{0.0, 1.0, 0.0}),		// left
 };
 
-void create_e2c_framebuffer(VulkanEngine& engine, VkRenderPass renderpass, VkExtent2D extent, VkImageView attachment, VkFramebuffer* outFramebuffer)
+void create_cc_framebuffer(VulkanEngine& engine, VkRenderPass renderpass, VkExtent2D extent, VkImageView attachment, VkFramebuffer* outFramebuffer)
 {
 	VkFramebufferCreateInfo info{};
 	info.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
@@ -66,7 +66,7 @@ void create_e2c_framebuffer(VulkanEngine& engine, VkRenderPass renderpass, VkExt
 	vkCreateFramebuffer(engine._device, &info, nullptr, outFramebuffer);
 }
 
-void create_e2c_renderpass(VulkanEngine& engine, VkFormat format, VkRenderPass* outRenderpass)
+void create_cc_renderpass(VulkanEngine& engine, VkFormat format, VkRenderPass* outRenderpass)
 {
 	VkAttachmentDescription attachment{};
 	attachment.format = format;
@@ -106,7 +106,7 @@ void create_e2c_renderpass(VulkanEngine& engine, VkFormat format, VkRenderPass* 
 	vkCreateRenderPass(engine._device, &info, nullptr, outRenderpass);
 }
 
-void create_e2c_pipeline_layout(VulkanEngine& engine, VkDescriptorSetLayout layout, VkPipelineLayout* outLayout)
+void create_cc_pipeline_layout(VulkanEngine& engine, VkDescriptorSetLayout layout, VkPipelineLayout* outLayout)
 {
 	VkPushConstantRange pushConstant{};
 	pushConstant.offset = 0;
@@ -127,11 +127,9 @@ void create_e2c_pipeline_layout(VulkanEngine& engine, VkDescriptorSetLayout layo
 
 // todo: cleanup this pipeline creation, then test that everything is working for 1 face of the cube, then put in loop for all 6 faces!!!!!!!!!!!!!
 
-void create_e2c_pipeline(VulkanEngine& engine, VkRenderPass renderpass, VkExtent2D extent, VkPipelineLayout layout, VkPipeline* outPipeline)
+void create_cc_pipeline(VulkanEngine& engine, VkRenderPass renderpass, VkExtent2D extent, VkPipelineLayout layout, VkPipeline* outPipeline, const std::string& vertPath, const std::string& fragPath)
 {
 	std::string prefix{ "../../shaders/" };
-	std::string vertPath{ "equirect_to_cubemap.vert.spv" };
-	std::string fragPath{ "equirect_to_cubemap.frag.spv" };
 
 	VkShaderModule vertShader;
 	if (!engine.load_shader_module(prefix + vertPath, &vertShader)) {
@@ -193,7 +191,7 @@ void create_e2c_pipeline(VulkanEngine& engine, VkRenderPass renderpass, VkExtent
 	vkDestroyShaderModule(engine._device, fragShader, nullptr);
 }
 
-AllocatedBuffer create_e2c_vertex_buffer(VulkanEngine& engine, size_t bufferSize, void* cpuArray)
+AllocatedBuffer create_cc_vertex_buffer(VulkanEngine& engine, size_t bufferSize, void* cpuArray)
 {
 	AllocatedBuffer vertexBuffer{ engine.create_buffer(bufferSize, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, VMA_MEMORY_USAGE_CPU_TO_GPU) };
 
@@ -205,7 +203,7 @@ AllocatedBuffer create_e2c_vertex_buffer(VulkanEngine& engine, size_t bufferSize
 	return vertexBuffer;
 }
 
-void create_e2c_cubemap(VulkanEngine& engine, VkExtent2D extent, VkFormat format, AllocatedImage* outCubemap)
+void create_cc_cubemap_image(VulkanEngine& engine, VkExtent2D extent, VkFormat format, AllocatedImage* outCubemap)
 {
 	VkExtent3D extent3D{};
 	extent3D.depth = 1;
@@ -233,7 +231,7 @@ void create_e2c_cubemap(VulkanEngine& engine, VkExtent2D extent, VkFormat format
 	vmaCreateImage(engine._allocator, &cubemapInfo, &allocInfo, &outCubemap->_image, &outCubemap->_allocation, nullptr);
 }
 
-Texture equirectangular_to_cubemap(VulkanEngine& engine, VkDescriptorSet equirectangularSet, VkExtent2D extent)
+Texture create_cubemap(VulkanEngine& engine, VkDescriptorSet equirectangularSet, VkExtent2D extent, const std::string& vertPath, const std::string& fragPath)
 {
 	VkFormat hdriFormat{ VK_FORMAT_R32G32B32A32_SFLOAT };
 
@@ -256,25 +254,25 @@ Texture equirectangular_to_cubemap(VulkanEngine& engine, VkDescriptorSet equirec
 	});
 
 	VkPipelineLayout pipelineLayout;
-	create_e2c_pipeline_layout(engine, setLayout, &pipelineLayout);
+	create_cc_pipeline_layout(engine, setLayout, &pipelineLayout);
 	engine._mainDeletionQueue.push_function([=, &engine]() {
 		vkDestroyPipelineLayout(engine._device, pipelineLayout, nullptr);
 	});
 
 	VkRenderPass renderpass;
-	create_e2c_renderpass(engine, hdriFormat, &renderpass);
+	create_cc_renderpass(engine, hdriFormat, &renderpass);
 	engine._mainDeletionQueue.push_function([=, &engine]() {
 		vkDestroyRenderPass(engine._device, renderpass, nullptr);
 	});
 
 	VkPipeline pipeline;
-	create_e2c_pipeline(engine, renderpass, extent, pipelineLayout, &pipeline);
+	create_cc_pipeline(engine, renderpass, extent, pipelineLayout, &pipeline, vertPath, fragPath);
 	engine._mainDeletionQueue.push_function([=, &engine]() {
 		vkDestroyPipeline(engine._device, pipeline, nullptr);
 	});
 
 	AllocatedImage cubemapImage;
-	create_e2c_cubemap(engine, extent, hdriFormat, &cubemapImage);
+	create_cc_cubemap_image(engine, extent, hdriFormat, &cubemapImage);
 	engine._mainDeletionQueue.push_function([=, &engine]() {
 		vmaDestroyImage(engine._allocator, cubemapImage._image, cubemapImage._allocation);
 	});
@@ -307,12 +305,12 @@ Texture equirectangular_to_cubemap(VulkanEngine& engine, VkDescriptorSet equirec
 		});
 
 		VkFramebuffer framebuffer;
-		create_e2c_framebuffer(engine, renderpass, extent, attachmentView, &framebuffer);
+		create_cc_framebuffer(engine, renderpass, extent, attachmentView, &framebuffer);
 		engine._mainDeletionQueue.push_function([=, &engine]() {
 			vkDestroyFramebuffer(engine._device, framebuffer, nullptr);
 		});
 
-		AllocatedBuffer vertexBuffer{ create_e2c_vertex_buffer(engine, NUM_VERTICES * sizeof(glm::vec3), vertexData) };
+		AllocatedBuffer vertexBuffer{ create_cc_vertex_buffer(engine, NUM_VERTICES * sizeof(glm::vec3), vertexData) };
 		engine._mainDeletionQueue.push_function([=, &engine]() {
 			vmaDestroyBuffer(engine._allocator, vertexBuffer._buffer, vertexBuffer._allocation);
 		});

@@ -1,16 +1,35 @@
-// The first two descriptor sets (for camera/scene data and object matrices) are common to all objects, so for the material we only describe the bindings to descriptor set 2
+/*
+The first two descriptor sets (for camera/scene data and object matrices) are common to all objects, so for the material we only describe the bindings to descriptor set 2
+cubemap syntax:
 
+cube:
+material_to_sample_from
+out_texture_name
+out_texture_resolution
+vertex_shader_path
+fragment_shader_path
+END
+*/
 
+// We need this material in order to create the cubemap
 name:	equirectangular
 vert:	equirectangular.vert.spv
 frag:	equirectangular.frag.spv
-// Name and resolution of cubemap texture which can be used in any subsequent materials
-cube:	cubemap	1024
 bind:	0
 	type:	COMBINED_IMAGE_SAMPLER
 	stage:	FRAGMENT
-	path:	../hdri/forest_slope_1k.hdr
+	path:	../hdri/red_hill_curve_4k.hdr
 	format:	R32G32B32A32_SFLOAT
+END
+
+
+// cubemap texture which can be used in any subsequent materials
+cube:
+equirectangular
+cubemap
+1024
+equirect_to_cubemap.vert.spv
+equirect_to_cubemap.frag.spv
 END
 
 name:	cubemap
@@ -53,32 +72,33 @@ bind:	3
 	format:	R8G8B8A8_UNORM
 END
 
-
-//name:	bed
-//vert:	pbr.vert.spv
-//frag:	pbr.frag.spv
-//// diffuse
-//bind:	0
-//	type:	COMBINED_IMAGE_SAMPLER
-//	stage:	FRAGMENT
-//	path:	bed/textures/GothicBed_01_8-bit_diff.png
-//	format:	R8G8B8A8_SRGB
-//// normal
-//bind:	1
-//	type:	COMBINED_IMAGE_SAMPLER
-//	stage:	FRAGMENT
-//	path:	bed/textures/GothicBed_01_8-bit_norm.png
-//	format:	R8G8B8A8_UNORM
-//// roughness
-//bind:	2
-//	type:	COMBINED_IMAGE_SAMPLER
-//	stage:	FRAGMENT
-//	path:	bed/textures/GothicBed_01_8-bit_roug.png
-//	format:	R8G8B8A8_UNORM
-//// ao
-//bind:	3
-//	type:	COMBINED_IMAGE_SAMPLER
-//	stage:	FRAGMENT
-//	path:	bed/textures/GothicBed_01_8-bit_ao__.png
-//	format:	R8G8B8A8_UNORM
-//END
+/*
+name:	bed
+vert:	pbr.vert.spv
+frag:	pbr.frag.spv
+// diffuse
+bind:	0
+	type:	COMBINED_IMAGE_SAMPLER
+	stage:	FRAGMENT
+	path:	bed/textures/GothicBed_01_8-bit_diff.png
+	format:	R8G8B8A8_SRGB
+// normal
+bind:	1
+	type:	COMBINED_IMAGE_SAMPLER
+	stage:	FRAGMENT
+	path:	bed/textures/GothicBed_01_8-bit_norm.png
+	format:	R8G8B8A8_UNORM
+// roughness
+bind:	2
+	type:	COMBINED_IMAGE_SAMPLER
+	stage:	FRAGMENT
+	path:	bed/textures/GothicBed_01_8-bit_roug.png
+	format:	R8G8B8A8_UNORM
+// ao
+bind:	3
+	type:	COMBINED_IMAGE_SAMPLER
+	stage:	FRAGMENT
+	path:	bed/textures/GothicBed_01_8-bit_ao__.png
+	format:	R8G8B8A8_UNORM
+END
+*/
