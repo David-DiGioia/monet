@@ -186,11 +186,6 @@ void create_e2c_pipeline(VulkanEngine& engine, VkRenderPass renderpass, VkExtent
 
 	vkDestroyShaderModule(engine._device, vertShader, nullptr);
 	vkDestroyShaderModule(engine._device, fragShader, nullptr);
-
-	engine._mainDeletionQueue.push_function([=]() {
-		vkDestroyPipeline(engine._device, *outPipeline, nullptr);
-		vkDestroyPipelineLayout(engine._device, layout, nullptr);
-	});
 }
 
 AllocatedBuffer create_e2c_vertex_buffer(VulkanEngine& engine, size_t bufferSize, void* cpuArray)
@@ -251,22 +246,33 @@ Texture equirectangular_to_cubemap(VulkanEngine& engine, VkDescriptorSet equirec
 
 	VkDescriptorSetLayout setLayout;
 	VK_CHECK(vkCreateDescriptorSetLayout(engine._device, &descriptorSetLayoutInfo, nullptr, &setLayout));
-
-	engine._mainDeletionQueue.push_function([=]() {
+	engine._mainDeletionQueue.push_function([=, &engine]() {
 		vkDestroyDescriptorSetLayout(engine._device, setLayout, nullptr);
 	});
 
 	VkPipelineLayout pipelineLayout;
 	create_e2c_pipeline_layout(engine, setLayout, &pipelineLayout);
+	engine._mainDeletionQueue.push_function([=, &engine]() {
+		vkDestroyPipelineLayout(engine._device, pipelineLayout, nullptr);
+	});
 
 	VkRenderPass renderpass;
 	create_e2c_renderpass(engine, hdriFormat, &renderpass);
+	engine._mainDeletionQueue.push_function([=, &engine]() {
+		vkDestroyRenderPass(engine._device, renderpass, nullptr);
+	});
 
 	VkPipeline pipeline;
 	create_e2c_pipeline(engine, renderpass, extent, pipelineLayout, &pipeline);
+	engine._mainDeletionQueue.push_function([=, &engine]() {
+		vkDestroyPipeline(engine._device, pipeline, nullptr);
+	});
 
 	AllocatedImage cubemapImage;
 	create_e2c_cubemap(engine, extent, hdriFormat, &cubemapImage);
+	engine._mainDeletionQueue.push_function([=, &engine]() {
+		vmaDestroyImage(engine._allocator, cubemapImage._image, cubemapImage._allocation);
+	});
 
 	for (auto layer{ 0 }; layer < 6; ++layer) {
 
@@ -291,16 +297,20 @@ Texture equirectangular_to_cubemap(VulkanEngine& engine, VkDescriptorSet equirec
 
 		VkImageView attachmentView;
 		VK_CHECK(vkCreateImageView(engine._device, &attachmentViewInfo, nullptr, &attachmentView));
-
-		engine._mainDeletionQueue.push_function([=]() {
+		engine._mainDeletionQueue.push_function([=, &engine]() {
 			vkDestroyImageView(engine._device, attachmentView, nullptr);
 		});
 
 		VkFramebuffer framebuffer;
 		create_e2c_framebuffer(engine, renderpass, extent, attachmentView, &framebuffer);
+		engine._mainDeletionQueue.push_function([=, &engine]() {
+			vkDestroyFramebuffer(engine._device, framebuffer, nullptr);
+		});
 
 		AllocatedBuffer vertexBuffer{ create_e2c_vertex_buffer(engine, NUM_VERTICES * sizeof(glm::vec3), vertexData) };
-
+		engine._mainDeletionQueue.push_function([=, &engine]() {
+			vmaDestroyBuffer(engine._allocator, vertexBuffer._buffer, vertexBuffer._allocation);
+		});
 
 		engine.immediate_submit([=](VkCommandBuffer cmd) {
 			VkClearValue clearValue{};
@@ -370,8 +380,7 @@ Texture equirectangular_to_cubemap(VulkanEngine& engine, VkDescriptorSet equirec
 
 	VkImageView cubemapView;
 	VK_CHECK(vkCreateImageView(engine._device, &cubemapViewInfo, nullptr, &cubemapView));
-
-	engine._mainDeletionQueue.push_function([=]() {
+	engine._mainDeletionQueue.push_function([=, &engine]() {
 		vkDestroyImageView(engine._device, cubemapView, nullptr);
 	});
 

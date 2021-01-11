@@ -21,8 +21,8 @@ frag:	pbr.frag.spv
 bind:	0
 	type:	COMBINED_IMAGE_SAMPLER
 	stage:	FRAGMENT
-//	path:	cubemap
 	path:	cubemap
+//	path:	_default/textures/_diff.png
 	format:	R8G8B8A8_SRGB
 // normal
 bind:	1

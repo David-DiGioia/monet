@@ -193,7 +193,7 @@ bool vkutil::load_image_from_file(VulkanEngine& engine, const char* file, Alloca
 			1, &imageBarrierToReadable);
 	});
 
-	engine._mainDeletionQueue.push_function([=]() {
+	engine._mainDeletionQueue.push_function([=, &engine]() {
 		vmaDestroyImage(engine._allocator, newImage._image, newImage._allocation);
 	});
 

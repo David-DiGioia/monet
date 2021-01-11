@@ -131,5 +131,6 @@ void main()
     // tonemap using Reinhard operator (this should really be done in post probably)
     color = color / (color + 1.0);
 
-    outFragColor = vec4(color, 1.0);
+    // outFragColor = vec4(color, 1.0);
+    outFragColor = vec4(diffuse, 1.0);
 }
