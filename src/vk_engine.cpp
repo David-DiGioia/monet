@@ -170,7 +170,7 @@ void VulkanEngine::init_scene()
 
 	RenderObject cube{};
 	cube.mesh = get_mesh("cube");
-	cube.material = get_material("equirectangular");
+	cube.material = get_material("cubemap");
 	cube.transformMatrix = glm::mat4{ 1.0 };
 	_renderables.insert(cube);
 

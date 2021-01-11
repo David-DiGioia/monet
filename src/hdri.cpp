@@ -68,13 +68,19 @@ glm::vec3 vertexData[NUM_VERTICES]{
 	{-unit,  unit, -unit}, {-unit, -unit, -unit}, {-unit, -unit,  unit},
 };
 
+// Since Vulkan's coordinate system has y going down, we rotate the cube by 180 degrees in each case except up and down,
+// in which case idk why they vulkan uses these orientations, I just matched them...
+const glm::mat4 rotate180{ glm::rotate(glm::radians(180.0f), glm::vec3{0.0, 0.0, 1.0}) };
+const glm::mat4 rotate90{ glm::rotate(glm::radians(90.0f), glm::vec3{0.0, 0.0, 1.0}) };
+const glm::mat4 rotate270{ glm::rotate(glm::radians(270.0f), glm::vec3{0.0, 0.0, 1.0}) };
+
 glm::mat4 rotationMatrices[6]{
-	glm::mat4(1.0),													// front
-	glm::rotate(glm::radians(180.0f), glm::vec3{0.0, 1.0, 0.0}),	// back
-	glm::rotate(glm::radians(90.0f), glm::vec3{1.0, 0.0, 0.0}),		// up
-	glm::rotate(glm::radians(-90.0f), glm::vec3{1.0, 0.0, 0.0}),	// down
-	glm::rotate(glm::radians(-90.0f), glm::vec3{0.0, 1.0, 0.0}),	// right
-	glm::rotate(glm::radians(90.0f), glm::vec3{0.0, 1.0, 0.0}),		// left
+	rotate180 * glm::mat4(1.0),													// front
+	rotate180 * glm::rotate(glm::radians(180.0f), glm::vec3{0.0, 1.0, 0.0}),	// back
+	rotate90 * glm::rotate(glm::radians(90.0f), glm::vec3{1.0, 0.0, 0.0}),		// up
+	rotate270* glm::rotate(glm::radians(-90.0f), glm::vec3{1.0, 0.0, 0.0}),	// down
+	rotate180 * glm::rotate(glm::radians(-90.0f), glm::vec3{0.0, 1.0, 0.0}),	// right
+	rotate180 * glm::rotate(glm::radians(90.0f), glm::vec3{0.0, 1.0, 0.0}),		// left
 };
 
 void create_e2c_framebuffer(VulkanEngine& engine, VkRenderPass renderpass, VkExtent2D extent, VkImageView attachment, VkFramebuffer* outFramebuffer)
@@ -383,30 +389,30 @@ Texture equirectangular_to_cubemap(VulkanEngine& engine, VkDescriptorSet equirec
 	}
 
 	// This is the final image view, viewing all 6 layers of the image as a cube
-	//VkImageViewCreateInfo cubemapViewInfo{};
-	//cubemapViewInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
-	//cubemapViewInfo.pNext = nullptr;
-	//cubemapViewInfo.viewType = VK_IMAGE_VIEW_TYPE_CUBE;
-	//cubemapViewInfo.image = cubemapImage._image;
-	//cubemapViewInfo.format = hdriFormat;
-	//cubemapViewInfo.subresourceRange.baseMipLevel = 0;
-	//cubemapViewInfo.subresourceRange.levelCount = 1;
-	//cubemapViewInfo.subresourceRange.baseArrayLayer = 0;
-	//cubemapViewInfo.subresourceRange.layerCount = 6;
-	//cubemapViewInfo.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-
-	// DEBUG!!! USE PREVIOUS VERSION FOR ACTUAL CUBEMAP
 	VkImageViewCreateInfo cubemapViewInfo{};
 	cubemapViewInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
 	cubemapViewInfo.pNext = nullptr;
-	cubemapViewInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
+	cubemapViewInfo.viewType = VK_IMAGE_VIEW_TYPE_CUBE;
 	cubemapViewInfo.image = cubemapImage._image;
 	cubemapViewInfo.format = hdriFormat;
 	cubemapViewInfo.subresourceRange.baseMipLevel = 0;
 	cubemapViewInfo.subresourceRange.levelCount = 1;
-	cubemapViewInfo.subresourceRange.baseArrayLayer = 1;
-	cubemapViewInfo.subresourceRange.layerCount = 1;
+	cubemapViewInfo.subresourceRange.baseArrayLayer = 0;
+	cubemapViewInfo.subresourceRange.layerCount = 6;
 	cubemapViewInfo.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+
+	// DEBUG!!! USE PREVIOUS VERSION FOR ACTUAL CUBEMAP
+	//VkImageViewCreateInfo cubemapViewInfo{};
+	//cubemapViewInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+	//cubemapViewInfo.pNext = nullptr;
+	//cubemapViewInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
+	//cubemapViewInfo.image = cubemapImage._image;
+	//cubemapViewInfo.format = hdriFormat;
+	//cubemapViewInfo.subresourceRange.baseMipLevel = 0;
+	//cubemapViewInfo.subresourceRange.levelCount = 1;
+	//cubemapViewInfo.subresourceRange.baseArrayLayer = 1;
+	//cubemapViewInfo.subresourceRange.layerCount = 1;
+	//cubemapViewInfo.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
 
 
 	VkImageView cubemapView;

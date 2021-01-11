@@ -28,7 +28,6 @@ vec2 sampleSphericalMap(vec3 v)
     return uv;
 }
 
-
 void main()
 {
     vec2 uv = sampleSphericalMap(normalize(localPos));
