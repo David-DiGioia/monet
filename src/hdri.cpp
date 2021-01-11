@@ -10,62 +10,30 @@
 // 6 faces per cube, 2 traingles per face, 3 vertices per triangle
 constexpr uint32_t NUM_VERTICES{ 6 * 2 * 3 };
 
-struct CubeFaceData {
-
-};
-
-//glm::vec3 vertexData[NUM_VERTICES]{
-//	// front
-//	{-1.0, -1.0, -1.0}, { 1.0, -1.0,  1.0}, {-1.0, -1.0,  1.0},
-//	{-1.0, -1.0, -1.0}, { 1.0, -1.0, -1.0}, { 1.0, -1.0,  1.0},
-//
-//	// back
-//	{ 1.0,  1.0, -1.0}, {-1.0,  1.0,  1.0}, { 1.0,  1.0,  1.0},
-//	{ 1.0,  1.0, -1.0}, {-1.0,  1.0, -1.0}, {-1.0,  1.0,  1.0},
-//
-//	// up
-//	{ 1.0, -1.0,  1.0}, {-1.0,  1.0,  1.0}, {-1.0, -1.0,  1.0},
-//	{ 1.0, -1.0,  1.0}, { 1.0,  1.0,  1.0}, {-1.0,  1.0,  1.0},
-//
-//	// down
-//	{ 1.0,  1.0, -1.0}, {-1.0, -1.0, -1.0}, {-1.0,  1.0, -1.0},
-//	{ 1.0,  1.0, -1.0}, { 1.0, -1.0, -1.0}, {-1.0, -1.0, -1.0},
-//
-//	// right
-//	{ 1.0, -1.0, -1.0}, { 1.0,  1.0,  1.0}, { 1.0, -1.0,  1.0},
-//	{ 1.0, -1.0, -1.0}, { 1.0,  1.0, -1.0}, { 1.0,  1.0,  1.0},
-//
-//	// left
-//	{-1.0,  1.0, -1.0}, {-1.0, -1.0,  1.0}, {-1.0,  1.0,  1.0},
-//	{-1.0,  1.0, -1.0}, {-1.0, -1.0, -1.0}, {-1.0, -1.0,  1.0},
-//};
-
-float unit{ 1.0f };
-
 glm::vec3 vertexData[NUM_VERTICES]{
 	// front
-	{ unit, -unit,  unit}, {-unit,  unit,  unit}, {-unit, -unit,  unit},
-	{ unit, -unit,  unit}, { unit,  unit,  unit}, {-unit,  unit,  unit},
+	{ 1.0, -1.0,  1.0}, {-1.0,  1.0,  1.0}, {-1.0, -1.0,  1.0},
+	{ 1.0, -1.0,  1.0}, { 1.0,  1.0,  1.0}, {-1.0,  1.0,  1.0},
 
 	// back
-	{ unit,  unit, -unit}, {-unit, -unit, -unit}, {-unit,  unit, -unit},
-	{ unit,  unit, -unit}, { unit, -unit, -unit}, {-unit, -unit, -unit},
+	{ 1.0,  1.0, -1.0}, {-1.0, -1.0, -1.0}, {-1.0,  1.0, -1.0},
+	{ 1.0,  1.0, -1.0}, { 1.0, -1.0, -1.0}, {-1.0, -1.0, -1.0},
 
 	// up
-	{ unit,  unit, -unit}, {-unit,  unit,  unit}, { unit,  unit,  unit},
-	{ unit,  unit, -unit}, {-unit,  unit, -unit}, {-unit,  unit,  unit},
+	{ 1.0,  1.0, -1.0}, {-1.0,  1.0,  1.0}, { 1.0,  1.0,  1.0},
+	{ 1.0,  1.0, -1.0}, {-1.0,  1.0, -1.0}, {-1.0,  1.0,  1.0},
 
 	// down
-	{-unit, -unit, -unit}, { unit, -unit,  unit}, {-unit, -unit,  unit},
-	{-unit, -unit, -unit}, { unit, -unit, -unit}, { unit, -unit,  unit},
+	{-1.0, -1.0, -1.0}, { 1.0, -1.0,  1.0}, {-1.0, -1.0,  1.0},
+	{-1.0, -1.0, -1.0}, { 1.0, -1.0, -1.0}, { 1.0, -1.0,  1.0},
 
 	// right
-	{ unit, -unit, -unit}, { unit,  unit,  unit}, { unit, -unit,  unit},
-	{ unit, -unit, -unit}, { unit,  unit, -unit}, { unit,  unit,  unit},
+	{ 1.0, -1.0, -1.0}, { 1.0,  1.0,  1.0}, { 1.0, -1.0,  1.0},
+	{ 1.0, -1.0, -1.0}, { 1.0,  1.0, -1.0}, { 1.0,  1.0,  1.0},
 
 	// left
-	{-unit,  unit, -unit}, {-unit, -unit,  unit}, {-unit,  unit,  unit},
-	{-unit,  unit, -unit}, {-unit, -unit, -unit}, {-unit, -unit,  unit},
+	{-1.0,  1.0, -1.0}, {-1.0, -1.0,  1.0}, {-1.0,  1.0,  1.0},
+	{-1.0,  1.0, -1.0}, {-1.0, -1.0, -1.0}, {-1.0, -1.0,  1.0},
 };
 
 // Since Vulkan's coordinate system has y going down, we rotate the cube by 180 degrees in each case except up and down,
