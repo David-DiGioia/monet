@@ -2,7 +2,7 @@
 /bin
 
 # Ignore all HDRIs (files are too big)
-/assets/hdri
+/assets/hdri/*.hdr
 
 # Ignore all model files except the default folder
 /assets/models/*
