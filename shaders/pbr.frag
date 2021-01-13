@@ -27,6 +27,7 @@ layout (set = 2, binding = 0) uniform sampler2D diffuseTex;
 layout (set = 2, binding = 1) uniform sampler2D normalTex;
 layout (set = 2, binding = 2) uniform sampler2D roughnessTex;
 layout (set = 2, binding = 3) uniform sampler2D aoTex;
+layout (set = 2, binding = 4) uniform samplerCube irradianceMap;
 
 float metallic = 0.0f;
 
@@ -37,6 +38,11 @@ vec3 fresnelSchlick(float cosTheta, vec3 F0)
 {
     return F0 + (1.0 - F0) * pow(max(1.0 - cosTheta, 0.0), 5.0);
 }
+
+vec3 fresnelSchlickRoughness(float cosTheta, vec3 F0, float roughness)
+{
+    return F0 + (max(vec3(1.0 - roughness), F0) - F0) * pow(max(1.0 - cosTheta, 0.0), 5.0);
+}   
 
 float distributionGGX(vec3 N, vec3 H, float roughness)
 {
@@ -87,7 +93,8 @@ void main()
     vec3 N = TBN * normal;
     vec3 V = normalize(camPos - fragPos);
 
-    vec3 outVar;
+    // approximate IOR of dialetric materials as 0.04
+    vec3 F0 = vec3(0.04);
 
     vec3 Lo = vec3(0.0);
     for (int i = 0; i < sceneData.numLights; ++i) {
@@ -100,15 +107,11 @@ void main()
         vec3 light = sceneData.lights[i].color.xyz * sceneData.lights[i].color.w;
         vec3 radiance = light * attentuation;
 
-        // approximate IOR of dialetric materials as 0.04
-        vec3 F0 = vec3(0.04);
         F0 = mix(F0, diffuse, metallic);
         vec3 F = fresnelSchlick(max(dot(H, V), 0.0), F0);
 
         float NDF = distributionGGX(N, H, roughness);
         float G = geometrySmith(N, V, L, roughness);
-
-        outVar = vec3(N);
 
         vec3 numerator = NDF * G * F;
         float denominator = 4.0 * max(dot(N, V), 0.0) * max(dot(N, L), 0.0);
@@ -126,7 +129,14 @@ void main()
         Lo += (kD * diffuse / PI + specular) * radiance * NdotL;
     }
 
-    vec3 ambient = sceneData.ambientColor.xyz * diffuse * ao;
+    // vec3 ambient = sceneData.ambientColor.xyz * diffuse * ao;
+    
+    vec3 kS = fresnelSchlickRoughness(max(dot(N, V), 0.0), F0, roughness); 
+    vec3 kD = 1.0 - kS;
+    vec3 irradiance = texture(irradianceMap, N).rgb;
+    diffuse = irradiance * diffuse;
+    vec3 ambient = (kD * diffuse) * ao;
+
     vec3 color = ambient + Lo;
     // tonemap using Reinhard operator (this should really be done in post probably)
     color = color / (color + 1.0);

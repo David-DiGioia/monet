@@ -36,11 +36,6 @@ struct Light {
 	glm::vec4 color;    // w is for intensity
 };
 
-struct GuiData {
-	Light light0;
-	Light light1;
-};
-
 struct Texture {
 	AllocatedImage image;
 	VkImageView imageView;
@@ -111,9 +106,16 @@ struct MaterialCreateInfo {
 struct RenderObject {
 	Mesh* mesh;
 	Material* material;
-	glm::mat4 transformMatrix;
+	mutable glm::mat4 transformMatrix;
 
 	bool operator<(const RenderObject& other) const;
+};
+
+struct GuiData {
+	Light light0;
+	Light light1;
+	float bedAngle;
+	const RenderObject* bed;
 };
 
 struct MeshPushConstants {
@@ -245,6 +247,9 @@ public:
 	// create material and add it to the map
 	Material* create_material(const MaterialCreateInfo& info, VkPipeline pipeline, VkPipelineLayout layout, VkDescriptorSetLayout materialSetLayout);
 
+	// returns nullptr if it can't be found
+	Mesh* get_mesh(const std::string& name);
+
 private:
 
 	void init_vulkan();
@@ -281,8 +286,6 @@ private:
 	// returns nullptr if it can't be found
 	Material* get_material(const std::string& name);
 
-	// returns nullptr if it can't be found
-	Mesh* get_mesh(const std::string& name);
 
 	void draw_objects(VkCommandBuffer cmd, const std::multiset<RenderObject>& renderables);
 

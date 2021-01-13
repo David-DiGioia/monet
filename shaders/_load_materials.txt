@@ -18,12 +18,12 @@ frag:	equirectangular.frag.spv
 bind:	0
 	type:	COMBINED_IMAGE_SAMPLER
 	stage:	FRAGMENT
-	path:	../hdri/red_hill_curve_4k.hdr
+//	path:	../hdri/red_hill_curve_4k.hdr
+	path:	../hdri/forest_slope_1k.hdr
 	format:	R32G32B32A32_SFLOAT
 END
 
-
-// cubemap texture which can be used in any subsequent materials
+// first create normal cubemap
 cube:
 equirectangular
 cubemap
@@ -32,6 +32,8 @@ equirect_to_cubemap.vert.spv
 equirect_to_cubemap.frag.spv
 END
 
+
+// then create a material using that cubemap
 name:	cubemap
 vert:	cubemap.vert.spv
 frag:	cubemap.frag.spv
@@ -42,6 +44,26 @@ bind:	0
 	format:	R32G32B32A32_SFLOAT
 END
 
+// now create the irradiance map sampling from the cubemap material we just made
+cube:
+cubemap
+irradianceMap
+512
+cubemap_to_irradiance.vert.spv
+cubemap_to_irradiance.frag.spv
+END
+
+
+// This cubemap material will simply test the irradiance map so we can see it
+name:	irradiance
+vert:	cubemap.vert.spv
+frag:	cubemap.frag.spv
+bind:	0
+	type:	COMBINED_IMAGE_SAMPLER
+	stage:	FRAGMENT
+	path:	irradianceMap
+	format:	R32G32B32A32_SFLOAT
+END
 
 name:	default
 vert:	pbr.vert.spv
@@ -70,9 +92,15 @@ bind:	3
 	stage:	FRAGMENT
 	path:	_default/textures/_ao__.png
 	format:	R8G8B8A8_UNORM
+// irradiance map
+bind:	4
+	type:	COMBINED_IMAGE_SAMPLER
+	stage:	FRAGMENT
+	path:	irradianceMap
+	format:	R32G32B32A32_SFLOAT
 END
 
-/*
+
 name:	bed
 vert:	pbr.vert.spv
 frag:	pbr.frag.spv
@@ -100,5 +128,10 @@ bind:	3
 	stage:	FRAGMENT
 	path:	bed/textures/GothicBed_01_8-bit_ao__.png
 	format:	R8G8B8A8_UNORM
+// irradiance map
+bind:	4
+	type:	COMBINED_IMAGE_SAMPLER
+	stage:	FRAGMENT
+	path:	irradianceMap
+	format:	R32G32B32A32_SFLOAT
 END
-*/

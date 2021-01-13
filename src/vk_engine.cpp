@@ -76,9 +76,9 @@ void VulkanEngine::init()
 	init_default_renderpass();
 	init_framebuffers();
 	init_sync_structures();
+	load_meshes();
 	init_descriptors(); // descriptors are needed at pipeline create, so before materials
 	load_materials();
-	load_meshes();
 	init_scene();
 	init_imgui();
 	init_gui_data();
@@ -94,6 +94,8 @@ void VulkanEngine::init_gui_data()
 
 	_guiData.light1.position = { 7.5, 10.0, 0.0, 1.0 };
 	_guiData.light1.color = { 1.0, 0.3, 0.3, 47.0 };
+
+	_guiData.bedAngle = 0.0f;
 }
 
 void VulkanEngine::init_imgui()
@@ -174,14 +176,15 @@ void VulkanEngine::init_scene()
 	cube.transformMatrix = glm::mat4{ 1.0 };
 	_renderables.insert(cube);
 
-	//RenderObject bed{};
-	//bed.mesh = get_mesh("bed");
-	//bed.material = get_material("bed");
-	//glm::mat4 translate{ glm::translate(glm::mat4{ 1.0 }, glm::vec3(0.0, 0.0, 0.0)) };
-	//glm::mat4 scale{ glm::scale(glm::mat4{1.0}, glm::vec3{3.0, 3.0, 3.0}) };
-	//glm::mat4 rotate{ glm::rotate(glm::radians(0.0f), glm::vec3{ 0.0, 1.0, 0.0 }) };
-	//bed.transformMatrix = translate * scale * rotate;
-	//_renderables.insert(bed);
+	RenderObject bed{};
+	bed.mesh = get_mesh("bed");
+	bed.material = get_material("bed");
+	glm::mat4 translate{ glm::translate(glm::mat4{ 1.0 }, glm::vec3(0.0, 0.0, 0.0)) };
+	glm::mat4 scale{ glm::scale(glm::mat4{1.0}, glm::vec3{3.0, 3.0, 3.0}) };
+	glm::mat4 rotate{ glm::rotate(glm::radians(0.0f), glm::vec3{ 0.0, 1.0, 0.0 }) };
+	bed.transformMatrix = translate * scale * rotate;
+	_renderables.insert(bed);
+	_guiData.bed = &(*_renderables.find(bed));
 
 	RenderObject plane{};
 	plane.mesh = get_mesh("plane");
@@ -272,7 +275,7 @@ void VulkanEngine::immediate_submit(std::function<void(VkCommandBuffer cmd)>&& f
 	// _uploadFence will not block until the graphics commands finish execution
 	VK_CHECK(vkQueueSubmit(_graphicsQueue, 1, &submit, _uploadContext._uploadFence));
 
-	vkWaitForFences(_device, 1, &_uploadContext._uploadFence, VK_TRUE, 9999999999);
+	vkWaitForFences(_device, 1, &_uploadContext._uploadFence, VK_TRUE, 99999999999);
 	vkResetFences(_device, 1, &_uploadContext._uploadFence);
 
 	// clear the command pool. This will free the command buffer too
@@ -1208,7 +1211,8 @@ void VulkanEngine::draw()
 	VK_CHECK(vkBeginCommandBuffer(get_current_frame()._mainCommandBuffer, &cmdBeginInfo));
 
 	VkClearValue clearValue{};
-	clearValue.color = { {0.01, 0.01, 0.02, 1.0} };
+	//clearValue.color = { {0.01, 0.01, 0.02, 1.0} };
+	clearValue.color = { {1.00, 0.00, 0.00, 1.0} };
 
 	VkClearValue depthClear{};
 	depthClear.depthStencil.depth = 1.0f;
@@ -1314,13 +1318,17 @@ void VulkanEngine::draw_objects(VkCommandBuffer cmd, const std::multiset<RenderO
 	_sceneParameters.lights[1] = _guiData.light1;
 	_sceneParameters.camPos = glm::vec4(_camPos, 1.0);
 
-
 	char* sceneData;
 	vmaMapMemory(_allocator, _sceneParameterBuffer._allocation, (void**)&sceneData);
 	int frameIndex{ _frameNumber % FRAME_OVERLAP };
 	sceneData += pad_uniform_buffer_size(sizeof(GPUSceneData)) * frameIndex;
 	std::memcpy(sceneData, &_sceneParameters, sizeof(GPUSceneData));
 	vmaUnmapMemory(_allocator, _sceneParameterBuffer._allocation);
+
+	glm::mat4 bedTranslate{ glm::translate(glm::mat4{ 1.0 }, glm::vec3(0.0, 0.0, 0.0)) };
+	glm::mat4 bedScale{ glm::scale(glm::mat4{1.0}, glm::vec3{3.0, 3.0, 3.0}) };
+	glm::mat4 bedRotate{ glm::rotate(_guiData.bedAngle, glm::vec3{ 0.0, 1.0, 0.0 }) };
+	_guiData.bed->transformMatrix = bedTranslate * bedScale * bedRotate;
 
 	// write all the objects' matrices into the SSBO
 	void* objectData;
@@ -1506,9 +1514,14 @@ void VulkanEngine::gui()
 
 	if (ImGui::CollapsingHeader("Camera"))
 	{
-		ImGui::Text("Rotation:");
+		ImGui::Text("Cam rotation:");
 		ImGui::DragFloat("phi", &_camRotPhi, 0.005f);
 		ImGui::DragFloat("theta", &_camRotTheta, 0.005f);
+	}
+
+	if (ImGui::CollapsingHeader("Bed"))
+	{
+		ImGui::DragFloat("Bed angle", &_guiData.bedAngle, 0.005f);
 	}
 
 	ImGui::End();
