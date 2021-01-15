@@ -7,6 +7,7 @@ layout (location = 0) out vec3 localPos;
 layout (push_constant) uniform PushConstants
 {
     mat4 rotationMatrix; // ensure current cube face is facing camera
+    float roughness;
 } constants;
 
 void main()

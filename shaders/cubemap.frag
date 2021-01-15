@@ -8,7 +8,7 @@ layout (set = 2, binding = 0) uniform samplerCube cubemap;
 
 void main()
 {
-    vec3 color = texture(cubemap, normalize(localPos)).rgb;
+    vec3 color = textureLod(cubemap, normalize(localPos), 7.0).rgb;
 
     outFragColor = vec4(color, 1.0);
 }

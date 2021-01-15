@@ -6,6 +6,7 @@ cube:
 material_to_sample_from
 out_texture_name
 out_texture_resolution
+use_mip_map
 vertex_shader_path
 fragment_shader_path
 END
@@ -28,6 +29,7 @@ cube:
 equirectangular
 cubemap
 1024
+false
 equirect_to_cubemap.vert.spv
 equirect_to_cubemap.frag.spv
 END
@@ -49,19 +51,29 @@ cube:
 cubemap
 irradianceMap
 512
+false
 cubemap_to_irradiance.vert.spv
 cubemap_to_irradiance.frag.spv
 END
 
+// now create pre-filtered environment map
+cube:
+cubemap
+prefilteredEnvironmentMap
+256
+true
+cubemap_to_irradiance.vert.spv
+BRDF_integration_map.frag.spv
+END
 
-// This cubemap material will simply test the irradiance map so we can see it
-name:	irradiance
+// test any cubemap texture
+name:	testCubemapMat
 vert:	cubemap.vert.spv
 frag:	cubemap.frag.spv
 bind:	0
 	type:	COMBINED_IMAGE_SAMPLER
 	stage:	FRAGMENT
-	path:	irradianceMap
+	path:	prefilteredEnvironmentMap
 	format:	R32G32B32A32_SFLOAT
 END
 

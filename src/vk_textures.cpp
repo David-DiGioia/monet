@@ -8,6 +8,18 @@
 #define STB_IMAGE_IMPLEMENTATION
 #include "stb_image.h"
 
+uint32_t vkutil::get_mip_levels(uint32_t width, uint32_t height)
+{
+	return static_cast<uint32_t>(std::floor(std::log2((std::max(width, height))))) + 1;
+}
+
+VkExtent2D vkutil::next_mip_level_extent(VkExtent2D extent)
+{
+	extent.width = extent.width > 1 ? extent.width / 2 : 1;
+	extent.height = extent.height > 1 ? extent.height / 2 : 1;
+	return extent;
+}
+
 // expects all mip layers to currently be in TRANSFER_DST layout and
 // will leave it in TRANSFER_SRC layout when the function returns
 void vkutil::generateMipmaps(VkCommandBuffer cmd, VkImage image, int32_t texWidth, int32_t texHeight, uint32_t mipLevels)
@@ -119,7 +131,7 @@ bool vkutil::load_image_from_file(VulkanEngine& engine, const char* file, Alloca
 	imageExtent.height = static_cast<uint32_t>(texHeight);
 	imageExtent.depth = 1;
 	// HDRIs should not be mipmapped
-	uint32_t mipLevels{ hdri ? 1 : static_cast<uint32_t>(std::floor(std::log2((std::max(texWidth, texHeight))))) + 1 };
+	uint32_t mipLevels{ hdri ? 1 : get_mip_levels(texWidth, texHeight) };
 	*outMipLevels = mipLevels;
 
 	VkImageCreateInfo dimg_info{ vkinit::image_create_info(format, VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_TRANSFER_SRC_BIT, imageExtent, mipLevels) };

@@ -90,10 +90,10 @@ void VulkanEngine::init()
 void VulkanEngine::init_gui_data()
 {
 	_guiData.light0.position = { 1.0, 3.9, 3.3, 1.0 };
-	_guiData.light0.color = { 1.0, 1.0, 0.8, 67.0 };
+	_guiData.light0.color = { 0.0, 0.0, 0.0, 67.0 };
 
 	_guiData.light1.position = { 7.5, 10.0, 0.0, 1.0 };
-	_guiData.light1.color = { 1.0, 0.3, 0.3, 47.0 };
+	_guiData.light1.color = { 0.0, 0.0, 0.0, 47.0 };
 
 	_guiData.bedAngle = 0.0f;
 }
@@ -172,7 +172,7 @@ void VulkanEngine::init_scene()
 
 	RenderObject cube{};
 	cube.mesh = get_mesh("cube");
-	cube.material = get_material("cubemap");
+	cube.material = get_material("testCubemapMat");
 	cube.transformMatrix = glm::mat4{ 1.0 };
 	_renderables.insert(cube);
 
@@ -189,7 +189,7 @@ void VulkanEngine::init_scene()
 	RenderObject plane{};
 	plane.mesh = get_mesh("plane");
 	plane.material = get_material("default");
-	glm::mat4 translate2{ glm::translate(glm::mat4{ 1.0 }, glm::vec3(0.0, -2.0, 0.0)) };
+	glm::mat4 translate2{ glm::translate(glm::mat4{ 1.0 }, glm::vec3(0.0, 0.0, 0.0)) };
 	glm::mat4 scale2{ glm::scale(glm::mat4{1.0}, glm::vec3{3.0}) };
 	glm::mat4 rot2{ glm::rotate(0.0f, glm::vec3{1.0, 0.0, 0.0}) };
 	plane.transformMatrix = translate2 * scale2 * rot2;
@@ -421,7 +421,7 @@ void VulkanEngine::load_materials()
 		uint32_t bindingIdx{ 0 };
 
 		// cubemap variables
-		std::string cubemapMaterial, cubemapTexName, cubeVertPath, cubeFragPath;
+		std::string cubemapMaterial, cubemapTexName, useMipmap, cubeVertPath, cubeFragPath;
 		uint32_t cubemapRes{};
 
 		bool blockComment{ false };
@@ -461,7 +461,7 @@ void VulkanEngine::load_materials()
 				info.fragPath = prefix + shader;
 			} else if (field == "cube:") {
 				std::string cubemapResStr;
-				file >> cubemapMaterial >> cubemapTexName >> cubemapResStr >> cubeVertPath >> cubeFragPath;
+				file >> cubemapMaterial >> cubemapTexName >> cubemapResStr >> useMipmap >> cubeVertPath >> cubeFragPath;
 				std::cout << "Loading cubemap '" << cubemapTexName << "'\n";
 				cubemapRes = static_cast<uint32_t>(std::stoul(cubemapResStr));
 			} else if (field == "bind:") {
@@ -519,9 +519,10 @@ void VulkanEngine::load_materials()
 			VkExtent2D textureRes{};
 			textureRes.width = cubemapRes;
 			textureRes.height = cubemapRes;
+			bool useMip{ useMipmap == "true" };
 
 			Material* cubemapMat{ get_material(cubemapMaterial) };
-			Texture cubemap{ create_cubemap(*this, cubemapMat->textureSet, textureRes, cubeVertPath, cubeFragPath) };
+			Texture cubemap{ create_cubemap(*this, cubemapMat->textureSet, textureRes, useMip, cubeVertPath, cubeFragPath) };
 
 			_loadedTextures[cubemapTexName] = cubemap;
 		}
