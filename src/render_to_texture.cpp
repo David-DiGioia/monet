@@ -1,4 +1,4 @@
-#include "hdri.h"
+#include "render_to_texture.h"
 
 #include <iostream>
 #include <array>
@@ -9,9 +9,10 @@
 #include "glm/gtx/transform.hpp"
 
 // 6 faces per cube, 2 traingles per face, 3 vertices per triangle
-constexpr uint32_t NUM_VERTICES{ 6 * 2 * 3 };
+constexpr uint32_t NUM_VERTICES_PLANE{ 2 * 3 };
+constexpr uint32_t NUM_VERTICES_CUBE{ 6 * NUM_VERTICES_PLANE };
 
-glm::vec3 vertexData[NUM_VERTICES]{
+glm::vec3 vertexDataCube[NUM_VERTICES_CUBE]{
 	// front
 	{ 1.0, -1.0,  1.0}, {-1.0,  1.0,  1.0}, {-1.0, -1.0,  1.0},
 	{ 1.0, -1.0,  1.0}, { 1.0,  1.0,  1.0}, {-1.0,  1.0,  1.0},
@@ -37,6 +38,11 @@ glm::vec3 vertexData[NUM_VERTICES]{
 	{-1.0,  1.0, -1.0}, {-1.0, -1.0, -1.0}, {-1.0, -1.0,  1.0},
 };
 
+glm::vec3 vertexDataPlane[NUM_VERTICES_PLANE]{
+	{ 1.0, -1.0,  0.5}, {-1.0,  1.0,  0.5}, {-1.0, -1.0,  0.5},
+	{ 1.0, -1.0,  0.5}, { 1.0,  1.0,  0.5}, {-1.0,  1.0,  0.5},
+};
+
 struct PushConstantData
 {
 	glm::mat4 rotMat;
@@ -58,7 +64,7 @@ glm::mat4 rotationMatrices[6]{
 	rotate180 * glm::rotate(glm::radians(90.0f), glm::vec3{0.0, 1.0, 0.0}),		// left
 };
 
-void create_cc_framebuffer(VulkanEngine& engine, VkRenderPass renderpass, VkExtent2D extent, VkImageView attachment, VkFramebuffer* outFramebuffer)
+void create_rt_framebuffer(VulkanEngine& engine, VkRenderPass renderpass, VkExtent2D extent, VkImageView attachment, VkFramebuffer* outFramebuffer)
 {
 	VkFramebufferCreateInfo info{};
 	info.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
@@ -73,7 +79,7 @@ void create_cc_framebuffer(VulkanEngine& engine, VkRenderPass renderpass, VkExte
 	vkCreateFramebuffer(engine._device, &info, nullptr, outFramebuffer);
 }
 
-void create_cc_renderpass(VulkanEngine& engine, VkFormat format, VkRenderPass* outRenderpass)
+void create_rt_renderpass(VulkanEngine& engine, VkFormat format, VkRenderPass* outRenderpass)
 {
 	VkAttachmentDescription attachment{};
 	attachment.format = format;
@@ -113,7 +119,7 @@ void create_cc_renderpass(VulkanEngine& engine, VkFormat format, VkRenderPass* o
 	vkCreateRenderPass(engine._device, &info, nullptr, outRenderpass);
 }
 
-void create_cc_pipeline_layout(VulkanEngine& engine, VkDescriptorSetLayout layout, VkPipelineLayout* outLayout)
+void create_rt_pipeline_layout(VulkanEngine& engine, VkDescriptorSetLayout layout, VkPipelineLayout* outLayout)
 {
 	VkPushConstantRange pushConstant{};
 	pushConstant.offset = 0;
@@ -134,7 +140,7 @@ void create_cc_pipeline_layout(VulkanEngine& engine, VkDescriptorSetLayout layou
 
 // todo: cleanup this pipeline creation, then test that everything is working for 1 face of the cube, then put in loop for all 6 faces!!!!!!!!!!!!!
 
-void create_cc_pipeline(VulkanEngine& engine, VkRenderPass renderpass, VkExtent2D extent, VkPipelineLayout layout, VkPipeline* outPipeline, const std::string& vertPath, const std::string& fragPath)
+void create_rt_pipeline(VulkanEngine& engine, VkRenderPass renderpass, VkExtent2D extent, VkPipelineLayout layout, VkPipeline* outPipeline, const std::string& vertPath, const std::string& fragPath)
 {
 	std::string prefix{ "../../shaders/" };
 
@@ -198,19 +204,19 @@ void create_cc_pipeline(VulkanEngine& engine, VkRenderPass renderpass, VkExtent2
 	vkDestroyShaderModule(engine._device, fragShader, nullptr);
 }
 
-AllocatedBuffer create_cc_vertex_buffer(VulkanEngine& engine, size_t bufferSize, void* cpuArray)
+AllocatedBuffer create_rt_vertex_buffer(VulkanEngine& engine, size_t bufferSize, void* cpuArray)
 {
 	AllocatedBuffer vertexBuffer{ engine.create_buffer(bufferSize, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, VMA_MEMORY_USAGE_CPU_TO_GPU) };
 
 	void* data;
 	vmaMapMemory(engine._allocator, vertexBuffer._allocation, &data);
-	std::memcpy(data, vertexData, bufferSize);
+	std::memcpy(data, cpuArray, bufferSize);
 	vmaUnmapMemory(engine._allocator, vertexBuffer._allocation);
 
 	return vertexBuffer;
 }
 
-void create_cc_cubemap_image(VulkanEngine& engine, VkExtent2D extent, VkFormat format, uint32_t mipLevels, AllocatedImage* outCubemap)
+void create_rt_image(VulkanEngine& engine, VkExtent2D extent, VkFormat format, uint32_t mipLevels, bool isCubemap, AllocatedImage* outCubemap)
 {
 	VkExtent3D extent3D{};
 	extent3D.depth = 1;
@@ -220,8 +226,6 @@ void create_cc_cubemap_image(VulkanEngine& engine, VkExtent2D extent, VkFormat f
 	VkImageCreateInfo cubemapInfo{};
 	cubemapInfo.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
 	cubemapInfo.pNext = nullptr;
-	cubemapInfo.flags = VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT;
-	cubemapInfo.arrayLayers = 6;
 	cubemapInfo.extent = extent3D;
 	cubemapInfo.format = format;
 	cubemapInfo.imageType = VK_IMAGE_TYPE_2D;
@@ -231,6 +235,13 @@ void create_cc_cubemap_image(VulkanEngine& engine, VkExtent2D extent, VkFormat f
 	cubemapInfo.tiling = VK_IMAGE_TILING_OPTIMAL;
 	cubemapInfo.usage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT;
 
+	if (isCubemap) {
+		cubemapInfo.arrayLayers = 6;
+		cubemapInfo.flags = VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT;
+	} else {
+		cubemapInfo.arrayLayers = 1;
+	}
+
 	VmaAllocationCreateInfo allocInfo{};
 	allocInfo.usage = VMA_MEMORY_USAGE_GPU_ONLY;
 	allocInfo.requiredFlags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
@@ -238,7 +249,7 @@ void create_cc_cubemap_image(VulkanEngine& engine, VkExtent2D extent, VkFormat f
 	vmaCreateImage(engine._allocator, &cubemapInfo, &allocInfo, &outCubemap->_image, &outCubemap->_allocation, nullptr);
 }
 
-Texture create_cubemap(VulkanEngine& engine, VkDescriptorSet equirectangularSet, VkExtent2D extent, bool useMipmap, const std::string& vertPath, const std::string& fragPath)
+Texture render_to_texture(VulkanEngine& engine, VkDescriptorSet equirectangularSet, VkExtent2D extent, bool useMipmap, bool isCubemap, const std::string& vertPath, const std::string& fragPath)
 {
 	VkFormat hdriFormat{ VK_FORMAT_R32G32B32A32_SFLOAT };
 
@@ -263,37 +274,39 @@ Texture create_cubemap(VulkanEngine& engine, VkDescriptorSet equirectangularSet,
 	});
 
 	VkPipelineLayout pipelineLayout;
-	create_cc_pipeline_layout(engine, setLayout, &pipelineLayout);
+	create_rt_pipeline_layout(engine, setLayout, &pipelineLayout);
 	engine._mainDeletionQueue.push_function([=, &engine]() {
 		vkDestroyPipelineLayout(engine._device, pipelineLayout, nullptr);
 	});
 
 	VkRenderPass renderpass;
-	create_cc_renderpass(engine, hdriFormat, &renderpass);
+	create_rt_renderpass(engine, hdriFormat, &renderpass);
 	engine._mainDeletionQueue.push_function([=, &engine]() {
 		vkDestroyRenderPass(engine._device, renderpass, nullptr);
 	});
 
-	AllocatedImage cubemapImage;
-	create_cc_cubemap_image(engine, extent, hdriFormat, mipLevels, &cubemapImage);
+	AllocatedImage allocatedImage;
+	create_rt_image(engine, extent, hdriFormat, mipLevels, isCubemap, &allocatedImage);
 	engine._mainDeletionQueue.push_function([=, &engine]() {
-		vmaDestroyImage(engine._allocator, cubemapImage._image, cubemapImage._allocation);
+		vmaDestroyImage(engine._allocator, allocatedImage._image, allocatedImage._allocation);
 	});
 
-
-	AllocatedBuffer vertexBuffer{ create_cc_vertex_buffer(engine, NUM_VERTICES * sizeof(glm::vec3), vertexData) };
+	uint32_t numVertices{ isCubemap ? NUM_VERTICES_CUBE : NUM_VERTICES_PLANE };
+	glm::vec3* vertexData{ isCubemap ? vertexDataCube : vertexDataPlane };
+	AllocatedBuffer vertexBuffer{ create_rt_vertex_buffer(engine, numVertices * sizeof(glm::vec3), vertexData) };
 	engine._mainDeletionQueue.push_function([=, &engine]() {
 		vmaDestroyBuffer(engine._allocator, vertexBuffer._buffer, vertexBuffer._allocation);
 	});
 
 	for (auto mipLevel{ 0 }; mipLevel < mipLevels; ++mipLevel) {
 		VkPipeline pipeline;
-		create_cc_pipeline(engine, renderpass, extent, pipelineLayout, &pipeline, vertPath, fragPath);
+		create_rt_pipeline(engine, renderpass, extent, pipelineLayout, &pipeline, vertPath, fragPath);
 		engine._mainDeletionQueue.push_function([=, &engine]() {
 			vkDestroyPipeline(engine._device, pipeline, nullptr);
 		});
 
-		for (auto layer{ 0 }; layer < 6; ++layer) {
+		uint32_t numLayers{ isCubemap ? 6u : 1u };
+		for (auto layer{ 0 }; layer < numLayers; ++layer) {
 
 			VkImageViewUsageCreateInfo viewUsage{};
 			viewUsage.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_USAGE_CREATE_INFO;
@@ -305,7 +318,7 @@ Texture create_cubemap(VulkanEngine& engine, VkDescriptorSet equirectangularSet,
 			attachmentViewInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
 			attachmentViewInfo.pNext = &viewUsage;
 			attachmentViewInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
-			attachmentViewInfo.image = cubemapImage._image;
+			attachmentViewInfo.image = allocatedImage._image;
 			attachmentViewInfo.format = hdriFormat;
 			// using subresourceRange you can let the image view look at only particular layers of the image
 			attachmentViewInfo.subresourceRange.baseMipLevel = mipLevel;
@@ -321,7 +334,7 @@ Texture create_cubemap(VulkanEngine& engine, VkDescriptorSet equirectangularSet,
 			});
 
 			VkFramebuffer framebuffer;
-			create_cc_framebuffer(engine, renderpass, extent, attachmentView, &framebuffer);
+			create_rt_framebuffer(engine, renderpass, extent, attachmentView, &framebuffer);
 			engine._mainDeletionQueue.push_function([=, &engine]() {
 				vkDestroyFramebuffer(engine._device, framebuffer, nullptr);
 			});
@@ -363,7 +376,7 @@ Texture create_cubemap(VulkanEngine& engine, VkDescriptorSet equirectangularSet,
 				VkDeviceSize offset{ 0 };
 				vkCmdBindVertexBuffers(cmd, 0, 1, &vertexBuffer._buffer, &offset);
 
-				vkCmdDraw(cmd, NUM_VERTICES, 1, 0, 0);
+				vkCmdDraw(cmd, numVertices, 1, 0, 0);
 
 				vkCmdEndRenderPass(cmd);
 			});
@@ -373,42 +386,34 @@ Texture create_cubemap(VulkanEngine& engine, VkDescriptorSet equirectangularSet,
 	}
 
 	// This is the final image view, viewing all 6 layers of the image as a cube
-	VkImageViewCreateInfo cubemapViewInfo{};
-	cubemapViewInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
-	cubemapViewInfo.pNext = nullptr;
-	cubemapViewInfo.viewType = VK_IMAGE_VIEW_TYPE_CUBE;
-	cubemapViewInfo.image = cubemapImage._image;
-	cubemapViewInfo.format = hdriFormat;
-	cubemapViewInfo.subresourceRange.baseMipLevel = 0;
-	cubemapViewInfo.subresourceRange.levelCount = mipLevels;
-	cubemapViewInfo.subresourceRange.baseArrayLayer = 0;
-	cubemapViewInfo.subresourceRange.layerCount = 6;
-	cubemapViewInfo.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+	VkImageViewCreateInfo textureViewInfo{};
+	textureViewInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+	textureViewInfo.pNext = nullptr;
+	textureViewInfo.image = allocatedImage._image;
+	textureViewInfo.format = hdriFormat;
+	textureViewInfo.subresourceRange.baseMipLevel = 0;
+	textureViewInfo.subresourceRange.levelCount = mipLevels;
+	textureViewInfo.subresourceRange.baseArrayLayer = 0;
+	textureViewInfo.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
 
-	// DEBUG!!! USE PREVIOUS VERSION FOR ACTUAL CUBEMAP
-	//VkImageViewCreateInfo cubemapViewInfo{};
-	//cubemapViewInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
-	//cubemapViewInfo.pNext = nullptr;
-	//cubemapViewInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
-	//cubemapViewInfo.image = cubemapImage._image;
-	//cubemapViewInfo.format = hdriFormat;
-	//cubemapViewInfo.subresourceRange.baseMipLevel = 0;
-	//cubemapViewInfo.subresourceRange.levelCount = 1;
-	//cubemapViewInfo.subresourceRange.baseArrayLayer = 1;
-	//cubemapViewInfo.subresourceRange.layerCount = 1;
-	//cubemapViewInfo.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+	if (isCubemap) {
+		textureViewInfo.viewType = VK_IMAGE_VIEW_TYPE_CUBE;
+		textureViewInfo.subresourceRange.layerCount = 6;
+	} else {
+		textureViewInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
+		textureViewInfo.subresourceRange.layerCount = 1;
+	}
 
-
-	VkImageView cubemapView;
-	VK_CHECK(vkCreateImageView(engine._device, &cubemapViewInfo, nullptr, &cubemapView));
+	VkImageView textureView;
+	VK_CHECK(vkCreateImageView(engine._device, &textureViewInfo, nullptr, &textureView));
 	engine._mainDeletionQueue.push_function([=, &engine]() {
-		vkDestroyImageView(engine._device, cubemapView, nullptr);
+		vkDestroyImageView(engine._device, textureView, nullptr);
 	});
 
-	Texture cubemapTex{};
-	cubemapTex.image = cubemapImage;
-	cubemapTex.imageView = cubemapView;
-	cubemapTex.mipLevels = mipLevels;
+	Texture texture{};
+	texture.image = allocatedImage;
+	texture.imageView = textureView;
+	texture.mipLevels = mipLevels;
 
-	return cubemapTex;
+	return texture;
 }

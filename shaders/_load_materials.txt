@@ -1,12 +1,14 @@
 /*
 The first two descriptor sets (for camera/scene data and object matrices) are common to all objects, so for the material we only describe the bindings to descriptor set 2
-cubemap syntax:
 
-cube:
+render to texture syntax:
+
+render_to_texture:
 material_to_sample_from
 out_texture_name
 out_texture_resolution
 use_mip_map
+is_cube_map
 vertex_shader_path
 fragment_shader_path
 END
@@ -25,11 +27,12 @@ bind:	0
 END
 
 // first create normal cubemap
-cube:
+render_to_texture:
 equirectangular
 cubemap
 1024
 false
+true
 equirect_to_cubemap.vert.spv
 equirect_to_cubemap.frag.spv
 END
@@ -47,23 +50,36 @@ bind:	0
 END
 
 // now create the irradiance map sampling from the cubemap material we just made
-cube:
+render_to_texture:
 cubemap
 irradianceMap
 512
 false
+true
 cubemap_to_irradiance.vert.spv
 cubemap_to_irradiance.frag.spv
 END
 
 // now create pre-filtered environment map
-cube:
+render_to_texture:
 cubemap
-prefilteredEnvironmentMap
+prefiltered_environment_map
 256
 true
+true
 cubemap_to_irradiance.vert.spv
-BRDF_integration_map.frag.spv
+prefilter_environment.frag.spv
+END
+
+// create integrated brdf map
+render_to_texture:
+cubemap
+integrated_brdf_map
+512
+false
+false
+cubemap_to_irradiance.vert.spv
+integrate_brdf.frag.spv
 END
 
 // test any cubemap texture
@@ -73,9 +89,11 @@ frag:	cubemap.frag.spv
 bind:	0
 	type:	COMBINED_IMAGE_SAMPLER
 	stage:	FRAGMENT
-	path:	prefilteredEnvironmentMap
+	path:	prefiltered_environment_map
 	format:	R32G32B32A32_SFLOAT
 END
+
+// ----------------------------------------------------------------------------------------
 
 name:	default
 vert:	pbr.vert.spv
@@ -84,7 +102,8 @@ frag:	pbr.frag.spv
 bind:	0
 	type:	COMBINED_IMAGE_SAMPLER
 	stage:	FRAGMENT
-	path:	_default/textures/_diff.png
+//	path:	_default/textures/_diff.png
+	path:	integrated_brdf_map
 	format:	R8G8B8A8_SRGB
 // normal
 bind:	1

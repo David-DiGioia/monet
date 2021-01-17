@@ -22,7 +22,7 @@
 #include "imgui.h"
 #include "imgui_impl_sdl.h"
 #include "imgui_impl_vulkan.h"
-#include "hdri.h"
+#include "render_to_texture.h"
 
 #define VMA_IMPLEMENTATION
 #include "vk_mem_alloc.h"
@@ -421,7 +421,7 @@ void VulkanEngine::load_materials()
 		uint32_t bindingIdx{ 0 };
 
 		// cubemap variables
-		std::string cubemapMaterial, cubemapTexName, useMipmap, cubeVertPath, cubeFragPath;
+		std::string cubemapMaterial, cubemapTexName, useMipmap, isCubemap, cubeVertPath, cubeFragPath;
 		uint32_t cubemapRes{};
 
 		bool blockComment{ false };
@@ -459,10 +459,10 @@ void VulkanEngine::load_materials()
 				std::string shader;
 				ss >> shader;
 				info.fragPath = prefix + shader;
-			} else if (field == "cube:") {
+			} else if (field == "render_to_texture:") {
 				std::string cubemapResStr;
-				file >> cubemapMaterial >> cubemapTexName >> cubemapResStr >> useMipmap >> cubeVertPath >> cubeFragPath;
-				std::cout << "Loading cubemap '" << cubemapTexName << "'\n";
+				file >> cubemapMaterial >> cubemapTexName >> cubemapResStr >> useMipmap >> isCubemap >> cubeVertPath >> cubeFragPath;
+				std::cout << "Rendering to texture '" << cubemapTexName << "'\n";
 				cubemapRes = static_cast<uint32_t>(std::stoul(cubemapResStr));
 			} else if (field == "bind:") {
 				VkDescriptorSetLayoutBinding binding{};
@@ -520,9 +520,10 @@ void VulkanEngine::load_materials()
 			textureRes.width = cubemapRes;
 			textureRes.height = cubemapRes;
 			bool useMip{ useMipmap == "true" };
+			bool isCube{ isCubemap == "true" };
 
 			Material* cubemapMat{ get_material(cubemapMaterial) };
-			Texture cubemap{ create_cubemap(*this, cubemapMat->textureSet, textureRes, useMip, cubeVertPath, cubeFragPath) };
+			Texture cubemap{ render_to_texture(*this, cubemapMat->textureSet, textureRes, useMip, isCube, cubeVertPath, cubeFragPath) };
 
 			_loadedTextures[cubemapTexName] = cubemap;
 		}
