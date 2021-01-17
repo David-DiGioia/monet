@@ -178,6 +178,46 @@ void VulkanEngine::init_scene()
 	glm::mat4 scale;
 	glm::mat4 rotate;
 
+	// coffee cart scene
+	scale = glm::scale(glm::mat4{ 1.0 }, glm::vec3{ 5.0 });
+
+	RenderObject cart{};
+	cart.mesh = get_mesh("coffee_cart");
+	cart.material = get_material("coffee_cart");
+	cart.transformMatrix = scale;
+	_renderables.insert(cart);
+
+	RenderObject accessories{};
+	accessories.mesh = get_mesh("coffee_accessories");
+	accessories.material = get_material("coffee_accessories");
+	accessories.transformMatrix = scale;
+	_renderables.insert(accessories);
+
+	// camera scene
+	/*
+	scale = glm::scale(glm::mat4{ 1.0 }, glm::vec3{ 5.0 });
+
+	RenderObject camera{};
+	camera.mesh = get_mesh("camera");
+	camera.material = get_material("camera");
+	camera.transformMatrix = scale;
+	_renderables.insert(camera);
+
+	RenderObject lense{};
+	lense.mesh = get_mesh("camera_lense");
+	lense.material = get_material("camera_lense");
+	lense.transformMatrix = scale;
+	_renderables.insert(lense);
+
+	RenderObject strap{};
+	strap.mesh = get_mesh("camera_strap");
+	strap.material = get_material("camera_strap");
+	strap.transformMatrix = scale;
+	_renderables.insert(strap);
+	*/
+
+	// Furniture scene
+	/*
 	RenderObject bed{};
 	bed.mesh = get_mesh("bed");
 	bed.material = get_material("bed");
@@ -211,6 +251,7 @@ void VulkanEngine::init_scene()
 	rotate = glm::rotate(0.0f, glm::vec3{1.0, 0.0, 0.0});
 	plane.transformMatrix = translate * scale * rotate;
 	_renderables.insert(plane);
+	*/
 }
 
 void VulkanEngine::immediate_submit(std::function<void(VkCommandBuffer cmd)>&& function)
@@ -1296,10 +1337,10 @@ void VulkanEngine::draw_objects(VkCommandBuffer cmd, const std::multiset<RenderO
 	std::memcpy(sceneData, &_sceneParameters, sizeof(GPUSceneData));
 	vmaUnmapMemory(_allocator, _sceneParameterBuffer._allocation);
 
-	glm::mat4 bedTranslate{ glm::translate(glm::mat4{ 1.0 }, glm::vec3(0.0, 0.0, 0.0)) };
-	glm::mat4 bedScale{ glm::scale(glm::mat4{1.0}, glm::vec3{1.0}) };
-	glm::mat4 bedRotate{ glm::rotate(_guiData.bedAngle, glm::vec3{ 0.0, 1.0, 0.0 }) };
-	_guiData.bed->transformMatrix = bedTranslate * bedScale * bedRotate;
+	//glm::mat4 bedTranslate{ glm::translate(glm::mat4{ 1.0 }, glm::vec3(0.0, 0.0, 0.0)) };
+	//glm::mat4 bedScale{ glm::scale(glm::mat4{1.0}, glm::vec3{1.0}) };
+	//glm::mat4 bedRotate{ glm::rotate(_guiData.bedAngle, glm::vec3{ 0.0, 1.0, 0.0 }) };
+	//_guiData.bed->transformMatrix = bedTranslate * bedScale * bedRotate;
 
 	// write all the objects' matrices into the SSBO
 	void* objectData;

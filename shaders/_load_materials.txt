@@ -21,8 +21,6 @@ frag:	equirectangular.frag.spv
 bind:	0
 	type:	COMBINED_IMAGE_SAMPLER
 	stage:	FRAGMENT
-//	path:	../hdri/red_hill_curve_4k.hdr
-//	path:	../hdri/forest_slope_1k.hdr
 	path:	../hdri/small_cathedral_02_4k.hdr
 	format:	R32G32B32A32_SFLOAT
 END
@@ -90,12 +88,294 @@ frag:	cubemap.frag.spv
 bind:	0
 	type:	COMBINED_IMAGE_SAMPLER
 	stage:	FRAGMENT
-	path:	cubemap
+	path:	prefiltered_environment_map
 	format:	R32G32B32A32_SFLOAT
 END
 
 // ----------------------------------------------------------------------------------------
 
+
+// coffee cart scene
+name:	coffee_cart
+vert:	pbr.vert.spv
+frag:	pbr.frag.spv
+// diffuse
+bind:	0
+	type:	COMBINED_IMAGE_SAMPLER
+	stage:	FRAGMENT
+	path:	coffee_cart/textures/Kitchen_Cart_Base_Color.png
+	format:	R8G8B8A8_SRGB
+// normal
+bind:	1
+	type:	COMBINED_IMAGE_SAMPLER
+	stage:	FRAGMENT
+	path:	coffee_cart/textures/Kitchen_Cart_Normal_DirectX.png
+	format:	R8G8B8A8_UNORM
+// roughness
+bind:	2
+	type:	COMBINED_IMAGE_SAMPLER
+	stage:	FRAGMENT
+	path:	coffee_cart/textures/Kitchen_Cart_Roughness.png
+	format:	R8G8B8A8_UNORM
+// ao
+bind:	3
+	type:	COMBINED_IMAGE_SAMPLER
+	stage:	FRAGMENT
+	path:	_default/textures/_ao__.png
+	format:	R8G8B8A8_UNORM
+// metallic
+bind:	4
+	type:	COMBINED_IMAGE_SAMPLER
+	stage:	FRAGMENT
+	path:	coffee_cart/textures/Kitchen_Cart_Metallic.png
+	format:	R8G8B8A8_UNORM
+
+// irradiance map
+bind:	5
+	type:	COMBINED_IMAGE_SAMPLER
+	stage:	FRAGMENT
+	path:	irradiance_map
+	format:	R32G32B32A32_SFLOAT
+// prefiltered map
+bind:	6
+	type:	COMBINED_IMAGE_SAMPLER
+	stage:	FRAGMENT
+	path:	prefiltered_environment_map
+	format:	R32G32B32A32_SFLOAT
+// BRDF LUT
+bind:	7
+	type:	COMBINED_IMAGE_SAMPLER
+	stage:	FRAGMENT
+	path:	integrated_brdf_map
+	format:	R32G32B32A32_SFLOAT
+END
+
+
+name:	coffee_accessories
+vert:	pbr.vert.spv
+frag:	pbr.frag.spv
+// diffuse
+bind:	0
+	type:	COMBINED_IMAGE_SAMPLER
+	stage:	FRAGMENT
+	path:	coffee_accessories/textures/Accessories_Base_Color.png
+	format:	R8G8B8A8_SRGB
+// normal
+bind:	1
+	type:	COMBINED_IMAGE_SAMPLER
+	stage:	FRAGMENT
+	path:	coffee_accessories/textures/Accessories_Normal_DirectX.png
+	format:	R8G8B8A8_UNORM
+// roughness
+bind:	2
+	type:	COMBINED_IMAGE_SAMPLER
+	stage:	FRAGMENT
+	path:	coffee_accessories/textures/Accessories_Roughness.png
+	format:	R8G8B8A8_UNORM
+// ao
+bind:	3
+	type:	COMBINED_IMAGE_SAMPLER
+	stage:	FRAGMENT
+	path:	_default/textures/_ao__.png
+	format:	R8G8B8A8_UNORM
+// metallic
+bind:	4
+	type:	COMBINED_IMAGE_SAMPLER
+	stage:	FRAGMENT
+	path:	coffee_accessories/textures/Accessories_Metallic.png
+	format:	R8G8B8A8_UNORM
+
+// irradiance map
+bind:	5
+	type:	COMBINED_IMAGE_SAMPLER
+	stage:	FRAGMENT
+	path:	irradiance_map
+	format:	R32G32B32A32_SFLOAT
+// prefiltered map
+bind:	6
+	type:	COMBINED_IMAGE_SAMPLER
+	stage:	FRAGMENT
+	path:	prefiltered_environment_map
+	format:	R32G32B32A32_SFLOAT
+// BRDF LUT
+bind:	7
+	type:	COMBINED_IMAGE_SAMPLER
+	stage:	FRAGMENT
+	path:	integrated_brdf_map
+	format:	R32G32B32A32_SFLOAT
+END
+
+
+// camera scene
+/*
+name:	camera
+vert:	pbr.vert.spv
+frag:	pbr.frag.spv
+// diffuse
+bind:	0
+	type:	COMBINED_IMAGE_SAMPLER
+	stage:	FRAGMENT
+	path:	camera/textures/Camera_01_8-bit_Diffuse.png
+	format:	R8G8B8A8_SRGB
+// normal
+bind:	1
+	type:	COMBINED_IMAGE_SAMPLER
+	stage:	FRAGMENT
+	path:	camera/textures/Camera_01_8-bit_Normal.png
+	format:	R8G8B8A8_UNORM
+// roughness
+bind:	2
+	type:	COMBINED_IMAGE_SAMPLER
+	stage:	FRAGMENT
+	path:	camera/textures/Camera_01_8-bit_Roughness.png
+	format:	R8G8B8A8_UNORM
+// ao
+bind:	3
+	type:	COMBINED_IMAGE_SAMPLER
+	stage:	FRAGMENT
+	path:	_default/textures/_ao__.png
+	format:	R8G8B8A8_UNORM
+// metallic
+bind:	4
+	type:	COMBINED_IMAGE_SAMPLER
+	stage:	FRAGMENT
+	path:	camera/textures/Camera_01_8-bit_Metallic.png
+	format:	R8G8B8A8_UNORM
+
+// irradiance map
+bind:	5
+	type:	COMBINED_IMAGE_SAMPLER
+	stage:	FRAGMENT
+	path:	irradiance_map
+	format:	R32G32B32A32_SFLOAT
+// prefiltered map
+bind:	6
+	type:	COMBINED_IMAGE_SAMPLER
+	stage:	FRAGMENT
+	path:	prefiltered_environment_map
+	format:	R32G32B32A32_SFLOAT
+// BRDF LUT
+bind:	7
+	type:	COMBINED_IMAGE_SAMPLER
+	stage:	FRAGMENT
+	path:	integrated_brdf_map
+	format:	R32G32B32A32_SFLOAT
+END
+
+
+name:	camera_lense
+vert:	pbr.vert.spv
+frag:	pbr.frag.spv
+// diffuse
+bind:	0
+	type:	COMBINED_IMAGE_SAMPLER
+	stage:	FRAGMENT
+	path:	camera_lense/textures/Camera_01_Lens_8-bit_Diffuse.png
+	format:	R8G8B8A8_SRGB
+// normal
+bind:	1
+	type:	COMBINED_IMAGE_SAMPLER
+	stage:	FRAGMENT
+	path:	camera_lense/textures/Camera_01_Lens_8-bit_Normal.png
+	format:	R8G8B8A8_UNORM
+// roughness
+bind:	2
+	type:	COMBINED_IMAGE_SAMPLER
+	stage:	FRAGMENT
+	path:	camera_lense/textures/Camera_01_Lens_8-bit_Roughness.png
+	format:	R8G8B8A8_UNORM
+// ao
+bind:	3
+	type:	COMBINED_IMAGE_SAMPLER
+	stage:	FRAGMENT
+	path:	_default/textures/_ao__.png
+	format:	R8G8B8A8_UNORM
+// metallic
+bind:	4
+	type:	COMBINED_IMAGE_SAMPLER
+	stage:	FRAGMENT
+	path:	camera_lense/textures/Camera_01_Lens_8-bit_Metallic.png
+	format:	R8G8B8A8_UNORM
+
+// irradiance map
+bind:	5
+	type:	COMBINED_IMAGE_SAMPLER
+	stage:	FRAGMENT
+	path:	irradiance_map
+	format:	R32G32B32A32_SFLOAT
+// prefiltered map
+bind:	6
+	type:	COMBINED_IMAGE_SAMPLER
+	stage:	FRAGMENT
+	path:	prefiltered_environment_map
+	format:	R32G32B32A32_SFLOAT
+// BRDF LUT
+bind:	7
+	type:	COMBINED_IMAGE_SAMPLER
+	stage:	FRAGMENT
+	path:	integrated_brdf_map
+	format:	R32G32B32A32_SFLOAT
+END
+
+
+name:	camera_strap
+vert:	pbr.vert.spv
+frag:	pbr.frag.spv
+// diffuse
+bind:	0
+	type:	COMBINED_IMAGE_SAMPLER
+	stage:	FRAGMENT
+	path:	camera_strap/textures/Camera_01_StrapCover_8-bit_Diffuse.png
+	format:	R8G8B8A8_SRGB
+// normal
+bind:	1
+	type:	COMBINED_IMAGE_SAMPLER
+	stage:	FRAGMENT
+	path:	camera_strap/textures/Camera_01_StrapCover_8-bit_Normal.png
+	format:	R8G8B8A8_UNORM
+// roughness
+bind:	2
+	type:	COMBINED_IMAGE_SAMPLER
+	stage:	FRAGMENT
+	path:	camera_strap/textures/Camera_01_StrapCover_8-bit_Roughness.png
+	format:	R8G8B8A8_UNORM
+// ao
+bind:	3
+	type:	COMBINED_IMAGE_SAMPLER
+	stage:	FRAGMENT
+	path:	_default/textures/_ao__.png
+	format:	R8G8B8A8_UNORM
+// metallic
+bind:	4
+	type:	COMBINED_IMAGE_SAMPLER
+	stage:	FRAGMENT
+	path:	camera_strap/textures/Camera_01_StrapCover_8-bit_Metallic.png
+	format:	R8G8B8A8_UNORM
+
+// irradiance map
+bind:	5
+	type:	COMBINED_IMAGE_SAMPLER
+	stage:	FRAGMENT
+	path:	irradiance_map
+	format:	R32G32B32A32_SFLOAT
+// prefiltered map
+bind:	6
+	type:	COMBINED_IMAGE_SAMPLER
+	stage:	FRAGMENT
+	path:	prefiltered_environment_map
+	format:	R32G32B32A32_SFLOAT
+// BRDF LUT
+bind:	7
+	type:	COMBINED_IMAGE_SAMPLER
+	stage:	FRAGMENT
+	path:	integrated_brdf_map
+	format:	R32G32B32A32_SFLOAT
+END
+*/
+
+
+// furniture scene
+/*
 name:	default
 vert:	pbr.vert.spv
 frag:	pbr.frag.spv
@@ -317,3 +597,4 @@ bind:	7
 	path:	integrated_brdf_map
 	format:	R32G32B32A32_SFLOAT
 END
+*/
