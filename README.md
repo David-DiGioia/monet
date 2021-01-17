@@ -1,5 +1,31 @@
 # vulkan-renderer
 
-A Vulkan render engine. Much of the code in this repository is inspired by [Vulkan Guide](https://vkguide.dev/), an excellent tutorial. Many thanks to the authors!
+A C++ render engine made using the Vulkan graphics API.
 
-If you're learning Vulkan, you may find my [Vulkan Diagrams repository](https://github.com/David-DiGioia/vulkan-diagrams) informative.
+The purpose of this project is to learn Vulkan and modern rendering techniques.
+
+## Features
+
+ * PBR lighting form HDRI images, rendering all the necessary maps/LUTs at program startup
+ * PBR lighting from point lights
+ * Dear ImGui support for debugging
+ * Create materials with arbitrary descriptors by only modifying \_load_materials.txt.
+
+## Screenshots
+
+Furniture and ground lit by an HDRI
+![](showcase/furniture_hdri_00.png?raw=true "fence_synchronization")
+![](showcase/furniture_hdri_01.png?raw=true "fence_synchronization")
+
+Camera lit by two different HDRIs
+![](showcase/camera_00.png?raw=true "fence_synchronization")
+
+Coffee cart lit by two different HDRIs
+![](showcase/coffee_cart_00.png?raw=true "fence_synchronization")
+
+## Plans
+
+ * Shadow mapping
+ * Improve HDRI LUTs to reduce noise for small light sources
+ * Multisampling
+ * Cache assets for faster startup
