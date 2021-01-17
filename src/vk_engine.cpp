@@ -163,8 +163,6 @@ void VulkanEngine::init_imgui()
 
 void VulkanEngine::init_scene()
 {
-	// penguin on plane
-
 	_camPos = glm::vec3{ 0.0f, 2.0f, 5.0f };
 	_camRotPhi = 0.0f;
 	_camRotTheta = 0.0f;
@@ -176,72 +174,43 @@ void VulkanEngine::init_scene()
 	cube.transformMatrix = glm::mat4{ 1.0 };
 	_renderables.insert(cube);
 
+	glm::mat4 translate;
+	glm::mat4 scale;
+	glm::mat4 rotate;
+
 	RenderObject bed{};
 	bed.mesh = get_mesh("bed");
 	bed.material = get_material("bed");
-	glm::mat4 translate{ glm::translate(glm::mat4{ 1.0 }, glm::vec3(0.0, 0.0, 0.0)) };
-	glm::mat4 scale{ glm::scale(glm::mat4{1.0}, glm::vec3{3.0, 3.0, 3.0}) };
-	glm::mat4 rotate{ glm::rotate(glm::radians(0.0f), glm::vec3{ 0.0, 1.0, 0.0 }) };
-	bed.transformMatrix = translate * scale * rotate;
+	bed.transformMatrix = glm::mat4(1.0); // change bed transform in render loop
 	_renderables.insert(bed);
 	_guiData.bed = &(*_renderables.find(bed));
+
+	RenderObject sofa{};
+	sofa.mesh = get_mesh("sofa");
+	sofa.material = get_material("sofa");
+	translate = glm::translate(glm::mat4{ 1.0 }, glm::vec3(-2.5, 0.0, 0.4));
+	scale = glm::scale(glm::mat4{1.0}, glm::vec3{1.0});
+	rotate = glm::rotate(glm::radians(110.0f), glm::vec3{ 0.0, 1.0, 0.0 });
+	sofa.transformMatrix = translate * scale * rotate;
+	_renderables.insert(sofa);
+
+	RenderObject chair{};
+	chair.mesh = get_mesh("chair");
+	chair.material = get_material("chair");
+	translate = glm::translate(glm::mat4{ 1.0 }, glm::vec3(-2.1, 0.0, -2.0));
+	scale = glm::scale(glm::mat4{ 1.0 }, glm::vec3{ 1.0 });
+	rotate = glm::rotate(glm::radians(80.0f), glm::vec3{ 0.0, 1.0, 0.0 });
+	chair.transformMatrix = translate * scale * rotate;
+	_renderables.insert(chair);
 
 	RenderObject plane{};
 	plane.mesh = get_mesh("plane");
 	plane.material = get_material("default");
-	glm::mat4 translate2{ glm::translate(glm::mat4{ 1.0 }, glm::vec3(0.0, 0.0, 0.0)) };
-	glm::mat4 scale2{ glm::scale(glm::mat4{1.0}, glm::vec3{3.0}) };
-	glm::mat4 rot2{ glm::rotate(0.0f, glm::vec3{1.0, 0.0, 0.0}) };
-	plane.transformMatrix = translate2 * scale2 * rot2;
+	translate = glm::translate(glm::mat4{ 1.0 }, glm::vec3(0.0, 0.0, 0.0));
+	scale = glm::scale(glm::mat4{1.0}, glm::vec3{1.0});
+	rotate = glm::rotate(0.0f, glm::vec3{1.0, 0.0, 0.0});
+	plane.transformMatrix = translate * scale * rotate;
 	_renderables.insert(plane);
-
-	// minecraft -------------------------------------------------------------------
-
-	//_camPos = glm::vec3{ 0.0f, 12.0f, 10.0f };
-	//RenderObject minecraft{};
-	//minecraft.mesh = get_mesh("minecraft");
-	//minecraft.material = get_material("pbr");
-	//minecraft.transformMatrix = glm::translate(glm::mat4{ 1.0 }, glm::vec3(0.0, 0.0, 0.0));
-	//_renderables.insert(minecraft);
-
-	// penguin monkey --------------------------------------------------------------
-
-	//_camPos = glm::vec3{ 0.0f, 6.0f, 10.0f };
-
-	//RenderObject monkey{};
-	//monkey.mesh = get_mesh("monkey");
-	//monkey.material = get_material("default");
-	//monkey.transformMatrix = glm::translate(glm::mat4{ 1.0 }, glm::vec3(0.0, 5.0, 0.0));
-
-	//_renderables.insert(monkey);
-
-	//uint32_t idx{ 0 };
-
-	//for (auto x{ -40 }; x <= 40; ++x) {
-	//	for (auto y{ -40 }; y <= 40; ++y) {
-	//		RenderObject obj{};
-	//		glm::mat4 scale;
-	//		if (idx % 2) {
-	//			obj.mesh = get_mesh("monkey");
-	//			scale = glm::scale(glm::mat4{ 1.0 }, glm::vec3(0.2, 0.2, 0.2));
-	//		} else {
-	//			obj.mesh = get_mesh("penguin");
-	//			scale = glm::scale(glm::mat4{ 1.0 }, glm::vec3(1.0, 1.0, 1.0));
-	//		}
-	//		if (idx % 3 == 0) {
-	//			obj.material = get_material("default");
-	//		} else if (idx % 3 == 1) {
-	//			obj.material = get_material("textured_lit");
-	//		} else {
-	//			obj.material = get_material("green");
-	//		}
-	//		glm::mat4 translation{ glm::translate(glm::mat4{1.0}, glm::vec3(x, 0, y)) };
-	//		obj.transformMatrix = translation * scale;
-
-	//		_renderables.insert(obj);
-	//		++idx;
-	//	}
-	//}
 }
 
 void VulkanEngine::immediate_submit(std::function<void(VkCommandBuffer cmd)>&& function)
@@ -641,13 +610,13 @@ void VulkanEngine::init_descriptors()
 		{ VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 10 },
 		{ VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, 10 },
 		{ VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 10 },
-		{ VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 10 }
+		{ VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 100 }
 	};
 
 	VkDescriptorPoolCreateInfo pool_info{};
 	pool_info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
 	pool_info.flags = 0;
-	pool_info.maxSets = 10;
+	pool_info.maxSets = 100;
 	pool_info.poolSizeCount = (uint32_t)sizes.size();
 	pool_info.pPoolSizes = sizes.data();
 
@@ -1122,7 +1091,7 @@ Material* VulkanEngine::create_material(const MaterialCreateInfo& info, VkPipeli
 	allocInfo.descriptorSetCount = 1;
 	allocInfo.pSetLayouts = &materialSetLayout;
 
-	vkAllocateDescriptorSets(_device, &allocInfo, &mat.textureSet);
+	VK_CHECK(vkAllocateDescriptorSets(_device, &allocInfo, &mat.textureSet));
 
 	for (auto i{ 0 }; i < info.bindings.size(); ++i) {
 		const Texture& texture{ info.bindingTextures[i] };
@@ -1328,7 +1297,7 @@ void VulkanEngine::draw_objects(VkCommandBuffer cmd, const std::multiset<RenderO
 	vmaUnmapMemory(_allocator, _sceneParameterBuffer._allocation);
 
 	glm::mat4 bedTranslate{ glm::translate(glm::mat4{ 1.0 }, glm::vec3(0.0, 0.0, 0.0)) };
-	glm::mat4 bedScale{ glm::scale(glm::mat4{1.0}, glm::vec3{3.0, 3.0, 3.0}) };
+	glm::mat4 bedScale{ glm::scale(glm::mat4{1.0}, glm::vec3{1.0}) };
 	glm::mat4 bedRotate{ glm::rotate(_guiData.bedAngle, glm::vec3{ 0.0, 1.0, 0.0 }) };
 	_guiData.bed->transformMatrix = bedTranslate * bedScale * bedRotate;
 
