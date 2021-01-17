@@ -52,7 +52,7 @@ END
 // now create the irradiance map sampling from the cubemap material we just made
 render_to_texture:
 cubemap
-irradianceMap
+irradiance_map
 512
 false
 true
@@ -89,7 +89,7 @@ frag:	cubemap.frag.spv
 bind:	0
 	type:	COMBINED_IMAGE_SAMPLER
 	stage:	FRAGMENT
-	path:	prefiltered_environment_map
+	path:	cubemap
 	format:	R32G32B32A32_SFLOAT
 END
 
@@ -123,11 +123,24 @@ bind:	3
 	stage:	FRAGMENT
 	path:	_default/textures/_ao__.png
 	format:	R8G8B8A8_UNORM
+
 // irradiance map
 bind:	4
 	type:	COMBINED_IMAGE_SAMPLER
 	stage:	FRAGMENT
-	path:	irradianceMap
+	path:	irradiance_map
+	format:	R32G32B32A32_SFLOAT
+// prefiltered map
+bind:	5
+	type:	COMBINED_IMAGE_SAMPLER
+	stage:	FRAGMENT
+	path:	prefiltered_environment_map
+	format:	R32G32B32A32_SFLOAT
+// BRDF LUT
+bind:	6
+	type:	COMBINED_IMAGE_SAMPLER
+	stage:	FRAGMENT
+	path:	integrated_brdf_map
 	format:	R32G32B32A32_SFLOAT
 END
 
@@ -159,10 +172,23 @@ bind:	3
 	stage:	FRAGMENT
 	path:	bed/textures/GothicBed_01_8-bit_ao__.png
 	format:	R8G8B8A8_UNORM
+
 // irradiance map
 bind:	4
 	type:	COMBINED_IMAGE_SAMPLER
 	stage:	FRAGMENT
-	path:	irradianceMap
+	path:	irradiance_map
+	format:	R32G32B32A32_SFLOAT
+// prefiltered map
+bind:	5
+	type:	COMBINED_IMAGE_SAMPLER
+	stage:	FRAGMENT
+	path:	prefiltered_environment_map
+	format:	R32G32B32A32_SFLOAT
+// BRDF LUT
+bind:	6
+	type:	COMBINED_IMAGE_SAMPLER
+	stage:	FRAGMENT
+	path:	integrated_brdf_map
 	format:	R32G32B32A32_SFLOAT
 END

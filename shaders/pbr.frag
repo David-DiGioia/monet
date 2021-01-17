@@ -27,7 +27,13 @@ layout (set = 2, binding = 0) uniform sampler2D diffuseTex;
 layout (set = 2, binding = 1) uniform sampler2D normalTex;
 layout (set = 2, binding = 2) uniform sampler2D roughnessTex;
 layout (set = 2, binding = 3) uniform sampler2D aoTex;
+
+// diffuse portion of integral
 layout (set = 2, binding = 4) uniform samplerCube irradianceMap;
+// first portion of specular portion of integral
+layout (set = 2, binding = 5) uniform samplerCube prefilterMap;
+// second portion of specular portion of integral
+layout (set = 2, binding = 6) uniform sampler2D brdfLUT;
 
 float metallic = 0.0f;
 
@@ -79,26 +85,10 @@ float geometrySmith(vec3 N, vec3 V, vec3 L, float roughness)
     return ggx1 * ggx2;
 }
 
-void main()
+vec3 analytic_lights(vec3 N, vec3 V, vec3 F0, vec3 diffuse, float roughness, float metallic)
 {
-    vec3 diffuse = texture(diffuseTex, texCoord).rgb;
-    // obtain normal from normal map in range [0,1]
-    vec3 normal = texture(normalTex, texCoord).rgb;
-    // transform normal vector to range [-1, 1]
-    normal = normalize(normal * 2.0 - 1.0);
-    float roughness = texture(roughnessTex, texCoord).g;
-    float ao = texture(aoTex, texCoord).r;
-
-    // transform normal from tangent space to world space
-    vec3 N = TBN * normal;
-    vec3 V = normalize(camPos - fragPos);
-
-    // approximate IOR of dialetric materials as 0.04
-    vec3 F0 = vec3(0.04);
-
     vec3 Lo = vec3(0.0);
     for (int i = 0; i < sceneData.numLights; ++i) {
-        // vec3 L = normalize(lightPos[i] - fragPos);
         vec3 L = normalize(lightPos[i] - fragPos);
         vec3 H = normalize(V + L);
 
@@ -128,14 +118,45 @@ void main()
         float NdotL = max(dot(N, L), 0.0);
         Lo += (kD * diffuse / PI + specular) * radiance * NdotL;
     }
+    return Lo;
+}
 
-    // vec3 ambient = sceneData.ambientColor.xyz * diffuse * ao;
+void main()
+{
+    vec3 diffuse = texture(diffuseTex, texCoord).rgb;
+    // obtain normal from normal map in range [0,1]
+    vec3 normal = texture(normalTex, texCoord).rgb;
+    // transform normal vector to range [-1, 1]
+    normal = normalize(normal * 2.0 - 1.0);
+    float roughness = texture(roughnessTex, texCoord).g;
+    float ao = texture(aoTex, texCoord).r;
+
+    // transform normal from tangent space to world space
+    vec3 N = TBN * normal;
+    vec3 V = normalize(camPos - fragPos);
+
+    // approximate IOR of dialetric materials as 0.04
+    vec3 F0 = vec3(0.04);
+
+    vec3 R = reflect(-V, N);
+
+    vec3 Lo = analytic_lights(N, V, F0, diffuse, roughness, metallic);
     
     vec3 kS = fresnelSchlickRoughness(max(dot(N, V), 0.0), F0, roughness); 
     vec3 kD = 1.0 - kS;
+    kD *= 1.0 - metallic;
+
     vec3 irradiance = texture(irradianceMap, N).rgb;
     diffuse = irradiance * diffuse;
-    vec3 ambient = (kD * diffuse) * ao;
+
+    const float MAX_REFLECTION_LOD = 8.0;
+    vec3 prefilteredColor = textureLod(prefilterMap, R, roughness * MAX_REFLECTION_LOD).rgb;
+    vec3 F = fresnelSchlickRoughness(max(dot(N, V), 0.0), F0, roughness);
+    vec2 envBRDF = texture(brdfLUT, vec2(max(dot(N, V), 0.0), roughness)).rg;
+    vec3 specular = prefilteredColor * (F * envBRDF.x + envBRDF.y);
+
+    // we don't multiply specular by kS since we already have a Fresnel multiplication in there
+    vec3 ambient = (kD * diffuse + specular) * ao;
 
     vec3 color = ambient + Lo;
     // tonemap using Reinhard operator (this should really be done in post probably)
