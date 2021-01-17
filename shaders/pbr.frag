@@ -27,15 +27,14 @@ layout (set = 2, binding = 0) uniform sampler2D diffuseTex;
 layout (set = 2, binding = 1) uniform sampler2D normalTex;
 layout (set = 2, binding = 2) uniform sampler2D roughnessTex;
 layout (set = 2, binding = 3) uniform sampler2D aoTex;
+layout (set = 2, binding = 4) uniform sampler2D metalTex;
 
 // diffuse portion of integral
-layout (set = 2, binding = 4) uniform samplerCube irradianceMap;
+layout (set = 2, binding = 5) uniform samplerCube irradianceMap;
 // first portion of specular portion of integral
-layout (set = 2, binding = 5) uniform samplerCube prefilterMap;
+layout (set = 2, binding = 6) uniform samplerCube prefilterMap;
 // second portion of specular portion of integral
-layout (set = 2, binding = 6) uniform sampler2D brdfLUT;
-
-float metallic = 0.0f;
+layout (set = 2, binding = 7) uniform sampler2D brdfLUT;
 
 const float PI = 3.14159265359;
 
@@ -130,6 +129,7 @@ void main()
     normal = normalize(normal * 2.0 - 1.0);
     float roughness = texture(roughnessTex, texCoord).g;
     float ao = texture(aoTex, texCoord).r;
+    float metallic = texture(metalTex, texCoord).b;
 
     // transform normal from tangent space to world space
     vec3 N = TBN * normal;

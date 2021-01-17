@@ -126,21 +126,27 @@ bind:	3
 	stage:	FRAGMENT
 	path:	_default/textures/_ao__.png
 	format:	R8G8B8A8_UNORM
+// metallic
+bind:	4
+	type:	COMBINED_IMAGE_SAMPLER
+	stage:	FRAGMENT
+	path:	_default/textures/_meta.png
+	format:	R8G8B8A8_UNORM
 
 // irradiance map
-bind:	4
+bind:	5
 	type:	COMBINED_IMAGE_SAMPLER
 	stage:	FRAGMENT
 	path:	irradiance_map
 	format:	R32G32B32A32_SFLOAT
 // prefiltered map
-bind:	5
+bind:	6
 	type:	COMBINED_IMAGE_SAMPLER
 	stage:	FRAGMENT
 	path:	prefiltered_environment_map
 	format:	R32G32B32A32_SFLOAT
 // BRDF LUT
-bind:	6
+bind:	7
 	type:	COMBINED_IMAGE_SAMPLER
 	stage:	FRAGMENT
 	path:	integrated_brdf_map
@@ -175,21 +181,27 @@ bind:	3
 	stage:	FRAGMENT
 	path:	bed/textures/GothicBed_01_8-bit_ao__.png
 	format:	R8G8B8A8_UNORM
+// metallic
+bind:	4
+	type:	COMBINED_IMAGE_SAMPLER
+	stage:	FRAGMENT
+	path:	_default/textures/_meta.png
+	format:	R8G8B8A8_UNORM
 
 // irradiance map
-bind:	4
+bind:	5
 	type:	COMBINED_IMAGE_SAMPLER
 	stage:	FRAGMENT
 	path:	irradiance_map
 	format:	R32G32B32A32_SFLOAT
 // prefiltered map
-bind:	5
+bind:	6
 	type:	COMBINED_IMAGE_SAMPLER
 	stage:	FRAGMENT
 	path:	prefiltered_environment_map
 	format:	R32G32B32A32_SFLOAT
 // BRDF LUT
-bind:	6
+bind:	7
 	type:	COMBINED_IMAGE_SAMPLER
 	stage:	FRAGMENT
 	path:	integrated_brdf_map
@@ -224,21 +236,27 @@ bind:	3
 	stage:	FRAGMENT
 	path:	sofa/textures/sofa_02_8-bit_ao_roug_meta.png
 	format:	R8G8B8A8_UNORM
+// metallic
+bind:	4
+	type:	COMBINED_IMAGE_SAMPLER
+	stage:	FRAGMENT
+	path:	_default/textures/_meta.png
+	format:	R8G8B8A8_UNORM
 
 // irradiance map
-bind:	4
+bind:	5
 	type:	COMBINED_IMAGE_SAMPLER
 	stage:	FRAGMENT
 	path:	irradiance_map
 	format:	R32G32B32A32_SFLOAT
 // prefiltered map
-bind:	5
+bind:	6
 	type:	COMBINED_IMAGE_SAMPLER
 	stage:	FRAGMENT
 	path:	prefiltered_environment_map
 	format:	R32G32B32A32_SFLOAT
 // BRDF LUT
-bind:	6
+bind:	7
 	type:	COMBINED_IMAGE_SAMPLER
 	stage:	FRAGMENT
 	path:	integrated_brdf_map
@@ -273,21 +291,27 @@ bind:	3
 	stage:	FRAGMENT
 	path:	chair/textures/GreenChair_01_8-bit_ao_roug_meta.png
 	format:	R8G8B8A8_UNORM
+// metallic
+bind:	4
+	type:	COMBINED_IMAGE_SAMPLER
+	stage:	FRAGMENT
+	path:	_default/textures/_meta.png
+	format:	R8G8B8A8_UNORM
 
 // irradiance map
-bind:	4
+bind:	5
 	type:	COMBINED_IMAGE_SAMPLER
 	stage:	FRAGMENT
 	path:	irradiance_map
 	format:	R32G32B32A32_SFLOAT
 // prefiltered map
-bind:	5
+bind:	6
 	type:	COMBINED_IMAGE_SAMPLER
 	stage:	FRAGMENT
 	path:	prefiltered_environment_map
 	format:	R32G32B32A32_SFLOAT
 // BRDF LUT
-bind:	6
+bind:	7
 	type:	COMBINED_IMAGE_SAMPLER
 	stage:	FRAGMENT
 	path:	integrated_brdf_map
