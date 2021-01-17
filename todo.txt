@@ -5,6 +5,7 @@ examples: https://github.com/martty/vuk/blob/c395af9bfe44fd8519336a8a491942c9aac
 
 - hdri environment maps for lighting
 	- DONE: environment map
-	- TODO: make it affect lighting
+	- DONE: make it affect lighting
+	- TODO: fix noise for bright light sources
 
 - shadow maps
