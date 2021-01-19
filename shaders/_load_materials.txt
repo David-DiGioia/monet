@@ -88,7 +88,7 @@ frag:	cubemap.frag.spv
 bind:	0
 	type:	COMBINED_IMAGE_SAMPLER
 	stage:	FRAGMENT
-	path:	prefiltered_environment_map
+	path:	irradiance_map
 	format:	R32G32B32A32_SFLOAT
 END
 
