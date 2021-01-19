@@ -368,7 +368,9 @@ Texture render_to_texture(VulkanEngine& engine, VkDescriptorSet equirectangularS
 				vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, 1, &equirectangularSet, 0, nullptr);
 
 				PushConstantData pushConstant{};
+				// used in equirect_to_cubemap.vert
 				pushConstant.rotMat = rotationMatrices[layer];
+				// used in prefilter_environment.frag
 				pushConstant.roughness = mipLevel / (mipLevels - 1.0f);
 
 				vkCmdPushConstants(cmd, pipelineLayout, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(PushConstantData), &pushConstant);

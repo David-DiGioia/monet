@@ -41,12 +41,11 @@ layout (std140, set = 1, binding = 0) readonly buffer ObjectBuffer {
     ObjectData objects[]; // SSBOs can only have unsized arrays
 } objectBuffer;
 
-// push constants block (not in use currently)
-layout (push_constant) uniform constants
+layout (push_constant) uniform PushConstants
 {
-    vec4 data;
+    vec4 roughness_multiplier; // only x component is used
     mat4 render_matrix;
-} PushConstants;
+} constants;
 
 void main()
 {

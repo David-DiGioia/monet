@@ -9,6 +9,12 @@ layout (location = 6) in vec3 lightPos[MAX_NUM_TOTAL_LIGHTS];
 
 layout (location = 0) out vec4 outFragColor;
 
+layout (push_constant) uniform PushConstants
+{
+    vec4 roughness_multiplier; // only x component is used
+    mat4 render_matrix;
+} constants;
+
 struct Light {
     vec4 position;  // w is unused
     vec4 color;     // w is for intensity
@@ -127,7 +133,7 @@ void main()
     vec3 normal = texture(normalTex, texCoord).rgb;
     // transform normal vector to range [-1, 1]
     normal = normalize(normal * 2.0 - 1.0);
-    float roughness = texture(roughnessTex, texCoord).g;
+    float roughness = texture(roughnessTex, texCoord).g * constants.roughness_multiplier.x;
     float ao = texture(aoTex, texCoord).r;
     float metallic = texture(metalTex, texCoord).b;
 

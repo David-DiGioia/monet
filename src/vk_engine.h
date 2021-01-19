@@ -116,10 +116,11 @@ struct GuiData {
 	Light light1;
 	float bedAngle;
 	const RenderObject* bed;
+	float roughness_mult;
 };
 
 struct MeshPushConstants {
-	glm::vec4 data;
+	glm::vec4 roughness_multiplier; // only x component is used
 	glm::mat4 render_matrix;
 };
 

@@ -96,6 +96,8 @@ void VulkanEngine::init_gui_data()
 	_guiData.light1.color = { 0.0, 0.0, 0.0, 47.0 };
 
 	_guiData.bedAngle = 0.0f;
+
+	_guiData.roughness_mult = 1.0f;
 }
 
 void VulkanEngine::init_imgui()
@@ -179,7 +181,7 @@ void VulkanEngine::init_scene()
 	glm::mat4 rotate;
 
 	// coffee cart scene
-	scale = glm::scale(glm::mat4{ 1.0 }, glm::vec3{ 5.0 });
+	scale = glm::scale(glm::mat4{ 1.0 }, glm::vec3{ 1.0 });
 
 	RenderObject cart{};
 	cart.mesh = get_mesh("coffee_cart");
@@ -192,6 +194,13 @@ void VulkanEngine::init_scene()
 	accessories.material = get_material("coffee_accessories");
 	accessories.transformMatrix = scale;
 	_renderables.insert(accessories);
+
+	RenderObject sphere{};
+	sphere.mesh = get_mesh("sphere");
+	sphere.material = get_material("sphere");
+	translate = glm::translate(glm::vec3{2.0, 0.0, 0.0});
+	sphere.transformMatrix = translate * scale;
+	_renderables.insert(sphere);
 
 	// camera scene
 	/*
@@ -559,8 +568,7 @@ void VulkanEngine::init_pipeline(const MaterialCreateInfo& info, const std::stri
 	// this push constant range starts at the beginning
 	push_constant.offset = 0;
 	push_constant.size = sizeof(MeshPushConstants);
-	// this push constant range is accessible only in the vertex shader
-	push_constant.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
+	push_constant.stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
 
 	// create the descriptor set layout specific to the material we're making
 
@@ -1185,6 +1193,7 @@ Mesh* VulkanEngine::get_mesh(const std::string& name)
 {
 	auto it{ _meshes.find(name) };
 	if (it == _meshes.end()) {
+		std::cout << " Could not find mesh '" << name << "' Did you remember to export the .obj file?\n";
 		return nullptr;
 	} else {
 		return &(it->second);
@@ -1387,9 +1396,9 @@ void VulkanEngine::draw_objects(VkCommandBuffer cmd, const std::multiset<RenderO
 		//glm::mat4 mesh_matrix{ projection * view * model };
 
 		MeshPushConstants constants{};
-		constants.render_matrix = object.transformMatrix;
+		constants.roughness_multiplier = glm::vec4{ _guiData.roughness_mult };
 
-		vkCmdPushConstants(cmd, object.material->pipelineLayout, VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(MeshPushConstants), &constants);
+		vkCmdPushConstants(cmd, object.material->pipelineLayout, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(MeshPushConstants), &constants);
 
 		// only bind the mesh if it's a different one from last bind
 		if (object.mesh != lastMesh) {
@@ -1535,6 +1544,8 @@ void VulkanEngine::gui()
 	{
 		ImGui::DragFloat("Bed angle", &_guiData.bedAngle, 0.005f);
 	}
+
+	ImGui::SliderFloat("Roughness", &_guiData.roughness_mult, 0.0f, 1.0f);
 
 	ImGui::End();
 }

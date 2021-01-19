@@ -14,6 +14,19 @@ layout (push_constant) uniform PushConstants
 
 const float PI = 3.14159265359;
 
+float distributionGGX(float NdotH, float roughness)
+{
+    float a = roughness * roughness;
+    float a2 = a*a;
+    float NdotH2 = NdotH * NdotH;
+
+    float num = a2;
+    float denom = (NdotH2 * (a2 - 1.0) + 1.0);
+    denom = PI * denom * denom;
+
+    return num / denom;
+}
+
 // Mirror binary digits about the decimal point
 float radicalInverse_VdC(uint bits)
 {
@@ -62,7 +75,7 @@ void main()
     // Not normal of the cube, but normal that we're calculating irradiance for
     vec3 N = normalize(localPos);
     vec3 R = N;
-    vec3 V = R;
+    vec3 V = N;
 
     const uint SAMPLE_COUNT = 4096;
     float totalWeight = 0.0;
@@ -75,7 +88,24 @@ void main()
 
         float NdotL = max(dot(N, L), 0.0);
         if (NdotL > 0.0) {
-            prefilteredColor += texture(environmentMap, L).rgb * NdotL;
+            float NdotH = max(dot(N, H), 0.0);
+            float HdotV = max(dot(H, V), 0.0);
+            float D = distributionGGX(NdotH, constants.roughness);
+            float pdf = (D * NdotH / (4.0 * HdotV)) + 0.0001; 
+
+            float resolution = 1024.0; // resolution of source cubemap (per face)
+            // with a higher resolution, we should sample coarser mipmap levels
+            float saTexel = 4.0 * PI / (6.0 * resolution * resolution);
+            // as we take more samples, we can sample from a finer mipmap.
+            // And places where H is more likely to be sampled (higher pdf) we
+            // can use a finer mipmap, otherwise use courser mipmap.
+            // The tutorial treats this portion as optional to reduce noise but I think it's
+            // actually necessary for importance sampling to get the correct result
+            float saSample = 1.0 / (float(SAMPLE_COUNT) * pdf + 0.0001);
+
+            float mipLevel = constants.roughness == 0.0 ? 0.0 : 0.5 * log2(saSample / saTexel); 
+
+            prefilteredColor += textureLod(environmentMap, L, mipLevel).rgb * NdotL;
             totalWeight += NdotL;
         }
     }
