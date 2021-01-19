@@ -21,7 +21,7 @@ frag:	equirectangular.frag.spv
 bind:	0
 	type:	COMBINED_IMAGE_SAMPLER
 	stage:	FRAGMENT
-	path:	../hdri/small_cathedral_02_4k.hdr
+	path:	../hdri/wide_street_01_4k.hdr
 	format:	R32G32B32A32_SFLOAT
 END
 
@@ -88,7 +88,7 @@ frag:	cubemap.frag.spv
 bind:	0
 	type:	COMBINED_IMAGE_SAMPLER
 	stage:	FRAGMENT
-	path:	irradiance_map
+	path:	cubemap
 	format:	R32G32B32A32_SFLOAT
 END
 
@@ -96,6 +96,7 @@ END
 
 
 // coffee cart scene
+/*
 name:	coffee_cart
 vert:	pbr.vert.spv
 frag:	pbr.frag.spv
@@ -237,7 +238,7 @@ bind:	3
 bind:	4
 	type:	COMBINED_IMAGE_SAMPLER
 	stage:	FRAGMENT
-	path:	sphere/textures/_meta.png
+	path:	_default/textures/_meta.png
 	format:	R8G8B8A8_UNORM
 
 // irradiance map
@@ -259,6 +260,7 @@ bind:	7
 	path:	integrated_brdf_map
 	format:	R32G32B32A32_SFLOAT
 END
+*/
 
 // camera scene
 /*
@@ -428,8 +430,9 @@ END
 */
 
 
+
 // furniture scene
-/*
+
 name:	default
 vert:	pbr.vert.spv
 frag:	pbr.frag.spv
@@ -651,4 +654,4 @@ bind:	7
 	path:	integrated_brdf_map
 	format:	R32G32B32A32_SFLOAT
 END
-*/
+

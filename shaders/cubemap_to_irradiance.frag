@@ -62,7 +62,8 @@ void main()
     up = cross(normal, right);
 
     // ------------------------------------------------------------------------------
-    const uint SAMPLE_COUNT = 4096;
+
+    const uint SAMPLE_COUNT = 16384;
     float totalWeight = 0.0;
     for (uint i = 0u; i < SAMPLE_COUNT; ++i) {
         vec2 Xi = hammersley(i, SAMPLE_COUNT);
@@ -87,9 +88,12 @@ void main()
         float mipLevel = 0.5 * log2(saSample / saTexel); 
 
         irradiance += textureLod(environmentMap, H, mipLevel).rgb * NdotH;
+        // irradiance += texture(environmentMap, H).rgb * NdotH;
         totalWeight += NdotH;
     }
-    irradiance = (irradiance) / totalWeight;
+    irradiance = (PI * irradiance) / totalWeight;
+    // irradiance = (PI * irradiance) / SAMPLE_COUNT;
+
 
     /*
     float phiDelta = 0.025;

@@ -166,7 +166,7 @@ void main()
 
     vec3 color = ambient + Lo;
     // tonemap using Reinhard operator (this should really be done in post probably)
-    color = color / (color + 1.0);
+    // color = color / (color + 1.0);
 
     outFragColor = vec4(color, 1.0);
 }
