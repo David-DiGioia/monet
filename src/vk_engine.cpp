@@ -11,6 +11,7 @@
 #include <string>
 #include <algorithm>
 #include <filesystem>
+#include <chrono>
 
 #include "SDL.h"
 #include "SDL_vulkan.h"
@@ -23,6 +24,7 @@
 #include "imgui_impl_sdl.h"
 #include "imgui_impl_vulkan.h"
 #include "render_to_texture.h"
+#include "../tracy/Tracy.hpp"
 
 #define VMA_IMPLEMENTATION
 #include "vk_mem_alloc.h"
@@ -934,7 +936,7 @@ void VulkanEngine::init_swapchain()
 
 	vkb::Swapchain vkbSwapchain{ swapchainBuilder
 		.use_default_format_selection()
-		.set_desired_present_mode(VK_PRESENT_MODE_FIFO_KHR) // use vsync present mode
+		.set_desired_present_mode(VK_PRESENT_MODE_MAILBOX_KHR)
 		.set_desired_extent(_windowExtent.width, _windowExtent.height)
 		.build()
 		.value() };
@@ -1302,6 +1304,7 @@ void VulkanEngine::draw()
 	// This is what actually blocks for vsync at least on my system...
 	VK_CHECK(vkQueuePresentKHR(_graphicsQueue, &presentInfo));
 
+	FrameMark;
 	++_frameNumber;
 }
 
