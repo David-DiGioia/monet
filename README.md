@@ -26,6 +26,6 @@ Coffee cart lit by two different HDRIs
 ## Plans
 
  * Shadow mapping
- * Improve HDRI LUTs to reduce noise for small light sources
+ * SSAO
  * Multisampling
  * Cache assets for faster startup
