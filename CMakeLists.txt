@@ -15,7 +15,7 @@ set (CMAKE_RUNTIME_OUTPUT_DIRECTORY "${PROJECT_SOURCE_DIR}/bin")
 
 add_subdirectory(src)
 
-
+target_compile_definitions(vulkan_guide PRIVATE TRACY_ENABLE)
 
 if (${CMAKE_HOST_SYSTEM_PROCESSOR} STREQUAL "AMD64")
   set(GLSL_VALIDATOR "$ENV{VULKAN_SDK}/Bin/glslangValidator.exe")

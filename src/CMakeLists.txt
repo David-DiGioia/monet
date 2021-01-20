@@ -11,8 +11,10 @@ add_executable (vulkan_guide
  "vk_mesh.h"
  "vk_textures.cpp"
  "vk_textures.h"
- "hdri.h"
- "hdri.cpp")
+ "render_to_texture.h"
+ "render_to_texture.cpp"
+ "../tracy/TracyClient.cpp"
+)
 
 
 set_property(TARGET vulkan_guide PROPERTY VS_DEBUGGER_WORKING_DIRECTORY "$<TARGET_FILE_DIR:vulkan_guide>")
