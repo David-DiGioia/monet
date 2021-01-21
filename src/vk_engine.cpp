@@ -92,18 +92,19 @@ void VulkanEngine::init()
 
 void VulkanEngine::init_tracy()
 {
-	// Use one of our command pools that we use for rendering commands, though tracy
-	// only uses it temporarily to make some Vulkan objects
-	VkCommandBufferAllocateInfo cmdAllocInfo{ vkinit::command_buffer_allocate_info(_frames[0]._commandPool, 1) };
+	for (auto i{ 0 }; i < FRAME_OVERLAP; ++i) {
+		VkCommandBufferAllocateInfo cmdAllocInfo{ vkinit::command_buffer_allocate_info(_frames[i]._commandPool, 1) };
 
-	VkCommandBuffer cmd;
-	VK_CHECK(vkAllocateCommandBuffers(_device, &cmdAllocInfo, &cmd));
+		VkCommandBuffer cmd;
+		VK_CHECK(vkAllocateCommandBuffers(_device, &cmdAllocInfo, &cmd));
 
-	_tracyContext = TracyVkContext(_chosenGPU, _device, _graphicsQueue, cmd);
+		_frames[i]._tracyContext = TracyVkContext(_chosenGPU, _device, _graphicsQueue, cmd);
 
-	_mainDeletionQueue.push_function([=]() {
-		TracyVkDestroy(_tracyContext);
-	});
+		_mainDeletionQueue.push_function([=]() {
+			TracyVkDestroy(_frames[i]._tracyContext);
+		});
+	}
+
 
 	vkResetCommandPool(_device, _frames[0]._commandPool, 0);
 }
@@ -249,7 +250,7 @@ void VulkanEngine::init_scene()
 	*/
 
 	// Furniture scene
-	
+
 	RenderObject bed{};
 	bed.mesh = get_mesh("bed");
 	bed.material = get_material("bed");
@@ -261,7 +262,7 @@ void VulkanEngine::init_scene()
 	sofa.mesh = get_mesh("sofa");
 	sofa.material = get_material("sofa");
 	translate = glm::translate(glm::mat4{ 1.0 }, glm::vec3(-2.5, 0.0, 0.4));
-	scale = glm::scale(glm::mat4{1.0}, glm::vec3{1.0});
+	scale = glm::scale(glm::mat4{ 1.0 }, glm::vec3{ 1.0 });
 	rotate = glm::rotate(glm::radians(110.0f), glm::vec3{ 0.0, 1.0, 0.0 });
 	sofa.transformMatrix = translate * scale * rotate;
 	_renderables.insert(sofa);
@@ -279,11 +280,11 @@ void VulkanEngine::init_scene()
 	plane.mesh = get_mesh("plane");
 	plane.material = get_material("default");
 	translate = glm::translate(glm::mat4{ 1.0 }, glm::vec3(0.0, 0.0, 0.0));
-	scale = glm::scale(glm::mat4{1.0}, glm::vec3{1.0});
-	rotate = glm::rotate(0.0f, glm::vec3{1.0, 0.0, 0.0});
+	scale = glm::scale(glm::mat4{ 1.0 }, glm::vec3{ 1.0 });
+	rotate = glm::rotate(0.0f, glm::vec3{ 1.0, 0.0, 0.0 });
 	plane.transformMatrix = translate * scale * rotate;
 	_renderables.insert(plane);
-	
+
 }
 
 void VulkanEngine::immediate_submit(std::function<void(VkCommandBuffer cmd)>&& function)
@@ -1284,6 +1285,8 @@ void VulkanEngine::draw()
 	ImGui_ImplVulkan_RenderDrawData(ImGui::GetDrawData(), get_current_frame()._mainCommandBuffer);
 
 	vkCmdEndRenderPass(get_current_frame()._mainCommandBuffer);
+	TracyVkCollect(get_current_frame()._tracyContext, get_current_frame()._mainCommandBuffer);
+
 	VK_CHECK(vkEndCommandBuffer(get_current_frame()._mainCommandBuffer));
 
 	// we want to wait on the _presentSemaphore, as that semaphore is signaled when the swapchain
@@ -1324,32 +1327,13 @@ void VulkanEngine::draw()
 	// This is what actually blocks for vsync at least on my system...
 	VK_CHECK(vkQueuePresentKHR(_graphicsQueue, &presentInfo));
 
-	// profile GPU
-	collect_GPU_events();
-
 	FrameMark;
 	++_frameNumber;
 }
 
-void VulkanEngine::collect_GPU_events()
-{
-	uint32_t currentTicks{ SDL_GetTicks() };
-	double currentTime{ currentTicks / 1000.0 };
-	double delta{ currentTime - _lastTimeGpuEvents };
-
-	if (delta >= 0.25) {
-		// Collect GPU events
-		immediate_submit([=](VkCommandBuffer cmd) {
-			TracyVkCollect(_tracyContext, cmd);
-		});
-
-		_lastTimeGpuEvents = currentTime;
-	}
-}
-
 void VulkanEngine::draw_objects(VkCommandBuffer cmd, const std::multiset<RenderObject>& renderables)
 {
-	TracyVkZone(_tracyContext, cmd, "Draw objects");
+	TracyVkZone(get_current_frame()._tracyContext, cmd, "Draw objects");
 
 	glm::mat4 rotTheta{ glm::rotate(_camRotTheta, glm::vec3{ 1.0f, 0.0f, 0.0f }) };
 	glm::mat4 rotPhi{ glm::rotate(_camRotPhi, glm::vec3{ 0.0f, 1.0f, 0.0f }) };
