@@ -1324,12 +1324,33 @@ void VulkanEngine::draw()
 	// This is what actually blocks for vsync at least on my system...
 	VK_CHECK(vkQueuePresentKHR(_graphicsQueue, &presentInfo));
 
+	// profile GPU
+	collect_GPU_events();
+
 	FrameMark;
 	++_frameNumber;
 }
 
+void VulkanEngine::collect_GPU_events()
+{
+	uint32_t currentTicks{ SDL_GetTicks() };
+	double currentTime{ currentTicks / 1000.0 };
+	double delta{ currentTime - _lastTimeGpuEvents };
+
+	if (delta >= 0.25) {
+		// Collect GPU events
+		immediate_submit([=](VkCommandBuffer cmd) {
+			TracyVkCollect(_tracyContext, cmd);
+		});
+
+		_lastTimeGpuEvents = currentTime;
+	}
+}
+
 void VulkanEngine::draw_objects(VkCommandBuffer cmd, const std::multiset<RenderObject>& renderables)
 {
+	TracyVkZone(_tracyContext, cmd, "Draw objects");
+
 	glm::mat4 rotTheta{ glm::rotate(_camRotTheta, glm::vec3{ 1.0f, 0.0f, 0.0f }) };
 	glm::mat4 rotPhi{ glm::rotate(_camRotPhi, glm::vec3{ 0.0f, 1.0f, 0.0f }) };
 	_camRot = rotPhi * rotTheta;

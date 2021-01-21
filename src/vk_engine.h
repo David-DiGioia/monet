@@ -223,6 +223,7 @@ public:
 
 	// profiling variables
 	double _lastTimeFPS{ 0.0 };
+	double _lastTimeGpuEvents{ 0.0 };
 	uint32_t _nbFrames{ 0 };
 	TracyVkCtx _tracyContext;
 
@@ -307,6 +308,8 @@ private:
 	std::vector<Texture> textures_from_binding_paths(const std::vector<std::string>& bindingPaths);
 
 	void init_tracy();
+
+	void collect_GPU_events();
 };
 
 class PipelineBuilder {
