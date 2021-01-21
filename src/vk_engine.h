@@ -11,6 +11,7 @@
 #include <unordered_map>
 #include <string>
 #include <set>
+#include <chrono>
 
 #include "vk_types.h"
 #include "vk_mem_alloc.h"
@@ -216,7 +217,7 @@ public:
 	FrameData _frames[FRAME_OVERLAP];
 
 	// for delta time
-	double _lastTime{ 0.0 };
+	std::chrono::steady_clock::time_point _lastTime{};
 
 	// variables for keeping track of fps
 	double _lastTimeFPS{ 0.0 };

@@ -11,7 +11,6 @@
 #include <string>
 #include <algorithm>
 #include <filesystem>
-#include <chrono>
 
 #include "SDL.h"
 #include "SDL_vulkan.h"
@@ -937,6 +936,7 @@ void VulkanEngine::init_swapchain()
 	vkb::Swapchain vkbSwapchain{ swapchainBuilder
 		.use_default_format_selection()
 		.set_desired_present_mode(VK_PRESENT_MODE_MAILBOX_KHR)
+		//.set_desired_present_mode(VK_PRESENT_MODE_FIFO_KHR)
 		.set_desired_extent(_windowExtent.width, _windowExtent.height)
 		.build()
 		.value() };
@@ -1443,12 +1443,14 @@ void VulkanEngine::showFPS() {
 
 bool VulkanEngine::process_input()
 {
-	double currentTime{ SDL_GetTicks() / 1000.0 };
-	double delta{ currentTime - _lastTime };
+	auto currentTime{ std::chrono::high_resolution_clock::now() };
+	double delta{ std::chrono::duration_cast<std::chrono::microseconds>(currentTime - _lastTime).count() / 1000000.0 };
 	_lastTime = currentTime;
 
 	float speed{ 3.0f };
 	float camSensitivity{ 0.3f };
+	// mouse motion seems to be sampled 60fps regardless of framerate
+	constexpr float mouseDelta{ 1.0f / 60.0f };
 
 	const Uint8* keystate{ SDL_GetKeyboardState(nullptr) };
 
@@ -1467,8 +1469,8 @@ bool VulkanEngine::process_input()
 			break;
 		case SDL_MOUSEMOTION:
 			if (_camMouseControls) {
-				_camRotPhi -= e.motion.xrel * camSensitivity * delta;
-				_camRotTheta -= e.motion.yrel * camSensitivity * delta;
+				_camRotPhi -= e.motion.xrel * camSensitivity * mouseDelta;
+				_camRotTheta -= e.motion.yrel * camSensitivity * mouseDelta;
 				_camRotTheta = std::clamp(_camRotTheta, -pi / 2.0f, pi / 2.0f);
 			}
 			break;
