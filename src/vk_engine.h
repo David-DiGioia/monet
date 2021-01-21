@@ -17,6 +17,8 @@
 #include "vk_mem_alloc.h"
 #include "vk_mesh.h"
 #include "glm/glm.hpp"
+#include "../tracy/Tracy.hpp"		// CPU profiling
+#include "../tracy/TracyVulkan.hpp"
 
 #define VK_CHECK(x)\
 	do\
@@ -219,9 +221,10 @@ public:
 	// for delta time
 	std::chrono::steady_clock::time_point _lastTime{};
 
-	// variables for keeping track of fps
+	// profiling variables
 	double _lastTimeFPS{ 0.0 };
 	uint32_t _nbFrames{ 0 };
+	TracyVkCtx _tracyContext;
 
 	// measure ms of each frame without vsync
 	double _msDelta;
@@ -303,6 +306,7 @@ private:
 
 	std::vector<Texture> textures_from_binding_paths(const std::vector<std::string>& bindingPaths);
 
+	void init_tracy();
 };
 
 class PipelineBuilder {

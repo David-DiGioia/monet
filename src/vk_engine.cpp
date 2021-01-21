@@ -23,7 +23,8 @@
 #include "imgui_impl_sdl.h"
 #include "imgui_impl_vulkan.h"
 #include "render_to_texture.h"
-#include "../tracy/Tracy.hpp"
+#include "../tracy/Tracy.hpp"		// CPU profiling
+#include "../tracy/TracyVulkan.hpp"	// GPU profiling
 
 #define VMA_IMPLEMENTATION
 #include "vk_mem_alloc.h"
@@ -74,6 +75,7 @@ void VulkanEngine::init()
 	init_vulkan();
 	init_swapchain();
 	init_commands();
+	init_tracy();
 	init_default_renderpass();
 	init_framebuffers();
 	init_sync_structures();
@@ -86,6 +88,24 @@ void VulkanEngine::init()
 
 	// everything went fine
 	_isInitialized = true;
+}
+
+void VulkanEngine::init_tracy()
+{
+	// Use one of our command pools that we use for rendering commands, though tracy
+	// only uses it temporarily to make some Vulkan objects
+	VkCommandBufferAllocateInfo cmdAllocInfo{ vkinit::command_buffer_allocate_info(_frames[0]._commandPool, 1) };
+
+	VkCommandBuffer cmd;
+	VK_CHECK(vkAllocateCommandBuffers(_device, &cmdAllocInfo, &cmd));
+
+	_tracyContext = TracyVkContext(_chosenGPU, _device, _graphicsQueue, cmd);
+
+	_mainDeletionQueue.push_function([=]() {
+		TracyVkDestroy(_tracyContext);
+	});
+
+	vkResetCommandPool(_device, _frames[0]._commandPool, 0);
 }
 
 void VulkanEngine::init_gui_data()
