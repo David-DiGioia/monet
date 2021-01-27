@@ -1257,13 +1257,15 @@ void VulkanEngine::draw()
 	VK_CHECK(vkBeginCommandBuffer(get_current_frame()._mainCommandBuffer, &cmdBeginInfo));
 
 	VkClearValue clearValue{};
-	//clearValue.color = { {0.01, 0.01, 0.02, 1.0} };
 	clearValue.color = { {1.00, 0.00, 0.00, 1.0} };
 
 	VkClearValue depthClear{};
 	depthClear.depthStencil.depth = 1.0f;
 
 	std::array<VkClearValue, 2> clearValues{ clearValue, depthClear };
+
+	// shadow pass
+
 
 	// start the main renderpass. we will use the clear color from above,
 	// and the framebuffer corresponding to the index the swapchain gave us

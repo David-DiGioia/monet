@@ -11,6 +11,8 @@
 // 6 faces per cube, 2 traingles per face, 3 vertices per triangle
 constexpr uint32_t NUM_VERTICES_PLANE{ 2 * 3 };
 constexpr uint32_t NUM_VERTICES_CUBE{ 6 * NUM_VERTICES_PLANE };
+constexpr uint32_t SHADOWMAP_DIM{ 2048 };
+constexpr VkFormat DEPTH_FORMAT{ VK_FORMAT_D16_UNORM };
 
 glm::vec3 vertexDataCube[NUM_VERTICES_CUBE]{
 	// front
@@ -136,9 +138,6 @@ void create_rt_pipeline_layout(VulkanEngine& engine, VkDescriptorSetLayout layou
 
 	vkCreatePipelineLayout(engine._device, &info, nullptr, outLayout);
 }
-
-
-// todo: cleanup this pipeline creation, then test that everything is working for 1 face of the cube, then put in loop for all 6 faces!!!!!!!!!!!!!
 
 void create_rt_pipeline(VulkanEngine& engine, VkRenderPass renderpass, VkExtent2D extent, VkPipelineLayout layout, VkPipeline* outPipeline, const std::string& vertPath, const std::string& fragPath)
 {
@@ -418,4 +417,140 @@ Texture render_to_texture(VulkanEngine& engine, VkDescriptorSet equirectangularS
 	texture.mipLevels = mipLevels;
 
 	return texture;
+}
+
+// Shadow mapping -----------------------------------------------------------------------------
+
+void prepareShadowMapRenderpass(VulkanEngine& engine, OffscreenPass& offscreenPass)
+{
+	VkAttachmentDescription attachmentDescription{};
+	attachmentDescription.format = DEPTH_FORMAT;
+	attachmentDescription.samples = VK_SAMPLE_COUNT_1_BIT;
+	attachmentDescription.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+	// We will read from depth, so it's important to store the depth attachment results
+	attachmentDescription.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+	attachmentDescription.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+	attachmentDescription.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+	attachmentDescription.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+	// Attachment will be transitioned to shader read at render pass end
+	attachmentDescription.finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL;
+
+	VkAttachmentReference depthReference = {};
+	depthReference.attachment = 0;
+	// Attachment will be used as depth/stencil during render pass
+	depthReference.layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+
+	VkSubpassDescription subpass = {};
+	subpass.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
+	subpass.colorAttachmentCount = 0;
+	subpass.pDepthStencilAttachment = &depthReference;
+
+	// Use subpass dependencies for layout transitions
+	std::array<VkSubpassDependency, 2> dependencies;
+
+	dependencies[0].srcSubpass = VK_SUBPASS_EXTERNAL;
+	dependencies[0].dstSubpass = 0;
+	dependencies[0].srcStageMask = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
+	dependencies[0].dstStageMask = VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
+	dependencies[0].srcAccessMask = VK_ACCESS_SHADER_READ_BIT;
+	dependencies[0].dstAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+	dependencies[0].dependencyFlags = VK_DEPENDENCY_BY_REGION_BIT;
+
+	dependencies[1].srcSubpass = 0;
+	dependencies[1].dstSubpass = VK_SUBPASS_EXTERNAL;
+	dependencies[1].srcStageMask = VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;
+	dependencies[1].dstStageMask = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
+	dependencies[1].srcAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+	dependencies[1].dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
+	dependencies[1].dependencyFlags = VK_DEPENDENCY_BY_REGION_BIT;
+
+	VkRenderPassCreateInfo renderPassCreateInfo{};
+	renderPassCreateInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
+	renderPassCreateInfo.pNext = nullptr;
+	renderPassCreateInfo.attachmentCount = 1; 
+	renderPassCreateInfo.pAttachments = &attachmentDescription;
+	renderPassCreateInfo.subpassCount = 1;
+	renderPassCreateInfo.pSubpasses = &subpass;
+	renderPassCreateInfo.dependencyCount = static_cast<uint32_t>(dependencies.size());
+	renderPassCreateInfo.pDependencies = dependencies.data();
+
+	VK_CHECK(vkCreateRenderPass(engine._device, &renderPassCreateInfo, nullptr, &offscreenPass.renderPass));
+}
+
+// Setup the offscreen framebuffer for rendering the scene from light's point-of-view to
+// The depth attachment of this framebuffer will then be used to sample from in the fragment shader of the shadowing pass
+void prepareShadowMapFramebuffer(VulkanEngine& engine, OffscreenPass& offscreenPass)
+{
+	offscreenPass.width = SHADOWMAP_DIM;
+	offscreenPass.height = SHADOWMAP_DIM;
+
+	// For shadow mapping we only need a depth attachment
+	VkImageCreateInfo imageInfo{};
+	imageInfo.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
+	imageInfo.pNext = nullptr;
+	imageInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+	imageInfo.imageType = VK_IMAGE_TYPE_2D;
+	imageInfo.extent.width = offscreenPass.width;
+	imageInfo.extent.height = offscreenPass.height;
+	imageInfo.extent.depth = 1;
+	imageInfo.mipLevels = 1;
+	imageInfo.arrayLayers = 1;
+	imageInfo.samples = VK_SAMPLE_COUNT_1_BIT;
+	imageInfo.tiling = VK_IMAGE_TILING_OPTIMAL;
+	// Depth stencil attachment
+	imageInfo.format = DEPTH_FORMAT;
+	// We will sample directly from the depth attachment for the shadow mapping
+	imageInfo.usage = VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT;
+
+	VmaAllocationCreateInfo allocInfo{};
+	allocInfo.usage = VMA_MEMORY_USAGE_GPU_ONLY;
+	allocInfo.requiredFlags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
+
+	VK_CHECK(vmaCreateImage(engine._allocator, &imageInfo, &allocInfo, &offscreenPass.depth.image._image, &offscreenPass.depth.image._allocation, nullptr));
+
+	// *******************EVERYTHING GOOD UP TO HERE, FINISH EVERYTHING BELOW THIS
+
+	//VkImageViewCreateInfo depthStencilView = vks::initializers::imageViewCreateInfo();
+	//depthStencilView.viewType = VK_IMAGE_VIEW_TYPE_2D;
+	//depthStencilView.format = DEPTH_FORMAT;
+	//depthStencilView.subresourceRange = {};
+	//depthStencilView.subresourceRange.aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT;
+	//depthStencilView.subresourceRange.baseMipLevel = 0;
+	//depthStencilView.subresourceRange.levelCount = 1;
+	//depthStencilView.subresourceRange.baseArrayLayer = 0;
+	//depthStencilView.subresourceRange.layerCount = 1;
+	//depthStencilView.image = offscreenPass.depth.image;
+	//VK_CHECK_RESULT(vkCreateImageView(device, &depthStencilView, nullptr, &offscreenPass.depth.view));
+
+	//// Create sampler to sample from to depth attachment
+	//// Used to sample in the fragment shader for shadowed rendering
+	//VkFilter shadowmap_filter = vks::tools::formatIsFilterable(physicalDevice, DEPTH_FORMAT, VK_IMAGE_TILING_OPTIMAL) ?
+	//	DEFAULT_SHADOWMAP_FILTER :
+	//	VK_FILTER_NEAREST;
+	//VkSamplerCreateInfo sampler = vks::initializers::samplerCreateInfo();
+	//sampler.magFilter = shadowmap_filter;
+	//sampler.minFilter = shadowmap_filter;
+	//sampler.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
+	//sampler.addressModeU = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+	//sampler.addressModeV = sampler.addressModeU;
+	//sampler.addressModeW = sampler.addressModeU;
+	//sampler.mipLodBias = 0.0f;
+	//sampler.maxAnisotropy = 1.0f;
+	//sampler.minLod = 0.0f;
+	//sampler.maxLod = 1.0f;
+	//sampler.borderColor = VK_BORDER_COLOR_FLOAT_OPAQUE_WHITE;
+	//VK_CHECK_RESULT(vkCreateSampler(device, &sampler, nullptr, &offscreenPass.depthSampler));
+
+	//prepareOffscreenRenderpass();
+
+	//// Create frame buffer
+	//VkFramebufferCreateInfo fbufCreateInfo = vks::initializers::framebufferCreateInfo();
+	//fbufCreateInfo.renderPass = offscreenPass.renderPass;
+	//fbufCreateInfo.attachmentCount = 1;
+	//fbufCreateInfo.pAttachments = &offscreenPass.depth.view;
+	//fbufCreateInfo.width = offscreenPass.width;
+	//fbufCreateInfo.height = offscreenPass.height;
+	//fbufCreateInfo.layers = 1;
+
+	//VK_CHECK_RESULT(vkCreateFramebuffer(device, &fbufCreateInfo, nullptr, &offscreenPass.frameBuffer));
 }

@@ -39,6 +39,11 @@ struct Light {
 	glm::vec4 color;    // w is for intensity
 };
 
+struct DirectionLight {
+	Light light;
+	glm::vec4 direction;
+};
+
 struct Texture {
 	AllocatedImage image;
 	VkImageView imageView;
@@ -127,6 +132,15 @@ struct GuiData {
 struct MeshPushConstants {
 	glm::vec4 roughness_multiplier; // only x component is used
 	glm::mat4 render_matrix;
+};
+
+struct OffscreenPass {
+	uint32_t width, height;
+	VkFramebuffer frameBuffer;
+	Texture depth;
+	VkRenderPass renderPass;
+	VkSampler depthSampler;
+	VkDescriptorImageInfo descriptor;
 };
 
 struct DeletionQueue
@@ -219,6 +233,8 @@ public:
 
 	// frame storage
 	FrameData _frames[FRAME_OVERLAP];
+
+	OffscreenPass _offscreenPass;
 
 	// for delta time
 	std::chrono::steady_clock::time_point _lastTime{};
