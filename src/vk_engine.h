@@ -34,6 +34,13 @@
 constexpr uint32_t FRAME_OVERLAP{ 2 };
 constexpr size_t MAX_NUM_TOTAL_LIGHTS{ 10 }; // this must match glsl shader!
 
+struct VulkanEngine;
+
+struct InitInfo {
+	std::function<void(VulkanEngine&)> init;
+	std::function<void(VulkanEngine&, float)> update;
+};
+
 struct Light {
 	glm::vec4 position; // w is unused
 	glm::vec4 color;    // w is for intensity
@@ -119,6 +126,18 @@ struct RenderObject {
 	mutable glm::mat4 transformMatrix;
 
 	bool operator<(const RenderObject& other) const;
+};
+
+class GameObject {
+public:
+	GameObject(const RenderObject* ro)
+		: renderObject{ ro }
+	{}
+
+	void setTransform(glm::mat4 mat);
+
+private:
+	const RenderObject* renderObject;
 };
 
 struct GuiData {
@@ -271,6 +290,10 @@ public:
 
 	// returns nullptr if it can't be found
 	Mesh* get_mesh(const std::string& name);
+
+	GameObject create_object(const std::string& meshName, const std::string& matName);
+
+	GameObject create_object(const std::string& name);
 
 private:
 

@@ -21,7 +21,8 @@ frag:	equirectangular.frag.spv
 bind:	0
 	type:	COMBINED_IMAGE_SAMPLER
 	stage:	FRAGMENT
-	path:	../hdri/8k_stars.jpg
+//	path:	../hdri/8k_stars.jpg
+	path:	../hdri/wide_street_01_4k.hdr
 	format:	R32G32B32A32_SFLOAT
 END
 

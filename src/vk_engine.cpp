@@ -54,6 +54,10 @@ void printMat(const Mat& mat) {
 	printMat(mat, std::cout);
 }
 
+void GameObject::setTransform(glm::mat4 mat) {
+	renderObject->transformMatrix = mat;
+}
+
 void VulkanEngine::init()
 {
 	// We initialize SDL and create a window with it. 
@@ -251,40 +255,68 @@ void VulkanEngine::init_scene()
 
 	// Furniture scene
 
-	RenderObject bed{};
-	bed.mesh = get_mesh("bed");
-	bed.material = get_material("bed");
-	bed.transformMatrix = glm::mat4(1.0); // change bed transform in render loop
-	_renderables.insert(bed);
-	_guiData.bed = &(*_renderables.find(bed));
+	GameObject bed{ create_object("bed") };
 
-	RenderObject sofa{};
-	sofa.mesh = get_mesh("sofa");
-	sofa.material = get_material("sofa");
+	GameObject sofa{ create_object("sofa") };
 	translate = glm::translate(glm::mat4{ 1.0 }, glm::vec3(-2.5, 0.0, 0.4));
 	scale = glm::scale(glm::mat4{ 1.0 }, glm::vec3{ 1.0 });
 	rotate = glm::rotate(glm::radians(110.0f), glm::vec3{ 0.0, 1.0, 0.0 });
-	sofa.transformMatrix = translate * scale * rotate;
-	_renderables.insert(sofa);
+	sofa.setTransform(translate * scale * rotate);
 
-	RenderObject chair{};
-	chair.mesh = get_mesh("chair");
-	chair.material = get_material("chair");
+	GameObject chair{ create_object("chair") };
 	translate = glm::translate(glm::mat4{ 1.0 }, glm::vec3(-2.1, 0.0, -2.0));
 	scale = glm::scale(glm::mat4{ 1.0 }, glm::vec3{ 1.0 });
 	rotate = glm::rotate(glm::radians(80.0f), glm::vec3{ 0.0, 1.0, 0.0 });
-	chair.transformMatrix = translate * scale * rotate;
-	_renderables.insert(chair);
+	chair.setTransform(translate * scale * rotate);
 
-	RenderObject plane{};
-	plane.mesh = get_mesh("plane");
-	plane.material = get_material("default");
+	GameObject plane{ create_object("plane", "default") };
 	translate = glm::translate(glm::mat4{ 1.0 }, glm::vec3(0.0, 0.0, 0.0));
 	scale = glm::scale(glm::mat4{ 1.0 }, glm::vec3{ 1.0 });
 	rotate = glm::rotate(0.0f, glm::vec3{ 1.0, 0.0, 0.0 });
-	plane.transformMatrix = translate * scale * rotate;
-	_renderables.insert(plane);
+	plane.setTransform(translate * scale * rotate);
 
+	//RenderObject sofa{};
+	//sofa.mesh = get_mesh("sofa");
+	//sofa.material = get_material("sofa");
+	//translate = glm::translate(glm::mat4{ 1.0 }, glm::vec3(-2.5, 0.0, 0.4));
+	//scale = glm::scale(glm::mat4{ 1.0 }, glm::vec3{ 1.0 });
+	//rotate = glm::rotate(glm::radians(110.0f), glm::vec3{ 0.0, 1.0, 0.0 });
+	//sofa.transformMatrix = translate * scale * rotate;
+	//_renderables.insert(sofa);
+
+	//RenderObject chair{};
+	//chair.mesh = get_mesh("chair");
+	//chair.material = get_material("chair");
+	//translate = glm::translate(glm::mat4{ 1.0 }, glm::vec3(-2.1, 0.0, -2.0));
+	//scale = glm::scale(glm::mat4{ 1.0 }, glm::vec3{ 1.0 });
+	//rotate = glm::rotate(glm::radians(80.0f), glm::vec3{ 0.0, 1.0, 0.0 });
+	//chair.transformMatrix = translate * scale * rotate;
+	//_renderables.insert(chair);
+
+	//RenderObject plane{};
+	//plane.mesh = get_mesh("plane");
+	//plane.material = get_material("default");
+	//translate = glm::translate(glm::mat4{ 1.0 }, glm::vec3(0.0, 0.0, 0.0));
+	//scale = glm::scale(glm::mat4{ 1.0 }, glm::vec3{ 1.0 });
+	//rotate = glm::rotate(0.0f, glm::vec3{ 1.0, 0.0, 0.0 });
+	//plane.transformMatrix = translate * scale * rotate;
+	//_renderables.insert(plane);
+
+}
+
+GameObject VulkanEngine::create_object(const std::string& meshName, const std::string& matName)
+{
+	RenderObject object{};
+	object.mesh = get_mesh(meshName);
+	object.material = get_material(matName);
+	object.transformMatrix = glm::mat4(1.0);
+	_renderables.insert(object);
+	return GameObject{ &(*_renderables.find(object)) };
+}
+
+GameObject VulkanEngine::create_object(const std::string& name)
+{
+	return create_object(name, name);
 }
 
 void VulkanEngine::immediate_submit(std::function<void(VkCommandBuffer cmd)>&& function)
@@ -1378,10 +1410,11 @@ void VulkanEngine::draw_objects(VkCommandBuffer cmd, const std::multiset<RenderO
 	std::memcpy(sceneData, &_sceneParameters, sizeof(GPUSceneData));
 	vmaUnmapMemory(_allocator, _sceneParameterBuffer._allocation);
 
-	glm::mat4 bedTranslate{ glm::translate(glm::mat4{ 1.0 }, glm::vec3(0.0, 0.0, 0.0)) };
-	glm::mat4 bedScale{ glm::scale(glm::mat4{1.0}, glm::vec3{1.0}) };
-	glm::mat4 bedRotate{ glm::rotate(_guiData.bedAngle, glm::vec3{ 0.0, 1.0, 0.0 }) };
-	_guiData.bed->transformMatrix = bedTranslate * bedScale * bedRotate;
+	// CALL UPDATE FUNCTION HERE INSTEAD
+	//glm::mat4 bedTranslate{ glm::translate(glm::mat4{ 1.0 }, glm::vec3(0.0, 0.0, 0.0)) };
+	//glm::mat4 bedScale{ glm::scale(glm::mat4{1.0}, glm::vec3{1.0}) };
+	//glm::mat4 bedRotate{ glm::rotate(_guiData.bedAngle, glm::vec3{ 0.0, 1.0, 0.0 }) };
+	//_guiData.bed->transformMatrix = bedTranslate * bedScale * bedRotate;
 
 	// write all the objects' matrices into the SSBO
 	void* objectData;
