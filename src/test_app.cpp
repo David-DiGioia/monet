@@ -2,6 +2,7 @@
 
 #include "glm/glm.hpp"
 #include "glm/gtx/transform.hpp"
+#include "imgui.h"
 
 void TestApp::init(VulkanEngine& engine)
 {
@@ -32,5 +33,42 @@ void TestApp::input()
 
 void TestApp::gui()
 {
+	ImGui::ShowDemoWindow();
 
+	//// Main body of the Demo window starts here.
+	//if (!ImGui::Begin("Debug"))
+	//{
+	//	// Early out if the window is collapsed, as an optimization.
+	//	ImGui::End();
+	//	return;
+	//}
+
+	//if (ImGui::CollapsingHeader("Lights"))
+	//{
+	//	ImGui::Text("Light 0:");
+	//	ImGui::DragFloat3("position 0", (float*)&_guiData.light0.position, 0.005f);
+	//	ImGui::ColorEdit3("color 0", (float*)&_guiData.light0.color);
+	//	ImGui::DragFloat("intensity 0", &_guiData.light0.color.w, 0.02f);
+
+	//	ImGui::Text("Light 1:");
+	//	ImGui::DragFloat3("position 1", (float*)&_guiData.light1.position, 0.005f);
+	//	ImGui::ColorEdit3("color 1", (float*)&_guiData.light1.color);
+	//	ImGui::DragFloat("intensity 1", &_guiData.light1.color.w, 0.02f);
+	//}
+
+	//if (ImGui::CollapsingHeader("Camera"))
+	//{
+	//	ImGui::Text("Cam rotation:");
+	//	ImGui::DragFloat("phi", &_camRotPhi, 0.005f);
+	//	ImGui::DragFloat("theta", &_camRotTheta, 0.005f);
+	//}
+
+	//if (ImGui::CollapsingHeader("Bed"))
+	//{
+	//	ImGui::DragFloat("Bed angle", &_guiData.bedAngle, 0.005f);
+	//}
+
+	//ImGui::SliderFloat("Roughness", &_guiData.roughness_mult, 0.0f, 1.0f);
+
+	//ImGui::End();
 }
