@@ -54,14 +54,19 @@ void printMat(const Mat& mat) {
 	printMat(mat, std::cout);
 }
 
+void GameObject::setRenderObject(const RenderObject* ro)
+{
+	_renderObject = ro;
+}
+
 void GameObject::updateRenderMatrix()
 {
-	renderObject->transformMatrix = glm::translate(glm::mat4{ 1.0 }, _pos) * _rot * glm::scale(glm::mat4{ 1.0 }, _scale);
+	_renderObject->transformMatrix = glm::translate(glm::mat4{ 1.0 }, _pos) * _rot * glm::scale(glm::mat4{ 1.0 }, _scale);
 }
 
 void GameObject::setTransform(glm::mat4 mat)
 {
-	renderObject->transformMatrix = mat;
+	_renderObject->transformMatrix = mat;
 }
 
 glm::vec3 GameObject::getPos()
@@ -115,6 +120,7 @@ void VulkanEngine::init(InitInfo& info)
 		window_flags
 	);
 
+	_updateFunc = info.update;
 	init_vulkan();
 	init_swapchain();
 	init_commands();
@@ -318,19 +324,19 @@ void VulkanEngine::init_scene(InitInfo& info)
 
 }
 
-GameObject VulkanEngine::create_object(const std::string& meshName, const std::string& matName)
+const RenderObject* VulkanEngine::create_render_object(const std::string& meshName, const std::string& matName)
 {
 	RenderObject object{};
 	object.mesh = get_mesh(meshName);
 	object.material = get_material(matName);
 	object.transformMatrix = glm::mat4(1.0);
 	_renderables.insert(object);
-	return GameObject{ &(*_renderables.find(object)) };
+	return &(*_renderables.find(object));
 }
 
-GameObject VulkanEngine::create_object(const std::string& name)
+const RenderObject* VulkanEngine::create_render_object(const std::string& name)
 {
-	return create_object(name, name);
+	return create_render_object(name, name);
 }
 
 void VulkanEngine::immediate_submit(std::function<void(VkCommandBuffer cmd)>&& function)
@@ -1424,7 +1430,8 @@ void VulkanEngine::draw_objects(VkCommandBuffer cmd, const std::multiset<RenderO
 	std::memcpy(sceneData, &_sceneParameters, sizeof(GPUSceneData));
 	vmaUnmapMemory(_allocator, _sceneParameterBuffer._allocation);
 
-	// CALL UPDATE FUNCTION HERE INSTEAD
+	_updateFunc(*this, _delta);
+
 	//glm::mat4 bedTranslate{ glm::translate(glm::mat4{ 1.0 }, glm::vec3(0.0, 0.0, 0.0)) };
 	//glm::mat4 bedScale{ glm::scale(glm::mat4{1.0}, glm::vec3{1.0}) };
 	//glm::mat4 bedRotate{ glm::rotate(_guiData.bedAngle, glm::vec3{ 0.0, 1.0, 0.0 }) };
@@ -1517,10 +1524,6 @@ void VulkanEngine::showFPS() {
 
 bool VulkanEngine::process_input()
 {
-	auto currentTime{ std::chrono::high_resolution_clock::now() };
-	double delta{ std::chrono::duration_cast<std::chrono::microseconds>(currentTime - _lastTime).count() / 1000000.0 };
-	_lastTime = currentTime;
-
 	float speed{ 3.0f };
 	float camSensitivity{ 0.3f };
 	// mouse motion seems to be sampled 60fps regardless of framerate
@@ -1558,22 +1561,22 @@ bool VulkanEngine::process_input()
 
 	// continuous-response keys
 	if (keystate[SDL_SCANCODE_W]) {
-		translate.z -= speed * delta;
+		translate.z -= speed * _delta;
 	}
 	if (keystate[SDL_SCANCODE_A]) {
-		translate.x -= speed * delta;
+		translate.x -= speed * _delta;
 	}
 	if (keystate[SDL_SCANCODE_S]) {
-		translate.z += speed * delta;
+		translate.z += speed * _delta;
 	}
 	if (keystate[SDL_SCANCODE_D]) {
-		translate.x += speed * delta;
+		translate.x += speed * _delta;
 	}
 	if (keystate[SDL_SCANCODE_E]) {
-		translate.y += speed * delta;
+		translate.y += speed * _delta;
 	}
 	if (keystate[SDL_SCANCODE_Q]) {
-		translate.y -= speed * delta;
+		translate.y -= speed * _delta;
 	}
 
 	_camPos += glm::vec3{ _camRot * translate };
@@ -1634,9 +1637,14 @@ void VulkanEngine::gui()
 void VulkanEngine::run()
 {
 	bool bQuit{ false };
+	_lastTime = std::chrono::high_resolution_clock::now();
 
 	// main loop
 	while (!bQuit) {
+		auto currentTime{ std::chrono::high_resolution_clock::now() };
+		_delta = std::chrono::duration_cast<std::chrono::microseconds>(currentTime - _lastTime).count() / 1000000.0f;
+		_lastTime = currentTime;
+
 		bQuit = process_input();
 		gui();
 		draw();

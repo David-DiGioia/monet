@@ -131,11 +131,20 @@ struct RenderObject {
 class GameObject {
 public:
 	GameObject(const RenderObject* ro)
-		: renderObject{ ro }
+		: _renderObject{ ro }
 		, _pos{ 0.0 }
 		, _scale{ 1.0 }
 		, _rot{ 1.0 }
 	{}
+
+	GameObject()
+		: _renderObject{ nullptr }
+		, _pos{ 0.0 }
+		, _scale{ 1.0 }
+		, _rot{ 1.0 }
+	{}
+
+	void setRenderObject(const RenderObject* ro);
 
 	void setTransform(glm::mat4 mat);
 
@@ -157,7 +166,7 @@ private:
 	glm::vec3 _pos;
 	glm::vec3 _scale;
 	glm::mat4 _rot;
-	const RenderObject* renderObject;
+	const RenderObject* _renderObject;
 };
 
 struct GuiData {
@@ -275,8 +284,11 @@ public:
 
 	OffscreenPass _offscreenPass;
 
+	std::function<void(VulkanEngine&, float)> _updateFunc;
+
 	// for delta time
 	std::chrono::steady_clock::time_point _lastTime{};
+	float _delta{ 0.0f };
 
 	// profiling variables
 	double _lastTimeFPS{ 0.0 };
@@ -311,9 +323,9 @@ public:
 	// returns nullptr if it can't be found
 	Mesh* get_mesh(const std::string& name);
 
-	GameObject create_object(const std::string& meshName, const std::string& matName);
+	const RenderObject* create_render_object(const std::string& meshName, const std::string& matName);
 
-	GameObject create_object(const std::string& name);
+	const RenderObject* create_render_object(const std::string& name);
 
 private:
 
