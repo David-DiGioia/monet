@@ -8,10 +8,20 @@ public:
 
 	void update(VulkanEngine& engine, float delta) override;
 
-	void input() override;
+	bool input(float delta) override;
 
 	void gui() override;
 
+	// New functions
+	void updateCamera(VulkanEngine& engine);
+
 private:
+	// Camera variables
+	Transform _camera{};
+	float _camRotPhi{};
+	float _camRotTheta{};
+	bool _camMouseControls{ false };
+
+	// objects
 	GameObject _sofa{};
 };

@@ -8,7 +8,7 @@ public:
 
 	virtual void update(VulkanEngine& engine, float delta) = 0;
 
-	virtual void input() = 0;
+	virtual bool input(float delta) = 0;
 
 	virtual void gui() = 0;
 };

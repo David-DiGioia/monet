@@ -54,6 +54,11 @@ void printMat(const Mat& mat) {
 	printMat(mat, std::cout);
 }
 
+glm::mat4 Transform::mat4()
+{
+	return glm::translate(glm::mat4{ 1.0 }, pos) * rot* glm::scale(glm::mat4{ 1.0 }, scale);
+}
+
 void GameObject::setRenderObject(const RenderObject* ro)
 {
 	_renderObject = ro;
@@ -61,44 +66,49 @@ void GameObject::setRenderObject(const RenderObject* ro)
 
 void GameObject::updateRenderMatrix()
 {
-	_renderObject->transformMatrix = glm::translate(glm::mat4{ 1.0 }, _pos) * _rot * glm::scale(glm::mat4{ 1.0 }, _scale);
+	_renderObject->transformMatrix = _transform.mat4();
 }
 
-void GameObject::setTransform(glm::mat4 mat)
+Transform GameObject::getTransform()
 {
-	_renderObject->transformMatrix = mat;
+	return _transform;
 }
 
 glm::vec3 GameObject::getPos()
 {
-	return _pos;
+	return _transform.pos;
 }
 
 glm::vec3 GameObject::getScale()
 {
-	return _scale;
+	return _transform.scale;
 }
 
 glm::mat4 GameObject::getRot()
 {
-	return _rot;
+	return _transform.rot;
+}
+
+void GameObject::setTransform(Transform transform)
+{
+	_transform = transform;
 }
 
 void GameObject::setPos(glm::vec3 pos)
 {
-	_pos = pos;
+	_transform.pos = pos;
 	updateRenderMatrix();
 }
 
 void GameObject::setScale(glm::vec3 scale)
 {
-	_scale = scale;
+	_transform.scale = scale;
 	updateRenderMatrix();
 }
 
 void GameObject::setRot(glm::mat4 rot)
 {
-	_rot = rot;
+	_transform.rot = rot;
 	updateRenderMatrix();
 }
 
@@ -106,8 +116,7 @@ void VulkanEngine::init(Application* app)
 {
 	// We initialize SDL and create a window with it. 
 	SDL_Init(SDL_INIT_VIDEO);
-	_camMouseControls = false;
-	SDL_SetRelativeMouseMode((SDL_bool)_camMouseControls);
+	//SDL_SetRelativeMouseMode((SDL_bool)_camMouseControls);
 
 	SDL_WindowFlags window_flags{ (SDL_WindowFlags)(SDL_WINDOW_VULKAN) };
 
@@ -137,6 +146,11 @@ void VulkanEngine::init(Application* app)
 
 	// everything went fine
 	_isInitialized = true;
+}
+
+void VulkanEngine::set_camera_transform(Transform transform)
+{
+	_camTransform = transform;
 }
 
 void VulkanEngine::init_tracy()
@@ -236,11 +250,6 @@ void VulkanEngine::init_imgui()
 
 void VulkanEngine::init_scene()
 {
-	_camPos = glm::vec3{ 0.0f, 2.0f, 5.0f };
-	_camRotPhi = 0.0f;
-	_camRotTheta = 0.0f;
-	_camRot = glm::mat4{ 1.0f };
-
 	RenderObject cube{};
 	cube.mesh = get_mesh("cube");
 	cube.material = get_material("testCubemapMat");
@@ -1389,12 +1398,18 @@ void VulkanEngine::draw_objects(VkCommandBuffer cmd, const std::multiset<RenderO
 {
 	TracyVkZone(get_current_frame()._tracyContext, cmd, "Draw objects");
 
-	glm::mat4 rotTheta{ glm::rotate(_camRotTheta, glm::vec3{ 1.0f, 0.0f, 0.0f }) };
-	glm::mat4 rotPhi{ glm::rotate(_camRotPhi, glm::vec3{ 0.0f, 1.0f, 0.0f }) };
-	_camRot = rotPhi * rotTheta;
-	glm::mat4 translate{ glm::translate(glm::mat4(1.0f), _camPos) };
-	glm::mat4 view{ translate * _camRot };
-	glm::mat4 viewOrigin{ _camRot };
+	// Assume _camTransform is updated here if it needs to be
+	_app->update(*this, _delta);
+
+	//glm::mat4 rotTheta{ glm::rotate(_camRotTheta, glm::vec3{ 1.0f, 0.0f, 0.0f }) };
+	//glm::mat4 rotPhi{ glm::rotate(_camRotPhi, glm::vec3{ 0.0f, 1.0f, 0.0f }) };
+	//_camRot = rotPhi * rotTheta;
+	//glm::mat4 translate{ glm::translate(glm::mat4(1.0f), _camPos) };
+	//glm::mat4 view{ translate * _camRot };
+	//glm::mat4 viewOrigin{ _camRot };
+
+	glm::mat4 view{ _camTransform.mat4() };
+	glm::mat4 viewOrigin{ _camTransform.rot };
 
 	view = glm::inverse(view);
 	viewOrigin = glm::inverse(viewOrigin);
@@ -1421,7 +1436,7 @@ void VulkanEngine::draw_objects(VkCommandBuffer cmd, const std::multiset<RenderO
 	_sceneParameters.numLights = 2;
 	_sceneParameters.lights[0] = _guiData.light0;
 	_sceneParameters.lights[1] = _guiData.light1;
-	_sceneParameters.camPos = glm::vec4(_camPos, 1.0);
+	_sceneParameters.camPos = glm::vec4(_camTransform.pos, 1.0);
 
 	char* sceneData;
 	vmaMapMemory(_allocator, _sceneParameterBuffer._allocation, (void**)&sceneData);
@@ -1429,8 +1444,6 @@ void VulkanEngine::draw_objects(VkCommandBuffer cmd, const std::multiset<RenderO
 	sceneData += pad_uniform_buffer_size(sizeof(GPUSceneData)) * frameIndex;
 	std::memcpy(sceneData, &_sceneParameters, sizeof(GPUSceneData));
 	vmaUnmapMemory(_allocator, _sceneParameterBuffer._allocation);
-
-	_app->update(*this, _delta);
 
 	//glm::mat4 bedTranslate{ glm::translate(glm::mat4{ 1.0 }, glm::vec3(0.0, 0.0, 0.0)) };
 	//glm::mat4 bedScale{ glm::scale(glm::mat4{1.0}, glm::vec3{1.0}) };
@@ -1522,68 +1535,6 @@ void VulkanEngine::showFPS() {
 	}
 }
 
-bool VulkanEngine::process_input()
-{
-	float speed{ 3.0f };
-	float camSensitivity{ 0.3f };
-	// mouse motion seems to be sampled 60fps regardless of framerate
-	constexpr float mouseDelta{ 1.0f / 60.0f };
-
-	const Uint8* keystate{ SDL_GetKeyboardState(nullptr) };
-
-	bool bQuit{ false };
-	SDL_Event e;
-	// Handle events on queue
-	while (SDL_PollEvent(&e))
-	{
-		switch (e.type)
-		{
-		case SDL_KEYDOWN:
-			if (e.key.keysym.sym == SDLK_f) {
-				_camMouseControls = !_camMouseControls;
-				SDL_SetRelativeMouseMode((SDL_bool)_camMouseControls);
-			}
-			break;
-		case SDL_MOUSEMOTION:
-			if (_camMouseControls) {
-				_camRotPhi -= e.motion.xrel * camSensitivity * mouseDelta;
-				_camRotTheta -= e.motion.yrel * camSensitivity * mouseDelta;
-				_camRotTheta = std::clamp(_camRotTheta, -pi / 2.0f, pi / 2.0f);
-			}
-			break;
-		case SDL_QUIT:
-			bQuit = true;
-			break;
-		}
-	}
-
-	glm::vec4 translate{ 0.0f };
-
-	// continuous-response keys
-	if (keystate[SDL_SCANCODE_W]) {
-		translate.z -= speed * _delta;
-	}
-	if (keystate[SDL_SCANCODE_A]) {
-		translate.x -= speed * _delta;
-	}
-	if (keystate[SDL_SCANCODE_S]) {
-		translate.z += speed * _delta;
-	}
-	if (keystate[SDL_SCANCODE_D]) {
-		translate.x += speed * _delta;
-	}
-	if (keystate[SDL_SCANCODE_E]) {
-		translate.y += speed * _delta;
-	}
-	if (keystate[SDL_SCANCODE_Q]) {
-		translate.y -= speed * _delta;
-	}
-
-	_camPos += glm::vec3{ _camRot * translate };
-
-	return bQuit;
-}
-
 void VulkanEngine::gui()
 {
 	// imgui new frame
@@ -1607,7 +1558,7 @@ void VulkanEngine::run()
 		_delta = std::chrono::duration_cast<std::chrono::microseconds>(currentTime - _lastTime).count() / 1000000.0f;
 		_lastTime = currentTime;
 
-		bQuit = process_input();
+		bQuit = _app->input(_delta);
 		gui();
 		draw();
 		showFPS();

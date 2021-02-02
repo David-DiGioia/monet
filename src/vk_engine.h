@@ -124,31 +124,37 @@ struct RenderObject {
 	bool operator<(const RenderObject& other) const;
 };
 
+struct Transform {
+	glm::vec3 pos{ 0.0 };
+	glm::vec3 scale{ 1.0 };
+	glm::mat4 rot{ 1.0 };
+
+	glm::mat4 mat4();
+};
+
 class GameObject {
 public:
 	GameObject(const RenderObject* ro)
 		: _renderObject{ ro }
-		, _pos{ 0.0 }
-		, _scale{ 1.0 }
-		, _rot{ 1.0 }
+		, _transform{}
 	{}
 
 	GameObject()
 		: _renderObject{ nullptr }
-		, _pos{ 0.0 }
-		, _scale{ 1.0 }
-		, _rot{ 1.0 }
+		, _transform{}
 	{}
 
 	void setRenderObject(const RenderObject* ro);
 
-	void setTransform(glm::mat4 mat);
+	Transform getTransform();
 
 	glm::vec3 getPos();
 
 	glm::vec3 getScale();
 
 	glm::mat4 getRot();
+
+	void setTransform(Transform transform);
 
 	void setPos(glm::vec3 pos);
 
@@ -159,9 +165,7 @@ public:
 private:
 	void updateRenderMatrix();
 
-	glm::vec3 _pos;
-	glm::vec3 _scale;
-	glm::mat4 _rot;
+	Transform _transform;
 	const RenderObject* _renderObject;
 };
 
@@ -252,11 +256,13 @@ public:
 	std::unordered_map<std::string, Material> _materials;
 	std::unordered_map<std::string, Mesh> _meshes;
 
-	glm::vec3 _camPos;
-	float _camRotPhi;
-	float _camRotTheta;
-	bool _camMouseControls;
-	glm::mat4 _camRot;
+	Transform _camTransform{};
+
+	//glm::vec3 _camPos;
+	//float _camRotPhi;
+	//float _camRotTheta;
+	//bool _camMouseControls;
+	//glm::mat4 _camRot;
 
 	VkDescriptorSetLayout _globalSetLayout;
 	VkDescriptorPool _descriptorPool;
@@ -323,6 +329,8 @@ public:
 
 	const RenderObject* create_render_object(const std::string& name);
 
+	void set_camera_transform(Transform transform);
+
 private:
 
 	void init_vulkan();
@@ -350,8 +358,6 @@ private:
 	void showFPS();
 
 	void init_scene();
-
-	bool process_input();
 
 	// getter for the frame we are rendering to right now
 	FrameData& get_current_frame();
