@@ -19,6 +19,7 @@
 #include "glm/glm.hpp"
 #include "../tracy/Tracy.hpp"		// CPU profiling
 #include "../tracy/TracyVulkan.hpp"
+#include "application.h"
 
 #define VK_CHECK(x)\
 	do\
@@ -35,11 +36,6 @@ constexpr uint32_t FRAME_OVERLAP{ 2 };
 constexpr size_t MAX_NUM_TOTAL_LIGHTS{ 10 }; // this must match glsl shader!
 
 struct VulkanEngine;
-
-struct InitInfo {
-	std::function<void(VulkanEngine&)> init;
-	std::function<void(VulkanEngine&, float)> update;
-};
 
 struct Light {
 	glm::vec4 position; // w is unused
@@ -284,7 +280,7 @@ public:
 
 	OffscreenPass _offscreenPass;
 
-	std::function<void(VulkanEngine&, float)> _updateFunc;
+	Application* _app;
 
 	// for delta time
 	std::chrono::steady_clock::time_point _lastTime{};
@@ -298,7 +294,7 @@ public:
 	double _msDelta;
 
 	// initializes everything in the engine
-	void init(InitInfo& info);
+	void init(Application* app);
 
 	// shuts down the engine
 	void cleanup();
@@ -353,7 +349,7 @@ private:
 
 	void showFPS();
 
-	void init_scene(InitInfo& info);
+	void init_scene();
 
 	bool process_input();
 

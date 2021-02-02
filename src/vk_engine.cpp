@@ -102,7 +102,7 @@ void GameObject::setRot(glm::mat4 rot)
 	updateRenderMatrix();
 }
 
-void VulkanEngine::init(InitInfo& info)
+void VulkanEngine::init(Application* app)
 {
 	// We initialize SDL and create a window with it. 
 	SDL_Init(SDL_INIT_VIDEO);
@@ -120,7 +120,7 @@ void VulkanEngine::init(InitInfo& info)
 		window_flags
 	);
 
-	_updateFunc = info.update;
+	_app = app;
 	init_vulkan();
 	init_swapchain();
 	init_commands();
@@ -131,7 +131,7 @@ void VulkanEngine::init(InitInfo& info)
 	load_meshes();
 	init_descriptors(); // descriptors are needed at pipeline create, so before materials
 	load_materials();
-	init_scene(info);
+	init_scene();
 	init_imgui();
 	init_gui_data();
 
@@ -234,7 +234,7 @@ void VulkanEngine::init_imgui()
 	});
 }
 
-void VulkanEngine::init_scene(InitInfo& info)
+void VulkanEngine::init_scene()
 {
 	_camPos = glm::vec3{ 0.0f, 2.0f, 5.0f };
 	_camRotPhi = 0.0f;
@@ -247,7 +247,7 @@ void VulkanEngine::init_scene(InitInfo& info)
 	cube.transformMatrix = glm::mat4{ 1.0 };
 	_renderables.insert(cube);
 
-	info.init(*this);
+	_app->init(*this);
 
 	//glm::mat4 translate;
 	//glm::mat4 scale;
@@ -1430,7 +1430,7 @@ void VulkanEngine::draw_objects(VkCommandBuffer cmd, const std::multiset<RenderO
 	std::memcpy(sceneData, &_sceneParameters, sizeof(GPUSceneData));
 	vmaUnmapMemory(_allocator, _sceneParameterBuffer._allocation);
 
-	_updateFunc(*this, _delta);
+	_app->update(*this, _delta);
 
 	//glm::mat4 bedTranslate{ glm::translate(glm::mat4{ 1.0 }, glm::vec3(0.0, 0.0, 0.0)) };
 	//glm::mat4 bedScale{ glm::scale(glm::mat4{1.0}, glm::vec3{1.0}) };

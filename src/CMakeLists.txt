@@ -14,6 +14,9 @@ add_executable (vulkan_guide
  "render_to_texture.h"
  "render_to_texture.cpp"
  "../tracy/TracyClient.cpp"
+ "application.h"
+ "test_app.h"
+ "test_app.cpp"
 )
 
 
