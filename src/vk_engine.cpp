@@ -54,11 +54,50 @@ void printMat(const Mat& mat) {
 	printMat(mat, std::cout);
 }
 
-void GameObject::setTransform(glm::mat4 mat) {
+void GameObject::updateRenderMatrix()
+{
+	renderObject->transformMatrix = glm::translate(glm::mat4{ 1.0 }, _pos) * _rot * glm::scale(glm::mat4{ 1.0 }, _scale);
+}
+
+void GameObject::setTransform(glm::mat4 mat)
+{
 	renderObject->transformMatrix = mat;
 }
 
-void VulkanEngine::init()
+glm::vec3 GameObject::getPos()
+{
+	return _pos;
+}
+
+glm::vec3 GameObject::getScale()
+{
+	return _scale;
+}
+
+glm::mat4 GameObject::getRot()
+{
+	return _rot;
+}
+
+void GameObject::setPos(glm::vec3 pos)
+{
+	_pos = pos;
+	updateRenderMatrix();
+}
+
+void GameObject::setScale(glm::vec3 scale)
+{
+	_scale = scale;
+	updateRenderMatrix();
+}
+
+void GameObject::setRot(glm::mat4 rot)
+{
+	_rot = rot;
+	updateRenderMatrix();
+}
+
+void VulkanEngine::init(InitInfo& info)
 {
 	// We initialize SDL and create a window with it. 
 	SDL_Init(SDL_INIT_VIDEO);
@@ -86,7 +125,7 @@ void VulkanEngine::init()
 	load_meshes();
 	init_descriptors(); // descriptors are needed at pipeline create, so before materials
 	load_materials();
-	init_scene();
+	init_scene(info);
 	init_imgui();
 	init_gui_data();
 
@@ -189,7 +228,7 @@ void VulkanEngine::init_imgui()
 	});
 }
 
-void VulkanEngine::init_scene()
+void VulkanEngine::init_scene(InitInfo& info)
 {
 	_camPos = glm::vec3{ 0.0f, 2.0f, 5.0f };
 	_camRotPhi = 0.0f;
@@ -202,9 +241,11 @@ void VulkanEngine::init_scene()
 	cube.transformMatrix = glm::mat4{ 1.0 };
 	_renderables.insert(cube);
 
-	glm::mat4 translate;
-	glm::mat4 scale;
-	glm::mat4 rotate;
+	info.init(*this);
+
+	//glm::mat4 translate;
+	//glm::mat4 scale;
+	//glm::mat4 rotate;
 
 	// coffee cart scene
 	/*
@@ -255,52 +296,25 @@ void VulkanEngine::init_scene()
 
 	// Furniture scene
 
-	GameObject bed{ create_object("bed") };
+	//GameObject bed{ create_object("bed") };
 
-	GameObject sofa{ create_object("sofa") };
-	translate = glm::translate(glm::mat4{ 1.0 }, glm::vec3(-2.5, 0.0, 0.4));
-	scale = glm::scale(glm::mat4{ 1.0 }, glm::vec3{ 1.0 });
-	rotate = glm::rotate(glm::radians(110.0f), glm::vec3{ 0.0, 1.0, 0.0 });
-	sofa.setTransform(translate * scale * rotate);
-
-	GameObject chair{ create_object("chair") };
-	translate = glm::translate(glm::mat4{ 1.0 }, glm::vec3(-2.1, 0.0, -2.0));
-	scale = glm::scale(glm::mat4{ 1.0 }, glm::vec3{ 1.0 });
-	rotate = glm::rotate(glm::radians(80.0f), glm::vec3{ 0.0, 1.0, 0.0 });
-	chair.setTransform(translate * scale * rotate);
-
-	GameObject plane{ create_object("plane", "default") };
-	translate = glm::translate(glm::mat4{ 1.0 }, glm::vec3(0.0, 0.0, 0.0));
-	scale = glm::scale(glm::mat4{ 1.0 }, glm::vec3{ 1.0 });
-	rotate = glm::rotate(0.0f, glm::vec3{ 1.0, 0.0, 0.0 });
-	plane.setTransform(translate * scale * rotate);
-
-	//RenderObject sofa{};
-	//sofa.mesh = get_mesh("sofa");
-	//sofa.material = get_material("sofa");
+	//GameObject sofa{ create_object("sofa") };
 	//translate = glm::translate(glm::mat4{ 1.0 }, glm::vec3(-2.5, 0.0, 0.4));
 	//scale = glm::scale(glm::mat4{ 1.0 }, glm::vec3{ 1.0 });
 	//rotate = glm::rotate(glm::radians(110.0f), glm::vec3{ 0.0, 1.0, 0.0 });
-	//sofa.transformMatrix = translate * scale * rotate;
-	//_renderables.insert(sofa);
+	//sofa.setTransform(translate * scale * rotate);
 
-	//RenderObject chair{};
-	//chair.mesh = get_mesh("chair");
-	//chair.material = get_material("chair");
+	//GameObject chair{ create_object("chair") };
 	//translate = glm::translate(glm::mat4{ 1.0 }, glm::vec3(-2.1, 0.0, -2.0));
 	//scale = glm::scale(glm::mat4{ 1.0 }, glm::vec3{ 1.0 });
 	//rotate = glm::rotate(glm::radians(80.0f), glm::vec3{ 0.0, 1.0, 0.0 });
-	//chair.transformMatrix = translate * scale * rotate;
-	//_renderables.insert(chair);
+	//chair.setTransform(translate * scale * rotate);
 
-	//RenderObject plane{};
-	//plane.mesh = get_mesh("plane");
-	//plane.material = get_material("default");
+	//GameObject plane{ create_object("plane", "default") };
 	//translate = glm::translate(glm::mat4{ 1.0 }, glm::vec3(0.0, 0.0, 0.0));
 	//scale = glm::scale(glm::mat4{ 1.0 }, glm::vec3{ 1.0 });
 	//rotate = glm::rotate(0.0f, glm::vec3{ 1.0, 0.0, 0.0 });
-	//plane.transformMatrix = translate * scale * rotate;
-	//_renderables.insert(plane);
+	//plane.setTransform(translate * scale * rotate);
 
 }
 

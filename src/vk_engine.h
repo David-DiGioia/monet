@@ -132,11 +132,31 @@ class GameObject {
 public:
 	GameObject(const RenderObject* ro)
 		: renderObject{ ro }
+		, _pos{ 0.0 }
+		, _scale{ 1.0 }
+		, _rot{ 1.0 }
 	{}
 
 	void setTransform(glm::mat4 mat);
 
+	glm::vec3 getPos();
+
+	glm::vec3 getScale();
+
+	glm::mat4 getRot();
+
+	void setPos(glm::vec3 pos);
+
+	void setScale(glm::vec3 scale);
+
+	void setRot(glm::mat4 rot);
+
 private:
+	void updateRenderMatrix();
+
+	glm::vec3 _pos;
+	glm::vec3 _scale;
+	glm::mat4 _rot;
 	const RenderObject* renderObject;
 };
 
@@ -266,7 +286,7 @@ public:
 	double _msDelta;
 
 	// initializes everything in the engine
-	void init();
+	void init(InitInfo& info);
 
 	// shuts down the engine
 	void cleanup();
@@ -321,7 +341,7 @@ private:
 
 	void showFPS();
 
-	void init_scene();
+	void init_scene(InitInfo& info);
 
 	bool process_input();
 
