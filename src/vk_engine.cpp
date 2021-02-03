@@ -153,6 +153,20 @@ void VulkanEngine::set_camera_transform(Transform transform)
 	_camTransform = transform;
 }
 
+void VulkanEngine::set_scene_lights(const std::vector<Light>& lights)
+{
+	uint32_t numLights = (uint32_t)lights.size();
+	if (numLights > MAX_NUM_TOTAL_LIGHTS) {
+		std::cout << "Error: numLights > MAX_NUM_TOTAL_LIGHTS\n";
+	}
+
+	_sceneParameters.numLights = numLights;
+
+	for (auto i{ 0 }; i < numLights; ++i) {
+		_sceneParameters.lights[i] = lights[i];
+	}
+}
+
 void VulkanEngine::init_tracy()
 {
 	for (auto i{ 0 }; i < FRAME_OVERLAP; ++i) {
@@ -1398,7 +1412,10 @@ void VulkanEngine::draw_objects(VkCommandBuffer cmd, const std::multiset<RenderO
 {
 	TracyVkZone(get_current_frame()._tracyContext, cmd, "Draw objects");
 
-	// Assume _camTransform is updated here if it needs to be
+	_sceneParameters.ambientColor = { glm::vec3{0.01f}, 1 };
+	_sceneParameters.numLights = 0;
+
+	// Assume _camTransform and _sceneParamters lights are updated here if they need to be
 	_app->update(*this, _delta);
 
 	//glm::mat4 rotTheta{ glm::rotate(_camRotTheta, glm::vec3{ 1.0f, 0.0f, 0.0f }) };
@@ -1430,12 +1447,6 @@ void VulkanEngine::draw_objects(VkCommandBuffer cmd, const std::multiset<RenderO
 	vmaUnmapMemory(_allocator, get_current_frame().cameraBuffer._allocation);
 
 	// copy scene data to scene buffer
-	float framed{ _frameNumber / 120.0f };
-
-	_sceneParameters.ambientColor = { glm::vec3{0.01f}, 1 };
-	_sceneParameters.numLights = 2;
-	_sceneParameters.lights[0] = _guiData.light0;
-	_sceneParameters.lights[1] = _guiData.light1;
 	_sceneParameters.camPos = glm::vec4(_camTransform.pos, 1.0);
 
 	char* sceneData;

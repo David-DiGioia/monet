@@ -5,6 +5,8 @@
 #include "imgui.h"
 #include "SDL.h"
 
+#include <cmath>
+
 void TestApp::init(VulkanEngine& engine)
 {
 	SDL_SetRelativeMouseMode((SDL_bool)_camMouseControls);
@@ -22,6 +24,12 @@ void TestApp::init(VulkanEngine& engine)
 	chair.setRot(glm::rotate(glm::radians(80.0f), glm::vec3{ 0.0, 1.0, 0.0 }));
 
 	GameObject plane{ engine.create_render_object("plane", "default") };
+
+	Light light{};
+	light.color = glm::vec4{ 1.0, 0.1, 0.1, 100.0 };
+	light.position = glm::vec4{ 1.0, 5.0, 1.0, 0.0 };
+
+	_lights.push_back(light);
 }
 
 void TestApp::updateCamera(VulkanEngine& engine)
@@ -34,11 +42,14 @@ void TestApp::updateCamera(VulkanEngine& engine)
 
 void TestApp::update(VulkanEngine& engine, float delta)
 {
-	updateCamera(engine);
-
 	glm::vec3 pos{ _sofa.getPos() };
 	pos.x += delta;
 	_sofa.setPos(pos);
+	_lights[0].position.x = std::sinf(_time) * 3.0f;
+
+	updateCamera(engine);
+	engine.set_scene_lights(_lights);
+	_time += delta;
 }
 
 bool TestApp::input(float delta)

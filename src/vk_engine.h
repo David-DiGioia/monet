@@ -59,7 +59,7 @@ struct GPUSceneData {
 	glm::vec4 sunColor; // w is for sun power
 	glm::vec4 camPos; // w is unused
 	Light lights[MAX_NUM_TOTAL_LIGHTS];
-	int numLights;
+	uint32_t numLights;
 };
 
 struct GPUCameraData {
@@ -331,6 +331,8 @@ public:
 
 	void set_camera_transform(Transform transform);
 
+	void set_scene_lights(const std::vector<Light>& lights);
+
 private:
 
 	void init_vulkan();
@@ -364,7 +366,6 @@ private:
 
 	// returns nullptr if it can't be found
 	Material* get_material(const std::string& name);
-
 
 	void draw_objects(VkCommandBuffer cmd, const std::multiset<RenderObject>& renderables);
 
