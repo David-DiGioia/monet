@@ -122,16 +122,16 @@ void VulkanEngine::init(Application* app)
 		std::cout << "Error: " << Mix_GetError() << "\n";
 	}
 
-	// general rule is > 10 sec is music, otherwise chunk
-	Mix_Music* bgm{ Mix_LoadMUS("../../assets/audio/charlie.mp3") };
-	Mix_Chunk* soundEffect{ Mix_LoadWAV("../../assets/audio/rode_mic.wav") };
+	//// general rule is > 10 sec is music, otherwise chunk
+	//Mix_Music* bgm{ Mix_LoadMUS("../../assets/audio/charlie.mp3") };
+	//Mix_Chunk* soundEffect{ Mix_LoadWAV("../../assets/audio/rode_mic.wav") };
 
-	Mix_PlayMusic(bgm, -1);
+	//Mix_PlayMusic(bgm, -1);
 
-	_mainDeletionQueue.push_function([=]() {
-		Mix_FreeChunk(soundEffect);
-		Mix_FreeMusic(bgm);
-	});
+	//_mainDeletionQueue.push_function([=]() {
+	//	Mix_FreeChunk(soundEffect);
+	//	Mix_FreeMusic(bgm);
+	//});
 
 	//SDL_SetRelativeMouseMode((SDL_bool)_camMouseControls);
 
