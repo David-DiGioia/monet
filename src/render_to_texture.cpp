@@ -508,49 +508,52 @@ void prepareShadowMapFramebuffer(VulkanEngine& engine, OffscreenPass& offscreenP
 
 	VK_CHECK(vmaCreateImage(engine._allocator, &imageInfo, &allocInfo, &offscreenPass.depth.image._image, &offscreenPass.depth.image._allocation, nullptr));
 
-	// *******************EVERYTHING GOOD UP TO HERE, FINISH EVERYTHING BELOW THIS
+	VkImageViewCreateInfo depthStencilView{};
+	depthStencilView.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+	depthStencilView.pNext = nullptr;
+	depthStencilView.viewType = VK_IMAGE_VIEW_TYPE_2D;
+	depthStencilView.format = DEPTH_FORMAT;
+	depthStencilView.subresourceRange = {};
+	depthStencilView.subresourceRange.aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT;
+	depthStencilView.subresourceRange.baseMipLevel = 0;
+	depthStencilView.subresourceRange.levelCount = 1;
+	depthStencilView.subresourceRange.baseArrayLayer = 0;
+	depthStencilView.subresourceRange.layerCount = 1;
+	depthStencilView.image = offscreenPass.depth.image._image;
+	VK_CHECK(vkCreateImageView(engine._device, &depthStencilView, nullptr, &offscreenPass.depth.imageView));
 
-	//VkImageViewCreateInfo depthStencilView = vks::initializers::imageViewCreateInfo();
-	//depthStencilView.viewType = VK_IMAGE_VIEW_TYPE_2D;
-	//depthStencilView.format = DEPTH_FORMAT;
-	//depthStencilView.subresourceRange = {};
-	//depthStencilView.subresourceRange.aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT;
-	//depthStencilView.subresourceRange.baseMipLevel = 0;
-	//depthStencilView.subresourceRange.levelCount = 1;
-	//depthStencilView.subresourceRange.baseArrayLayer = 0;
-	//depthStencilView.subresourceRange.layerCount = 1;
-	//depthStencilView.image = offscreenPass.depth.image;
-	//VK_CHECK_RESULT(vkCreateImageView(device, &depthStencilView, nullptr, &offscreenPass.depth.view));
+	/*
 
-	//// Create sampler to sample from to depth attachment
-	//// Used to sample in the fragment shader for shadowed rendering
-	//VkFilter shadowmap_filter = vks::tools::formatIsFilterable(physicalDevice, DEPTH_FORMAT, VK_IMAGE_TILING_OPTIMAL) ?
-	//	DEFAULT_SHADOWMAP_FILTER :
-	//	VK_FILTER_NEAREST;
-	//VkSamplerCreateInfo sampler = vks::initializers::samplerCreateInfo();
-	//sampler.magFilter = shadowmap_filter;
-	//sampler.minFilter = shadowmap_filter;
-	//sampler.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
-	//sampler.addressModeU = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
-	//sampler.addressModeV = sampler.addressModeU;
-	//sampler.addressModeW = sampler.addressModeU;
-	//sampler.mipLodBias = 0.0f;
-	//sampler.maxAnisotropy = 1.0f;
-	//sampler.minLod = 0.0f;
-	//sampler.maxLod = 1.0f;
-	//sampler.borderColor = VK_BORDER_COLOR_FLOAT_OPAQUE_WHITE;
-	//VK_CHECK_RESULT(vkCreateSampler(device, &sampler, nullptr, &offscreenPass.depthSampler));
+	// Create sampler to sample from to depth attachment
+	// Used to sample in the fragment shader for shadowed rendering
+	VkFilter shadowmap_filter = vks::tools::formatIsFilterable(physicalDevice, DEPTH_FORMAT, VK_IMAGE_TILING_OPTIMAL) ?
+		DEFAULT_SHADOWMAP_FILTER :
+		VK_FILTER_NEAREST;
+	VkSamplerCreateInfo sampler = vks::initializers::samplerCreateInfo();
+	sampler.magFilter = shadowmap_filter;
+	sampler.minFilter = shadowmap_filter;
+	sampler.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
+	sampler.addressModeU = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+	sampler.addressModeV = sampler.addressModeU;
+	sampler.addressModeW = sampler.addressModeU;
+	sampler.mipLodBias = 0.0f;
+	sampler.maxAnisotropy = 1.0f;
+	sampler.minLod = 0.0f;
+	sampler.maxLod = 1.0f;
+	sampler.borderColor = VK_BORDER_COLOR_FLOAT_OPAQUE_WHITE;
+	VK_CHECK_RESULT(vkCreateSampler(device, &sampler, nullptr, &offscreenPass.depthSampler));
 
-	//prepareOffscreenRenderpass();
+	prepareOffscreenRenderpass();
 
-	//// Create frame buffer
-	//VkFramebufferCreateInfo fbufCreateInfo = vks::initializers::framebufferCreateInfo();
-	//fbufCreateInfo.renderPass = offscreenPass.renderPass;
-	//fbufCreateInfo.attachmentCount = 1;
-	//fbufCreateInfo.pAttachments = &offscreenPass.depth.view;
-	//fbufCreateInfo.width = offscreenPass.width;
-	//fbufCreateInfo.height = offscreenPass.height;
-	//fbufCreateInfo.layers = 1;
+	// Create frame buffer
+	VkFramebufferCreateInfo fbufCreateInfo = vks::initializers::framebufferCreateInfo();
+	fbufCreateInfo.renderPass = offscreenPass.renderPass;
+	fbufCreateInfo.attachmentCount = 1;
+	fbufCreateInfo.pAttachments = &offscreenPass.depth.view;
+	fbufCreateInfo.width = offscreenPass.width;
+	fbufCreateInfo.height = offscreenPass.height;
+	fbufCreateInfo.layers = 1;
 
-	//VK_CHECK_RESULT(vkCreateFramebuffer(device, &fbufCreateInfo, nullptr, &offscreenPass.frameBuffer));
+	VK_CHECK_RESULT(vkCreateFramebuffer(device, &fbufCreateInfo, nullptr, &offscreenPass.frameBuffer));
+	*/
 }

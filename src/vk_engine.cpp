@@ -25,6 +25,7 @@
 #include "render_to_texture.h"
 #include "../tracy/Tracy.hpp"		// CPU profiling
 #include "../tracy/TracyVulkan.hpp"	// GPU profiling
+#include "SDL_mixer.h"
 
 #define VMA_IMPLEMENTATION
 #include "vk_mem_alloc.h"
@@ -115,7 +116,23 @@ void GameObject::setRot(glm::mat4 rot)
 void VulkanEngine::init(Application* app)
 {
 	// We initialize SDL and create a window with it. 
-	SDL_Init(SDL_INIT_VIDEO);
+	SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO);
+
+	if (Mix_OpenAudio(44100, MIX_DEFAULT_FORMAT, 2, 2048) < 0) {
+		std::cout << "Error: " << Mix_GetError() << "\n";
+	}
+
+	// general rule is > 10 sec is music, otherwise chunk
+	Mix_Music* bgm{ Mix_LoadMUS("../../assets/audio/charlie.mp3") };
+	Mix_Chunk* soundEffect{ Mix_LoadWAV("../../assets/audio/rode_mic.wav") };
+
+	Mix_PlayMusic(bgm, -1);
+
+	_mainDeletionQueue.push_function([=]() {
+		Mix_FreeChunk(soundEffect);
+		Mix_FreeMusic(bgm);
+	});
+
 	//SDL_SetRelativeMouseMode((SDL_bool)_camMouseControls);
 
 	SDL_WindowFlags window_flags{ (SDL_WindowFlags)(SDL_WINDOW_VULKAN) };
@@ -1201,6 +1218,8 @@ void VulkanEngine::cleanup()
 		vkDestroyDevice(_device, nullptr);
 		DestroyDebugUtilsMessengerEXT(_instance, _debug_messenger, nullptr);
 		vkDestroyInstance(_instance, nullptr);
+
+		Mix_Quit();
 
 		SDL_DestroyWindow(_window);
 	}

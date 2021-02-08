@@ -8,6 +8,52 @@ add_library(stb_image INTERFACE)
 
 add_library(tinyobjloader STATIC)
 
+#add_library(audio SHARED IMPORTED)
+
+#set_target_properties(audio PROPERTIES LINKER_LANGUAGE CXX)
+
+#set_property(TARGET audio PROPERTY IMPORTED_LOCATION "${CMAKE_CURRENT_SOURCE_DIR}/SFML-2.5.1/bin/sfml-audio-2.dll")
+
+
+
+
+
+# For the shared libraries:
+# this call will succeed if it finds a SDL2_mixer.lib file
+find_library(AUDIO_LIB SDL2_mixer HINTS ${CMAKE_CURRENT_SOURCE_DIR}/SDL2_mixer-2.0.4/lib/x64)
+if(NOT AUDIO_LIB)
+    message(FATAL_ERROR "Library SDL2_mixer was not found!")
+endif()
+
+set (PROJECT_INCLUDE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/SDL2_mixer-2.0.4/include)
+
+include_directories(${PROJECT_INCLUDE_DIR})
+
+
+
+
+
+#target_sources(audio PRIVATE 
+#    "${CMAKE_CURRENT_SOURCE_DIR}/SFML-2.5.1/include/SFML/Audio.hpp"
+#    "${CMAKE_CURRENT_SOURCE_DIR}/SFML-2.5.1/include/SFML/Audio/AlResource.hpp"
+#    "${CMAKE_CURRENT_SOURCE_DIR}/SFML-2.5.1/include/SFML/Audio/Export.hpp"
+#    "${CMAKE_CURRENT_SOURCE_DIR}/SFML-2.5.1/include/SFML/Audio/InputSoundFile.hpp"
+#    "${CMAKE_CURRENT_SOURCE_DIR}/SFML-2.5.1/include/SFML/Audio/Listener.hpp"
+#    "${CMAKE_CURRENT_SOURCE_DIR}/SFML-2.5.1/include/SFML/Audio/Music.hpp"
+#    "${CMAKE_CURRENT_SOURCE_DIR}/SFML-2.5.1/include/SFML/Audio/OutputSoundFile.hpp"
+#    "${CMAKE_CURRENT_SOURCE_DIR}/SFML-2.5.1/include/SFML/Audio/Sound.hpp"
+#    "${CMAKE_CURRENT_SOURCE_DIR}/SFML-2.5.1/include/SFML/Audio/SoundBuffer.hpp"
+#    "${CMAKE_CURRENT_SOURCE_DIR}/SFML-2.5.1/include/SFML/Audio/SoundBufferRecorder.hpp"
+#    "${CMAKE_CURRENT_SOURCE_DIR}/SFML-2.5.1/include/SFML/Audio/SoundFileFactory.hpp"
+#    "${CMAKE_CURRENT_SOURCE_DIR}/SFML-2.5.1/include/SFML/Audio/SoundFileReader.hpp"
+#    "${CMAKE_CURRENT_SOURCE_DIR}/SFML-2.5.1/include/SFML/Audio/SoundFileWriter.hpp"
+#    "${CMAKE_CURRENT_SOURCE_DIR}/SFML-2.5.1/include/SFML/Audio/SoundRecorder.hpp"
+#    "${CMAKE_CURRENT_SOURCE_DIR}/SFML-2.5.1/include/SFML/Audio/SoundSource.hpp"
+#    "${CMAKE_CURRENT_SOURCE_DIR}/SFML-2.5.1/include/SFML/Audio/SoundStream.hpp"
+#)
+
+#target_include_directories(audio INTERFACE "${CMAKE_CURRENT_SOURCE_DIR}/SFML-2.5.1/include/SFML")
+
 target_sources(vkbootstrap PRIVATE 
     "${CMAKE_CURRENT_SOURCE_DIR}/vkbootstrap/VkBootstrap.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/vkbootstrap/VkBootstrap.cpp"
