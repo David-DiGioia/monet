@@ -522,14 +522,12 @@ void prepareShadowMapFramebuffer(VulkanEngine& engine, OffscreenPass& offscreenP
 	depthStencilView.image = offscreenPass.depth.image._image;
 	VK_CHECK(vkCreateImageView(engine._device, &depthStencilView, nullptr, &offscreenPass.depth.imageView));
 
-	/*
-
 	// Create sampler to sample from to depth attachment
 	// Used to sample in the fragment shader for shadowed rendering
-	VkFilter shadowmap_filter = vks::tools::formatIsFilterable(physicalDevice, DEPTH_FORMAT, VK_IMAGE_TILING_OPTIMAL) ?
-		DEFAULT_SHADOWMAP_FILTER :
-		VK_FILTER_NEAREST;
-	VkSamplerCreateInfo sampler = vks::initializers::samplerCreateInfo();
+	VkFilter shadowmap_filter{ VK_FILTER_LINEAR };
+	VkSamplerCreateInfo sampler{};
+	sampler.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
+	sampler.pNext = nullptr;
 	sampler.magFilter = shadowmap_filter;
 	sampler.minFilter = shadowmap_filter;
 	sampler.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
@@ -541,19 +539,118 @@ void prepareShadowMapFramebuffer(VulkanEngine& engine, OffscreenPass& offscreenP
 	sampler.minLod = 0.0f;
 	sampler.maxLod = 1.0f;
 	sampler.borderColor = VK_BORDER_COLOR_FLOAT_OPAQUE_WHITE;
-	VK_CHECK_RESULT(vkCreateSampler(device, &sampler, nullptr, &offscreenPass.depthSampler));
+	VK_CHECK(vkCreateSampler(engine._device, &sampler, nullptr, &offscreenPass.depthSampler));
 
-	prepareOffscreenRenderpass();
+	prepareShadowMapRenderpass(engine, offscreenPass);
 
 	// Create frame buffer
-	VkFramebufferCreateInfo fbufCreateInfo = vks::initializers::framebufferCreateInfo();
+	VkFramebufferCreateInfo fbufCreateInfo{};
+	fbufCreateInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
+	fbufCreateInfo.pNext = nullptr;
 	fbufCreateInfo.renderPass = offscreenPass.renderPass;
 	fbufCreateInfo.attachmentCount = 1;
-	fbufCreateInfo.pAttachments = &offscreenPass.depth.view;
+	fbufCreateInfo.pAttachments = &offscreenPass.depth.imageView;
 	fbufCreateInfo.width = offscreenPass.width;
 	fbufCreateInfo.height = offscreenPass.height;
 	fbufCreateInfo.layers = 1;
 
-	VK_CHECK_RESULT(vkCreateFramebuffer(device, &fbufCreateInfo, nullptr, &offscreenPass.frameBuffer));
-	*/
+	VK_CHECK(vkCreateFramebuffer(engine._device, &fbufCreateInfo, nullptr, &offscreenPass.frameBuffer));
 }
+
+//void buildCommandBuffers()
+//{
+//	VkCommandBufferBeginInfo cmdBufInfo = vks::initializers::commandBufferBeginInfo();
+//
+//	VkClearValue clearValues[2];
+//	VkViewport viewport;
+//	VkRect2D scissor;
+//
+//	for (int32_t i = 0; i < drawCmdBuffers.size(); ++i)
+//	{
+//		VK_CHECK_RESULT(vkBeginCommandBuffer(drawCmdBuffers[i], &cmdBufInfo));
+//
+//		/*
+//			First render pass: Generate shadow map by rendering the scene from light's POV
+//		*/
+//		{
+//			clearValues[0].depthStencil = { 1.0f, 0 };
+//
+//			VkRenderPassBeginInfo renderPassBeginInfo = vks::initializers::renderPassBeginInfo();
+//			renderPassBeginInfo.renderPass = offscreenPass.renderPass;
+//			renderPassBeginInfo.framebuffer = offscreenPass.frameBuffer;
+//			renderPassBeginInfo.renderArea.extent.width = offscreenPass.width;
+//			renderPassBeginInfo.renderArea.extent.height = offscreenPass.height;
+//			renderPassBeginInfo.clearValueCount = 1;
+//			renderPassBeginInfo.pClearValues = clearValues;
+//
+//			vkCmdBeginRenderPass(drawCmdBuffers[i], &renderPassBeginInfo, VK_SUBPASS_CONTENTS_INLINE);
+//
+//			viewport = vks::initializers::viewport((float)offscreenPass.width, (float)offscreenPass.height, 0.0f, 1.0f);
+//			vkCmdSetViewport(drawCmdBuffers[i], 0, 1, &viewport);
+//
+//			scissor = vks::initializers::rect2D(offscreenPass.width, offscreenPass.height, 0, 0);
+//			vkCmdSetScissor(drawCmdBuffers[i], 0, 1, &scissor);
+//
+//			// Set depth bias (aka "Polygon offset")
+//			// Required to avoid shadow mapping artifacts
+//			vkCmdSetDepthBias(
+//				drawCmdBuffers[i],
+//				depthBiasConstant,
+//				0.0f,
+//				depthBiasSlope);
+//
+//			vkCmdBindPipeline(drawCmdBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, pipelines.offscreen);
+//			vkCmdBindDescriptorSets(drawCmdBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, 1, &descriptorSets.offscreen, 0, nullptr);
+//			scenes[sceneIndex].draw(drawCmdBuffers[i]);
+//
+//			vkCmdEndRenderPass(drawCmdBuffers[i]);
+//		}
+//
+//		/*
+//			Note: Explicit synchronization is not required between the render pass, as this is done implicit via sub pass dependencies
+//		*/
+//
+//		/*
+//			Second pass: Scene rendering with applied shadow map
+//		*/
+//
+//		{
+//			clearValues[0].color = defaultClearColor;
+//			clearValues[1].depthStencil = { 1.0f, 0 };
+//
+//			VkRenderPassBeginInfo renderPassBeginInfo = vks::initializers::renderPassBeginInfo();
+//			renderPassBeginInfo.renderPass = renderPass;
+//			renderPassBeginInfo.framebuffer = frameBuffers[i];
+//			renderPassBeginInfo.renderArea.extent.width = width;
+//			renderPassBeginInfo.renderArea.extent.height = height;
+//			renderPassBeginInfo.clearValueCount = 2;
+//			renderPassBeginInfo.pClearValues = clearValues;
+//
+//			vkCmdBeginRenderPass(drawCmdBuffers[i], &renderPassBeginInfo, VK_SUBPASS_CONTENTS_INLINE);
+//
+//			viewport = vks::initializers::viewport((float)width, (float)height, 0.0f, 1.0f);
+//			vkCmdSetViewport(drawCmdBuffers[i], 0, 1, &viewport);
+//
+//			scissor = vks::initializers::rect2D(width, height, 0, 0);
+//			vkCmdSetScissor(drawCmdBuffers[i], 0, 1, &scissor);
+//
+//			// Visualize shadow map
+//			if (displayShadowMap) {
+//				vkCmdBindDescriptorSets(drawCmdBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, 1, &descriptorSets.debug, 0, nullptr);
+//				vkCmdBindPipeline(drawCmdBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, pipelines.debug);
+//				vkCmdDraw(drawCmdBuffers[i], 3, 1, 0, 0);
+//			}
+//
+//			// 3D scene
+//			vkCmdBindDescriptorSets(drawCmdBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, 1, &descriptorSets.scene, 0, nullptr);
+//			vkCmdBindPipeline(drawCmdBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, (filterPCF) ? pipelines.sceneShadowPCF : pipelines.sceneShadow);
+//			scenes[sceneIndex].draw(drawCmdBuffers[i]);
+//
+//			drawUI(drawCmdBuffers[i]);
+//
+//			vkCmdEndRenderPass(drawCmdBuffers[i]);
+//		}
+//
+//		VK_CHECK_RESULT(vkEndCommandBuffer(drawCmdBuffers[i]));
+//	}
+//}

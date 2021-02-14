@@ -6,7 +6,6 @@ set (CMAKE_CXX_STANDARD 17)
 
 project ("vulkan_guide")
 
-
 find_package(Vulkan REQUIRED)
 
 add_subdirectory(third_party)

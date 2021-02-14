@@ -29,30 +29,45 @@ set (PROJECT_INCLUDE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/SDL2_mixer-2.0.4/include)
 
 include_directories(${PROJECT_INCLUDE_DIR})
 
+set (BIN_DIR_DEBUG ${CMAKE_CURRENT_SOURCE_DIR}/physx/lib/win.x86_64.vc142.md/bin/debug)
+set (BIN_DIR_RELEASE ${CMAKE_CURRENT_SOURCE_DIR}/physx/lib/win.x86_64.vc142.md/bin/checked)
 
+if (${CONFIG_MODE} MATCHES "debug")
+    set (BIN_DIR ${BIN_DIR_DEBUG})
+    message(STATUS "PhysX set to Debug mode")
+else()
+    set (BIN_DIR ${BIN_DIR_RELEASE})
+    message(STATUS "PhysX set to Release mode")
+endif()
 
+find_library(PHYSICS_LIB_00 LowLevel_static_64 HINTS ${BIN_DIR})
+find_library(PHYSICS_LIB_01 LowLevelAABB_static_64 HINTS ${BIN_DIR})
+find_library(PHYSICS_LIB_02 LowLevelDynamics_static_64 HINTS ${BIN_DIR})
+find_library(PHYSICS_LIB_03 PhysX_64 HINTS ${BIN_DIR})
+find_library(PHYSICS_LIB_04 PhysXCharacterKinematic_static_64 HINTS ${BIN_DIR})
+find_library(PHYSICS_LIB_05 PhysXCommon_64 HINTS ${BIN_DIR})
+find_library(PHYSICS_LIB_06 PhysXCooking_64 HINTS ${BIN_DIR})
+find_library(PHYSICS_LIB_07 PhysXExtensions_static_64 HINTS ${BIN_DIR})
+find_library(PHYSICS_LIB_08 PhysXFoundation_64 HINTS ${BIN_DIR})
+find_library(PHYSICS_LIB_09 PhysXPvdSDK_static_64 HINTS ${BIN_DIR})
+find_library(PHYSICS_LIB_10 PhysXTask_static_64 HINTS ${BIN_DIR})
+find_library(PHYSICS_LIB_11 PhysXVehicle_static_64 HINTS ${BIN_DIR})
+# find_library(PHYSICS_LIB_12 SampleBase_static_64 HINTS ${BIN_DIR})
+# find_library(PHYSICS_LIB_13 SampleFramework_static_64 HINTS ${BIN_DIR})
+# find_library(PHYSICS_LIB_14 SamplesToolkit_static_64 HINTS ${BIN_DIR})
+find_library(PHYSICS_LIB_15 SceneQuery_static_64 HINTS ${BIN_DIR})
+find_library(PHYSICS_LIB_16 SimulationController_static_64 HINTS ${BIN_DIR})
+# find_library(PHYSICS_LIB_17 SnippetRender_static_64 HINTS ${BIN_DIR})
+# find_library(PHYSICS_LIB_18 SnippetUtils_static_64 HINTS ${BIN_DIR})
 
+# if(NOT PHYSICS_LIB_00)
+#     message(FATAL_ERROR "Library PhysX was not found!")
+# endif()
 
-#target_sources(audio PRIVATE 
-#    "${CMAKE_CURRENT_SOURCE_DIR}/SFML-2.5.1/include/SFML/Audio.hpp"
-#    "${CMAKE_CURRENT_SOURCE_DIR}/SFML-2.5.1/include/SFML/Audio/AlResource.hpp"
-#    "${CMAKE_CURRENT_SOURCE_DIR}/SFML-2.5.1/include/SFML/Audio/Export.hpp"
-#    "${CMAKE_CURRENT_SOURCE_DIR}/SFML-2.5.1/include/SFML/Audio/InputSoundFile.hpp"
-#    "${CMAKE_CURRENT_SOURCE_DIR}/SFML-2.5.1/include/SFML/Audio/Listener.hpp"
-#    "${CMAKE_CURRENT_SOURCE_DIR}/SFML-2.5.1/include/SFML/Audio/Music.hpp"
-#    "${CMAKE_CURRENT_SOURCE_DIR}/SFML-2.5.1/include/SFML/Audio/OutputSoundFile.hpp"
-#    "${CMAKE_CURRENT_SOURCE_DIR}/SFML-2.5.1/include/SFML/Audio/Sound.hpp"
-#    "${CMAKE_CURRENT_SOURCE_DIR}/SFML-2.5.1/include/SFML/Audio/SoundBuffer.hpp"
-#    "${CMAKE_CURRENT_SOURCE_DIR}/SFML-2.5.1/include/SFML/Audio/SoundBufferRecorder.hpp"
-#    "${CMAKE_CURRENT_SOURCE_DIR}/SFML-2.5.1/include/SFML/Audio/SoundFileFactory.hpp"
-#    "${CMAKE_CURRENT_SOURCE_DIR}/SFML-2.5.1/include/SFML/Audio/SoundFileReader.hpp"
-#    "${CMAKE_CURRENT_SOURCE_DIR}/SFML-2.5.1/include/SFML/Audio/SoundFileWriter.hpp"
-#    "${CMAKE_CURRENT_SOURCE_DIR}/SFML-2.5.1/include/SFML/Audio/SoundRecorder.hpp"
-#    "${CMAKE_CURRENT_SOURCE_DIR}/SFML-2.5.1/include/SFML/Audio/SoundSource.hpp"
-#    "${CMAKE_CURRENT_SOURCE_DIR}/SFML-2.5.1/include/SFML/Audio/SoundStream.hpp"
-#)
+# set (PROJECT_INCLUDE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/physx/include)
 
-#target_include_directories(audio INTERFACE "${CMAKE_CURRENT_SOURCE_DIR}/SFML-2.5.1/include/SFML")
+# include_directories(${PROJECT_INCLUDE_DIR})
+
 
 target_sources(vkbootstrap PRIVATE 
     "${CMAKE_CURRENT_SOURCE_DIR}/vkbootstrap/VkBootstrap.h"
