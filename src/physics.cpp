@@ -95,9 +95,7 @@ void PhysicsEngine::cleanupPhysics()
 PxRigidDynamic* PhysicsEngine::addToPhysicsEngine(const PxTransform& t, PxShape* shape)
 {
 	float halfExtent{ 1.0f };
-	// Temporary! The shape should not be hardcoded later.
-	// Also we should be able to specify material
-	shape = _physics->createShape(PxBoxGeometry(halfExtent, halfExtent, halfExtent), *_material);
+	//shape = _physics->createShape(PxBoxGeometry(halfExtent, halfExtent, halfExtent), *_material);
 
 	PxTransform localTm(PxVec3(0.0f, 0.0f, 0));
 	PxRigidDynamic* body{ _physics->createRigidDynamic(t.transform(localTm)) };
@@ -110,6 +108,16 @@ PxRigidDynamic* PhysicsEngine::addToPhysicsEngine(const PxTransform& t, PxShape*
 PxTransform PhysicsEngine::getActorTransform(PxRigidDynamic* body)
 {
 	return body->getGlobalPose();
+}
+
+PxMaterial* PhysicsEngine::createMaterial(float staticFriciton, float dynamicFriction, float restitution)
+{
+	return _physics->createMaterial(staticFriciton, dynamicFriction, restitution);
+}
+
+PxShape* PhysicsEngine::createShape(const PxGeometry& geometry, const PxMaterial& material, bool isExclusive, PxShapeFlags shapeFlags)
+{
+	return _physics->createShape(geometry, material, isExclusive, shapeFlags);
 }
 
 //void keyPress(unsigned char key, const PxTransform& camera)

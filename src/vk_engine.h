@@ -357,6 +357,13 @@ public:
 
 	bool advance_physics(float delta);
 
+	PxMaterial* create_physics_material(float staticFriciton, float dynamicFriction, float restitution);
+
+	PxShape* create_physics_shape(const PxGeometry& geometry,
+		const PxMaterial& material,
+		bool isExclusive = false,
+		PxShapeFlags shapeFlags = PxShapeFlag::eVISUALIZATION | PxShapeFlag::eSCENE_QUERY_SHAPE | PxShapeFlag::eSIMULATION_SHAPE);
+
 private:
 
 	void init_vulkan();

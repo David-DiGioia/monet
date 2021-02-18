@@ -23,6 +23,13 @@ public:
 
 	PxTransform getActorTransform(PxRigidDynamic* body);
 
+	PxMaterial* createMaterial(float staticFriciton, float dynamicFriction, float restitution);
+
+	PxShape* createShape(const PxGeometry& geometry,
+		const PxMaterial& material,
+		bool isExclusive = false,
+		PxShapeFlags shapeFlags = PxShapeFlag::eVISUALIZATION | PxShapeFlag::eSCENE_QUERY_SHAPE | PxShapeFlag::eSIMULATION_SHAPE);
+
 private:
 	PxDefaultAllocator _allocator;
 	PxDefaultErrorCallback _errorCallback;

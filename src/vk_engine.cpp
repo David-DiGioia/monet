@@ -1585,6 +1585,16 @@ void VulkanEngine::update_physics()
 	}
 }
 
+PxMaterial* VulkanEngine::create_physics_material(float staticFriciton, float dynamicFriction, float restitution)
+{
+	return _physicsEngine.createMaterial(staticFriciton, dynamicFriction, restitution);
+}
+
+PxShape* VulkanEngine::create_physics_shape(const PxGeometry& geometry, const PxMaterial& material, bool isExclusive, PxShapeFlags shapeFlags)
+{
+	return _physicsEngine.createShape(geometry, material, isExclusive, shapeFlags);
+}
+
 void VulkanEngine::run()
 {
 	bool bQuit{ false };
