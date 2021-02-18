@@ -32,4 +32,5 @@ private:
 
 	// objects
 	GameObject _sofa{};
+	GameObject _cube{};
 };

@@ -23,8 +23,10 @@ void TestApp::init(VulkanEngine& engine)
 	chair.setPos(glm::vec3(-2.1, 0.0, -2.0));
 	chair.setRot(glm::rotate(glm::radians(80.0f), glm::vec3{ 0.0, 1.0, 0.0 }));
 
-	GameObject cube{ engine.create_render_object("cube", "default") };
-	cube.setPos(glm::vec3(0.0, 3.0, 0.0));
+	_cube.setRenderObject(engine.create_render_object("cube", "default"));
+	_cube.setPos(glm::vec3(0.0, 3.0, 0.0));
+	// shape should not be nullptr, that is temporary.
+	engine.add_to_physics_engine(&_cube, nullptr);
 
 	GameObject plane{ engine.create_render_object("plane", "default") };
 

@@ -130,7 +130,10 @@ struct Transform {
 	glm::vec3 scale{ 1.0 };
 	glm::mat4 rot{ 1.0 };
 
+	Transform();
+	Transform(const PxTransform& pxt);
 	glm::mat4 mat4();
+	physx::PxTransform to_physx();
 };
 
 class GameObject {
@@ -138,14 +141,20 @@ public:
 	GameObject(const RenderObject* ro)
 		: _renderObject{ ro }
 		, _transform{}
+		, _physicsObject{}
 	{}
 
 	GameObject()
 		: _renderObject{ nullptr }
 		, _transform{}
+		, _physicsObject{}
 	{}
 
 	void setRenderObject(const RenderObject* ro);
+
+	physx::PxRigidDynamic* getPhysicsObject();
+
+	void setPhysicsObject(physx::PxRigidDynamic* body);
 
 	Transform getTransform();
 
@@ -154,6 +163,7 @@ public:
 	glm::vec3 getScale();
 
 	glm::mat4 getRot();
+
 
 	void setTransform(Transform transform);
 
@@ -288,6 +298,8 @@ public:
 
 	OffscreenPass _offscreenPass;
 
+	std::vector<GameObject*> _physicsObjects;
+
 	Application* _app;
 	PhysicsEngine _physicsEngine;
 
@@ -335,6 +347,10 @@ public:
 	void set_camera_transform(Transform transform);
 
 	void set_scene_lights(const std::vector<Light>& lights);
+
+	void add_to_physics_engine(GameObject* go, PxShape* shape);
+
+	void update_physics();
 
 private:
 

@@ -18,6 +18,8 @@
 #include "vk_initializers.h"
 #include "VkBootstrap.h"
 #include "glm/gtx/transform.hpp"
+#include "glm/gtc/quaternion.hpp"
+#include "glm/gtx/quaternion.hpp"
 #include "vk_textures.h"
 #include "imgui.h"
 #include "imgui_impl_sdl.h"
@@ -55,14 +57,58 @@ void printMat(const Mat& mat) {
 	printMat(mat, std::cout);
 }
 
+Transform::Transform()
+	: pos{ 0.0 }
+    , scale{ 1.0 }
+    , rot{ 1.0 }
+{}
+
+Transform::Transform(const PxTransform& pxt)
+	: pos{ pxt.p.x, pxt.p.y, pxt.p.z }
+	, scale{ 1.0 }
+{
+	glm::quat q{};
+	q.x = pxt.q.x;
+	q.y = pxt.q.y;
+	q.z = pxt.q.z;
+	q.w = pxt.q.w;
+	rot = glm::toMat4(q);
+}
+
 glm::mat4 Transform::mat4()
 {
 	return glm::translate(glm::mat4{ 1.0 }, pos) * rot* glm::scale(glm::mat4{ 1.0 }, scale);
 }
 
+physx::PxTransform Transform::to_physx()
+{
+	PxTransform result{};
+	result.p.x = pos.x;
+	result.p.y = pos.y;
+	result.p.z = pos.z;
+
+	glm::quat q{ glm::quat_cast(rot) };
+	result.q.x = q.x;
+	result.q.y = q.y;
+	result.q.z = q.z;
+	result.q.w = q.w;
+
+	return result;
+}
+
 void GameObject::setRenderObject(const RenderObject* ro)
 {
 	_renderObject = ro;
+}
+
+physx::PxRigidDynamic* GameObject::getPhysicsObject()
+{
+	return _physicsObject;
+}
+
+void GameObject::setPhysicsObject(physx::PxRigidDynamic* body)
+{
+	_physicsObject = body;
 }
 
 void GameObject::updateRenderMatrix()
@@ -93,6 +139,7 @@ glm::mat4 GameObject::getRot()
 void GameObject::setTransform(Transform transform)
 {
 	_transform = transform;
+	updateRenderMatrix();
 }
 
 void GameObject::setPos(glm::vec3 pos)
@@ -145,6 +192,8 @@ void VulkanEngine::init(Application* app)
 		_windowExtent.height,
 		window_flags
 	);
+
+	_physicsEngine.initPhysics();
 
 	_app = app;
 	init_vulkan();
@@ -1577,6 +1626,25 @@ void VulkanEngine::gui()
 	_app->gui();
 }
 
+void VulkanEngine::add_to_physics_engine(GameObject* go, PxShape* shape)
+{
+	PxRigidDynamic* physicsObject{ _physicsEngine.addToPhysicsEngine(go->getTransform().to_physx(), shape) };
+	go->setPhysicsObject(physicsObject);
+	_physicsObjects.push_back(go);
+}
+
+void VulkanEngine::update_physics()
+{
+	// Advance forward simulation
+	_physicsEngine.advance(_delta);
+
+	// Update gameobject transforms to match the transforms of the physics objects
+	for (GameObject* go : _physicsObjects) {
+		Transform t{ _physicsEngine.getActorTransform(go->getPhysicsObject()) };
+		go->setTransform(t);
+	}
+}
+
 void VulkanEngine::run()
 {
 	bool bQuit{ false };
@@ -1592,6 +1660,7 @@ void VulkanEngine::run()
 		gui();
 		draw();
 		showFPS();
+		update_physics();
 	}
 }
 

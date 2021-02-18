@@ -19,6 +19,10 @@ public:
 
 	void cleanupPhysics();
 
+	PxRigidDynamic* addToPhysicsEngine(const PxTransform& t, PxShape* shape);
+
+	PxTransform getActorTransform(PxRigidDynamic* body);
+
 private:
 	PxDefaultAllocator _allocator;
 	PxDefaultErrorCallback _errorCallback;

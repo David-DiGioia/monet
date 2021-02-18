@@ -62,8 +62,8 @@ void PhysicsEngine::initPhysics()
 	PxRigidStatic* groundPlane = PxCreatePlane(*_physics, PxPlane(0, 1, 0, 0), *_material);
 	_scene->addActor(*groundPlane);
 
-	for (PxU32 i = 0; i < 5; i++)
-		createStack(PxTransform(PxVec3(0, 0, _stackZ -= 10.0f)), 10, 2.0f);
+	//for (PxU32 i = 0; i < 5; i++)
+	//	createStack(PxTransform(PxVec3(0, 0, _stackZ -= 10.0f)), 10, 2.0f);
 
 	//if (!interactive)
 	//	createDynamic(PxTransform(PxVec3(0, 40, 100)), PxSphereGeometry(10), PxVec3(0, -50, -100));
@@ -98,6 +98,26 @@ void PhysicsEngine::cleanupPhysics()
 	PX_RELEASE(_foundation);
 
 	printf("PhysX objects cleaned up.\n");
+}
+
+PxRigidDynamic* PhysicsEngine::addToPhysicsEngine(const PxTransform& t, PxShape* shape)
+{
+	float halfExtent{ 1.0f };
+	// Temporary! The shape should not be hardcoded later.
+	// Also we should be able to specify material
+	shape = _physics->createShape(PxBoxGeometry(halfExtent, halfExtent, halfExtent), *_material);
+
+	PxTransform localTm(PxVec3(0.0f, 0.0f, 0));
+	PxRigidDynamic* body{ _physics->createRigidDynamic(t.transform(localTm)) };
+	body->attachShape(*shape);
+	PxRigidBodyExt::updateMassAndInertia(*body, 10.0f);
+	_scene->addActor(*body);
+	return body;
+}
+
+PxTransform PhysicsEngine::getActorTransform(PxRigidDynamic* body)
+{
+	return body->getGlobalPose();
 }
 
 //void keyPress(unsigned char key, const PxTransform& camera)
