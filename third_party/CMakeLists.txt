@@ -40,6 +40,13 @@ else()
     message(STATUS "PhysX set to Release mode")
 endif()
 
+# set(BIN_DIR 
+#     $<$<CONFIG:Debug>:BIN_DIR_DEBUG>
+#     $<$<CONFIG:RelWithDebInfo>:BIN_DIR_RELEASE>
+#     $<$<CONFIG:Release>:BIN_DIR_RELEASE>
+#     $<$<CONFIG:MinSizeRel>:BIN_DIR_RELEASE>
+# )
+
 find_library(PHYSICS_LIB_00 LowLevel_static_64 HINTS ${BIN_DIR})
 find_library(PHYSICS_LIB_01 LowLevelAABB_static_64 HINTS ${BIN_DIR})
 find_library(PHYSICS_LIB_02 LowLevelDynamics_static_64 HINTS ${BIN_DIR})

@@ -15,23 +15,26 @@ public:
 
 	void initPhysics();
 
-	void stepPhysics();
+	bool advance(float delta);
 
 	void cleanupPhysics();
 
 private:
-	PxDefaultAllocator		gAllocator;
-	PxDefaultErrorCallback	gErrorCallback;
+	PxDefaultAllocator _allocator;
+	PxDefaultErrorCallback _errorCallback;
 
-	PxFoundation* gFoundation = NULL;
-	PxPhysics* gPhysics = NULL;
+	PxFoundation* _foundation{ nullptr };
+	PxPhysics* _physics{ nullptr };
 
-	PxDefaultCpuDispatcher* gDispatcher = NULL;
-	PxScene* gScene = NULL;
+	PxDefaultCpuDispatcher* _dispatcher{ nullptr };
+	PxScene* _scene{ nullptr };
 
-	PxMaterial* gMaterial = NULL;
+	PxMaterial* _material{ nullptr };
 
-	PxPvd* gPvd = NULL;
+	PxPvd* _pvd{ nullptr };
 
-	PxReal stackZ = 10.0f;
+	PxReal _stackZ{ 10.0f };
+
+	float _accumulator{ 0.0f };
+	float _stepSize{ 1.0f / 60.0f };
 };

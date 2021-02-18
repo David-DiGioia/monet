@@ -20,6 +20,7 @@
 #include "../tracy/Tracy.hpp"		// CPU profiling
 #include "../tracy/TracyVulkan.hpp"
 #include "application.h"
+#include "physics.h"
 
 #define VK_CHECK(x)\
 	do\
@@ -167,6 +168,7 @@ private:
 
 	Transform _transform;
 	const RenderObject* _renderObject;
+	physx::PxRigidDynamic* _physicsObject;
 };
 
 struct GuiData {
@@ -287,6 +289,7 @@ public:
 	OffscreenPass _offscreenPass;
 
 	Application* _app;
+	PhysicsEngine _physicsEngine;
 
 	// for delta time
 	std::chrono::steady_clock::time_point _lastTime{};
