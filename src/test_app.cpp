@@ -6,6 +6,7 @@
 #include "SDL.h"
 
 #include <cmath>
+#include <iostream>
 
 void TestApp::init(VulkanEngine& engine)
 {
@@ -55,6 +56,13 @@ void TestApp::update(VulkanEngine& engine, float delta)
 	updateCamera(engine);
 	engine.set_scene_lights(_lights);
 	_time += delta;
+}
+
+void TestApp::fixedUpdate(VulkanEngine& engine)
+{
+	if (_applyForce) {
+		_cube.getPhysicsObject()->addForce(physx::PxVec3{1000.0, 1000.0, 0.0});
+	}
 }
 
 bool TestApp::input(float delta)
@@ -112,6 +120,12 @@ bool TestApp::input(float delta)
 	}
 	if (keystate[SDL_SCANCODE_Q]) {
 		translate.y -= speed * delta;
+	}
+
+	if (keystate[SDL_SCANCODE_T]) {
+		_applyForce = true;
+	} else {
+		_applyForce = false;
 	}
 
 	_camera.pos += glm::vec3{ _camera.rot * translate };

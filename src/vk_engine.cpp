@@ -337,80 +337,6 @@ void VulkanEngine::init_scene()
 	_renderables.insert(cube);
 
 	_app->init(*this);
-
-	//glm::mat4 translate;
-	//glm::mat4 scale;
-	//glm::mat4 rotate;
-
-	// coffee cart scene
-	/*
-	scale = glm::scale(glm::mat4{ 1.0 }, glm::vec3{ 1.0 });
-
-	RenderObject cart{};
-	cart.mesh = get_mesh("coffee_cart");
-	cart.material = get_material("coffee_cart");
-	cart.transformMatrix = scale;
-	_renderables.insert(cart);
-
-	RenderObject accessories{};
-	accessories.mesh = get_mesh("coffee_accessories");
-	accessories.material = get_material("coffee_accessories");
-	accessories.transformMatrix = scale;
-	_renderables.insert(accessories);
-
-	RenderObject sphere{};
-	sphere.mesh = get_mesh("sphere");
-	sphere.material = get_material("sphere");
-	translate = glm::translate(glm::vec3{2.0, 0.0, 0.0});
-	sphere.transformMatrix = translate * scale;
-	_renderables.insert(sphere);
-	*/
-
-	// camera scene
-	/*
-	scale = glm::scale(glm::mat4{ 1.0 }, glm::vec3{ 5.0 });
-
-	RenderObject camera{};
-	camera.mesh = get_mesh("camera");
-	camera.material = get_material("camera");
-	camera.transformMatrix = scale;
-	_renderables.insert(camera);
-
-	RenderObject lense{};
-	lense.mesh = get_mesh("camera_lense");
-	lense.material = get_material("camera_lense");
-	lense.transformMatrix = scale;
-	_renderables.insert(lense);
-
-	RenderObject strap{};
-	strap.mesh = get_mesh("camera_strap");
-	strap.material = get_material("camera_strap");
-	strap.transformMatrix = scale;
-	_renderables.insert(strap);
-	*/
-
-	// Furniture scene
-
-	//GameObject bed{ create_object("bed") };
-
-	//GameObject sofa{ create_object("sofa") };
-	//translate = glm::translate(glm::mat4{ 1.0 }, glm::vec3(-2.5, 0.0, 0.4));
-	//scale = glm::scale(glm::mat4{ 1.0 }, glm::vec3{ 1.0 });
-	//rotate = glm::rotate(glm::radians(110.0f), glm::vec3{ 0.0, 1.0, 0.0 });
-	//sofa.setTransform(translate * scale * rotate);
-
-	//GameObject chair{ create_object("chair") };
-	//translate = glm::translate(glm::mat4{ 1.0 }, glm::vec3(-2.1, 0.0, -2.0));
-	//scale = glm::scale(glm::mat4{ 1.0 }, glm::vec3{ 1.0 });
-	//rotate = glm::rotate(glm::radians(80.0f), glm::vec3{ 0.0, 1.0, 0.0 });
-	//chair.setTransform(translate * scale * rotate);
-
-	//GameObject plane{ create_object("plane", "default") };
-	//translate = glm::translate(glm::mat4{ 1.0 }, glm::vec3(0.0, 0.0, 0.0));
-	//scale = glm::scale(glm::mat4{ 1.0 }, glm::vec3{ 1.0 });
-	//rotate = glm::rotate(0.0f, glm::vec3{ 1.0, 0.0, 0.0 });
-	//plane.setTransform(translate * scale * rotate);
-
 }
 
 const RenderObject* VulkanEngine::create_render_object(const std::string& meshName, const std::string& matName)
@@ -1633,10 +1559,24 @@ void VulkanEngine::add_to_physics_engine(GameObject* go, PxShape* shape)
 	_physicsObjects.push_back(go);
 }
 
+bool VulkanEngine::advance_physics(float delta)
+{
+	_physicsAccumulator += delta;
+	if (_physicsAccumulator < _physicsStepSize) {
+		return false;
+	}
+
+	_physicsAccumulator -= _physicsStepSize;
+
+	_app->fixedUpdate(*this);
+	_physicsEngine.stepPhysics(_physicsStepSize);
+	return true;
+}
+
 void VulkanEngine::update_physics()
 {
 	// Advance forward simulation
-	_physicsEngine.advance(_delta);
+	advance_physics(_delta);
 
 	// Update gameobject transforms to match the transforms of the physics objects
 	for (GameObject* go : _physicsObjects) {

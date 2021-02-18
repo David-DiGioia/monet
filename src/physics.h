@@ -15,7 +15,7 @@ public:
 
 	void initPhysics();
 
-	bool advance(float delta);
+	void stepPhysics(float stepSize);
 
 	void cleanupPhysics();
 
@@ -38,7 +38,4 @@ private:
 	PxPvd* _pvd{ nullptr };
 
 	PxReal _stackZ{ 10.0f };
-
-	float _accumulator{ 0.0f };
-	float _stepSize{ 1.0f / 60.0f };
 };

@@ -69,19 +69,11 @@ void PhysicsEngine::initPhysics()
 	//	createDynamic(PxTransform(PxVec3(0, 40, 100)), PxSphereGeometry(10), PxVec3(0, -50, -100));
 }
 
-bool PhysicsEngine::advance(float delta)
+void PhysicsEngine::stepPhysics(float stepSize)
 {
-	_accumulator += delta;
-	if (_accumulator < _stepSize) {
-		return false;
-	}
-
-	_accumulator -= _stepSize;
-
-	_scene->simulate(_stepSize);
+	_scene->simulate(stepSize);
 	// later this can be moved later so we don't block immediately after simulating
 	_scene->fetchResults(true);
-	return true;
 }
 
 void PhysicsEngine::cleanupPhysics()

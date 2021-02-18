@@ -303,6 +303,9 @@ public:
 	Application* _app;
 	PhysicsEngine _physicsEngine;
 
+	float _physicsAccumulator{ 0.0f };
+	float _physicsStepSize{ 1.0f / 60.0f };
+
 	// for delta time
 	std::chrono::steady_clock::time_point _lastTime{};
 	float _delta{ 0.0f };
@@ -351,6 +354,8 @@ public:
 	void add_to_physics_engine(GameObject* go, PxShape* shape);
 
 	void update_physics();
+
+	bool advance_physics(float delta);
 
 private:
 
