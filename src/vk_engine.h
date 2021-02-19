@@ -173,6 +173,10 @@ public:
 
 	void setRot(glm::mat4 rot);
 
+	// physics
+
+	void addForce(glm::vec3 force);
+
 private:
 	void updateRenderMatrix();
 

@@ -71,7 +71,7 @@ void TestApp::update(VulkanEngine& engine, float delta)
 void TestApp::fixedUpdate(VulkanEngine& engine)
 {
 	if (_applyForce) {
-		_cube.getPhysicsObject()->is<PxRigidDynamic>()->addForce(physx::PxVec3{1000.0, 1000.0, 0.0});
+		_cube.addForce(glm::vec3{ 1000.0, 1000.0, 0.0 });
 	}
 }
 
