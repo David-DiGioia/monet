@@ -59,8 +59,8 @@ void PhysicsEngine::initPhysics()
 	}
 	_material = _physics->createMaterial(0.5f, 0.5f, 0.6f);
 
-	PxRigidStatic* groundPlane = PxCreatePlane(*_physics, PxPlane(0, 1, 0, 0), *_material);
-	_scene->addActor(*groundPlane);
+	//PxRigidStatic* groundPlane = PxCreatePlane(*_physics, PxPlane(0, 1, 0, 0), *_material);
+	//_scene->addActor(*groundPlane);
 
 	//for (PxU32 i = 0; i < 5; i++)
 	//	createStack(PxTransform(PxVec3(0, 0, _stackZ -= 10.0f)), 10, 2.0f);
@@ -92,20 +92,26 @@ void PhysicsEngine::cleanupPhysics()
 	printf("PhysX objects cleaned up.\n");
 }
 
-PxRigidDynamic* PhysicsEngine::addToPhysicsEngine(const PxTransform& t, PxShape* shape)
+PxRigidDynamic* PhysicsEngine::addToPhysicsEngineDynamic(const PxTransform& t, PxShape* shape, float density)
 {
-	float halfExtent{ 1.0f };
-	//shape = _physics->createShape(PxBoxGeometry(halfExtent, halfExtent, halfExtent), *_material);
-
 	PxTransform localTm(PxVec3(0.0f, 0.0f, 0));
 	PxRigidDynamic* body{ _physics->createRigidDynamic(t.transform(localTm)) };
 	body->attachShape(*shape);
-	PxRigidBodyExt::updateMassAndInertia(*body, 10.0f);
+	PxRigidBodyExt::updateMassAndInertia(*body, density);
 	_scene->addActor(*body);
 	return body;
 }
 
-PxTransform PhysicsEngine::getActorTransform(PxRigidDynamic* body)
+PxRigidStatic* PhysicsEngine::addToPhysicsEngineStatic(const PxTransform& t, PxShape* shape)
+{
+	PxTransform localTm(PxVec3(0.0f, 0.0f, 0));
+	PxRigidStatic* body{ _physics->createRigidStatic(t.transform(localTm)) };
+	body->attachShape(*shape);
+	_scene->addActor(*body);
+	return body;
+}
+
+PxTransform PhysicsEngine::getActorTransform(PxRigidActor* body)
 {
 	return body->getGlobalPose();
 }
@@ -118,6 +124,11 @@ PxMaterial* PhysicsEngine::createMaterial(float staticFriciton, float dynamicFri
 PxShape* PhysicsEngine::createShape(const PxGeometry& geometry, const PxMaterial& material, bool isExclusive, PxShapeFlags shapeFlags)
 {
 	return _physics->createShape(geometry, material, isExclusive, shapeFlags);
+}
+
+void PhysicsEngine::setGravity(float gravity)
+{
+	_scene->setGravity(PxVec3{ 0.0, gravity, 0.0 });
 }
 
 //void keyPress(unsigned char key, const PxTransform& camera)

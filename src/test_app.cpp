@@ -12,6 +12,8 @@ void TestApp::init(VulkanEngine& engine)
 {
 	SDL_SetRelativeMouseMode((SDL_bool)_camMouseControls);
 
+	engine.set_gravity(-9.81);
+
 	_camera.pos = glm::vec3{ 0.0, 2.0, 2.0 };
 
 	GameObject bed{ engine.create_render_object("bed") };
@@ -30,7 +32,12 @@ void TestApp::init(VulkanEngine& engine)
 
 	_cube.setRenderObject(engine.create_render_object("cube", "default"));
 	_cube.setPos(glm::vec3(0.0, 3.0, 0.0));
-	engine.add_to_physics_engine(&_cube, shape);
+	engine.add_to_physics_engine_dynamic(&_cube, shape);
+
+	
+	//PxTransformFromPlaneEquation(const PxPlane & plane);
+	//PxShape* groundShape{ engine.create_physics_shape(groundPlane, *material) };
+	//engine.add_to_physics_engine_dynamic(nullptr, groundShape);
 
 	GameObject plane{ engine.create_render_object("plane", "default") };
 
@@ -64,7 +71,7 @@ void TestApp::update(VulkanEngine& engine, float delta)
 void TestApp::fixedUpdate(VulkanEngine& engine)
 {
 	if (_applyForce) {
-		_cube.getPhysicsObject()->addForce(physx::PxVec3{1000.0, 1000.0, 0.0});
+		_cube.getPhysicsObject()->is<PxRigidDynamic>()->addForce(physx::PxVec3{1000.0, 1000.0, 0.0});
 	}
 }
 

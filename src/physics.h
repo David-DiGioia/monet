@@ -19,9 +19,11 @@ public:
 
 	void cleanupPhysics();
 
-	PxRigidDynamic* addToPhysicsEngine(const PxTransform& t, PxShape* shape);
+	PxRigidDynamic* addToPhysicsEngineDynamic(const PxTransform& t, PxShape* shape, float density);
 
-	PxTransform getActorTransform(PxRigidDynamic* body);
+	PxRigidStatic* PhysicsEngine::addToPhysicsEngineStatic(const PxTransform& t, PxShape* shape);
+
+	PxTransform getActorTransform(PxRigidActor* body);
 
 	PxMaterial* createMaterial(float staticFriciton, float dynamicFriction, float restitution);
 
@@ -29,6 +31,8 @@ public:
 		const PxMaterial& material,
 		bool isExclusive = false,
 		PxShapeFlags shapeFlags = PxShapeFlag::eVISUALIZATION | PxShapeFlag::eSCENE_QUERY_SHAPE | PxShapeFlag::eSIMULATION_SHAPE);
+
+	void setGravity(float gravity);
 
 private:
 	PxDefaultAllocator _allocator;

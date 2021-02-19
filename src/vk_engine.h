@@ -152,9 +152,9 @@ public:
 
 	void setRenderObject(const RenderObject* ro);
 
-	physx::PxRigidDynamic* getPhysicsObject();
+	physx::PxRigidActor* getPhysicsObject();
 
-	void setPhysicsObject(physx::PxRigidDynamic* body);
+	void setPhysicsObject(physx::PxRigidActor* body);
 
 	Transform getTransform();
 
@@ -178,7 +178,7 @@ private:
 
 	Transform _transform;
 	const RenderObject* _renderObject;
-	physx::PxRigidDynamic* _physicsObject;
+	physx::PxRigidActor* _physicsObject;
 };
 
 struct GuiData {
@@ -351,7 +351,9 @@ public:
 
 	void set_scene_lights(const std::vector<Light>& lights);
 
-	void add_to_physics_engine(GameObject* go, PxShape* shape);
+	void add_to_physics_engine_dynamic(GameObject* go, PxShape* shape, float density = 10.0f);
+
+	void add_to_physics_engine_static(GameObject* go, PxShape* shape);
 
 	void update_physics();
 
@@ -363,6 +365,8 @@ public:
 		const PxMaterial& material,
 		bool isExclusive = false,
 		PxShapeFlags shapeFlags = PxShapeFlag::eVISUALIZATION | PxShapeFlag::eSCENE_QUERY_SHAPE | PxShapeFlag::eSIMULATION_SHAPE);
+
+	void set_gravity(float gravity);
 
 private:
 

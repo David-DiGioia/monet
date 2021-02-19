@@ -101,12 +101,12 @@ void GameObject::setRenderObject(const RenderObject* ro)
 	_renderObject = ro;
 }
 
-physx::PxRigidDynamic* GameObject::getPhysicsObject()
+physx::PxRigidActor* GameObject::getPhysicsObject()
 {
 	return _physicsObject;
 }
 
-void GameObject::setPhysicsObject(physx::PxRigidDynamic* body)
+void GameObject::setPhysicsObject(physx::PxRigidActor* body)
 {
 	_physicsObject = body;
 }
@@ -1552,11 +1552,32 @@ void VulkanEngine::gui()
 	_app->gui();
 }
 
-void VulkanEngine::add_to_physics_engine(GameObject* go, PxShape* shape)
+void VulkanEngine::add_to_physics_engine_dynamic(GameObject* go, PxShape* shape, float density)
 {
-	PxRigidDynamic* physicsObject{ _physicsEngine.addToPhysicsEngine(go->getTransform().to_physx(), shape) };
-	go->setPhysicsObject(physicsObject);
-	_physicsObjects.push_back(go);
+	// if the gameobject is null, just add the physics object to the physics engine and don't associate it with a gameobject
+	if (go) {
+		PxRigidDynamic* physicsObject{ _physicsEngine.addToPhysicsEngineDynamic(go->getTransform().to_physx(), shape, density) };
+		go->setPhysicsObject(physicsObject);
+		_physicsObjects.push_back(go);
+	} else {
+		_physicsEngine.addToPhysicsEngineDynamic(PxTransform{}, shape, density);
+	}
+}
+
+void VulkanEngine::add_to_physics_engine_static(GameObject* go, PxShape* shape)
+{
+	if (go) {
+		PxRigidStatic* physicsObject{ _physicsEngine.addToPhysicsEngineStatic(go->getTransform().to_physx(), shape) };
+		go->setPhysicsObject(physicsObject);
+		_physicsObjects.push_back(go);
+	} else {
+		_physicsEngine.addToPhysicsEngineStatic(PxTransform{}, shape);
+	}
+}
+
+void VulkanEngine::set_gravity(float gravity)
+{
+	_physicsEngine.setGravity(gravity);
 }
 
 bool VulkanEngine::advance_physics(float delta)
