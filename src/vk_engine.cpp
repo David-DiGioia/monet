@@ -165,6 +165,15 @@ void GameObject::addForce(glm::vec3 force)
 	_physicsObject->is<PxRigidDynamic>()->addForce(physx::PxVec3{ force.x, force.y, force.z });
 }
 
+void GameObject::setVelocity(glm::vec3 velocity)
+{
+	PxVec3 v{};
+	v.x = velocity.x;
+	v.y = velocity.y;
+	v.z = velocity.z;
+	_physicsObject->is<PxRigidDynamic>()->setLinearVelocity(v);
+}
+
 void GameObject::setMass(float mass)
 {
 	_physicsObject->is<PxRigidDynamic>()->setMass(mass);

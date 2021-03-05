@@ -177,6 +177,8 @@ public:
 
 	void addForce(glm::vec3 force);
 
+	void setVelocity(glm::vec3 velocity);
+
 	void setMass(float mass);
 	
 	float getMass();
