@@ -177,6 +177,10 @@ public:
 
 	void addForce(glm::vec3 force);
 
+	void setMass(float mass);
+	
+	float getMass();
+
 private:
 	void updateRenderMatrix();
 
@@ -356,6 +360,8 @@ public:
 	void set_scene_lights(const std::vector<Light>& lights);
 
 	void add_to_physics_engine_dynamic(GameObject* go, PxShape* shape, float density = 10.0f);
+
+	void add_to_physics_engine_dynamic_mass(GameObject* go, PxShape* shape, float mass);
 
 	void add_to_physics_engine_static(GameObject* go, PxShape* shape);
 

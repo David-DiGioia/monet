@@ -21,7 +21,9 @@ public:
 
 	PxRigidDynamic* addToPhysicsEngineDynamic(const PxTransform& t, PxShape* shape, float density);
 
-	PxRigidStatic* PhysicsEngine::addToPhysicsEngineStatic(const PxTransform& t, PxShape* shape);
+	PxRigidDynamic* addToPhysicsEngineDynamicMass(const PxTransform& t, PxShape* shape, float mass);
+
+	PxRigidStatic* addToPhysicsEngineStatic(const PxTransform& t, PxShape* shape);
 
 	PxTransform getActorTransform(PxRigidActor* body);
 
