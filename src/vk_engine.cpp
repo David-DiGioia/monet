@@ -59,8 +59,8 @@ void printMat(const Mat& mat) {
 
 Transform::Transform()
 	: pos{ 0.0 }
-    , scale{ 1.0 }
-    , rot{ 1.0 }
+	, scale{ 1.0 }
+	, rot{ 1.0 }
 {}
 
 Transform::Transform(const PxTransform& pxt)
@@ -77,7 +77,7 @@ Transform::Transform(const PxTransform& pxt)
 
 glm::mat4 Transform::mat4()
 {
-	return glm::translate(glm::mat4{ 1.0 }, pos) * rot* glm::scale(glm::mat4{ 1.0 }, scale);
+	return glm::translate(glm::mat4{ 1.0 }, pos) * rot * glm::scale(glm::mat4{ 1.0 }, scale);
 }
 
 physx::PxTransform Transform::to_physx()
@@ -209,6 +209,7 @@ void VulkanEngine::init(Application* app)
 	init_default_renderpass();
 	init_framebuffers();
 	init_sync_structures();
+	init_shadow_pass();
 	load_meshes();
 	init_descriptors(); // descriptors are needed at pipeline create, so before materials
 	load_materials();
@@ -1305,6 +1306,63 @@ FrameData& VulkanEngine::get_current_frame()
 	return _frames[_frameNumber % FRAME_OVERLAP];
 }
 
+void VulkanEngine::init_shadow_pass()
+{
+
+}
+
+// First render pass: Generate shadow map by rendering the scene from light's POV
+void VulkanEngine::shadow_pass(VkCommandBuffer& cmd)
+{
+	VkClearValue clearValue{};
+	clearValue.color = { {1.00, 0.00, 0.00, 1.0} };
+
+	VkClearValue depthClear{};
+	depthClear.depthStencil.depth = 1.0f;
+
+	std::array<VkClearValue, 2> clearValues{ clearValue, depthClear };
+
+	VkRenderPassBeginInfo renderPassBeginInfo{};
+	renderPassBeginInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
+	renderPassBeginInfo.pNext = nullptr;
+	renderPassBeginInfo.renderPass = _offscreenPass.renderPass;
+	renderPassBeginInfo.framebuffer = _offscreenPass.frameBuffer;
+	renderPassBeginInfo.renderArea.extent.width = _offscreenPass.width;
+	renderPassBeginInfo.renderArea.extent.height = _offscreenPass.height;
+	renderPassBeginInfo.clearValueCount = 1;
+	renderPassBeginInfo.pClearValues = clearValues.data();
+
+	vkCmdBeginRenderPass(cmd, &renderPassBeginInfo, VK_SUBPASS_CONTENTS_INLINE);
+
+	VkViewport viewport{};
+	viewport.width = (float)_offscreenPass.width;
+	viewport.height = (float)_offscreenPass.height;
+	viewport.minDepth = 0.0f;
+	viewport.maxDepth = 1.0f;
+	viewport.x = 0;
+	viewport.y = 0;
+	vkCmdSetViewport(cmd, 0, 1, &viewport);
+
+	VkRect2D scissor{};
+	scissor.extent.width = _offscreenPass.width;
+	scissor.extent.height = _offscreenPass.height;
+	scissor.offset.x = 0;
+	scissor.offset.y = 0;
+	vkCmdSetScissor(cmd, 0, 1, &scissor);
+
+	// Set depth bias (aka "Polygon offset")
+	// Required to avoid shadow mapping artifacts
+	vkCmdSetDepthBias(cmd, _depthBiasConstant, 0.0f, _depthBiasSlope);
+
+	vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, _shadowPipeline);
+	vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, _shadowPipelineLayout, 0, 1, &_shadowDescriptorSet, 0, nullptr);
+
+	// Notice we never bind a vertex buffer bc we're only interested in depth buffer
+	vkCmdDraw(cmd, 0, 1, 0, 0);
+
+	vkCmdEndRenderPass(cmd);
+}
+
 void VulkanEngine::draw()
 {
 	ImGui::Render();
@@ -1328,6 +1386,8 @@ void VulkanEngine::draw()
 	cmdBeginInfo.pNext = nullptr;
 	cmdBeginInfo.pInheritanceInfo = nullptr;
 	cmdBeginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+
+	shadow_pass(get_current_frame()._mainCommandBuffer);
 
 	VK_CHECK(vkBeginCommandBuffer(get_current_frame()._mainCommandBuffer, &cmdBeginInfo));
 

@@ -274,12 +274,6 @@ public:
 
 	Transform _camTransform{};
 
-	//glm::vec3 _camPos;
-	//float _camRotPhi;
-	//float _camRotTheta;
-	//bool _camMouseControls;
-	//glm::mat4 _camRot;
-
 	VkDescriptorSetLayout _globalSetLayout;
 	VkDescriptorPool _descriptorPool;
 
@@ -301,6 +295,14 @@ public:
 	FrameData _frames[FRAME_OVERLAP];
 
 	OffscreenPass _offscreenPass;
+	// Depth bias (and slope) are used to avoid shadowing artifacts
+	// Constant depth bias factor (always applied)
+	float _depthBiasConstant{ 1.25f };
+	// Slope depth bias factor, applied depending on polygon's slope
+	float _depthBiasSlope{ 1.75f };
+	VkPipeline _shadowPipeline;
+	VkPipelineLayout _shadowPipelineLayout;
+	VkDescriptorSet _shadowDescriptorSet;
 
 	std::vector<GameObject*> _physicsObjects;
 
@@ -421,6 +423,10 @@ private:
 	std::vector<Texture> textures_from_binding_paths(const std::vector<std::string>& bindingPaths);
 
 	void init_tracy();
+
+	void shadow_pass(VkCommandBuffer& cmd);
+
+	void init_shadow_pass();
 };
 
 class PipelineBuilder {
