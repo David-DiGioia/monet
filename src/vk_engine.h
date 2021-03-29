@@ -302,7 +302,9 @@ public:
 	float _depthBiasSlope{ 1.75f };
 	VkPipeline _shadowPipeline;
 	VkPipelineLayout _shadowPipelineLayout;
-	VkDescriptorSet _shadowDescriptorSet;
+	VkDescriptorSet _shadowDescriptorSetLight;
+	VkDescriptorSet _shadowDescriptorSetObjects;
+	AllocatedBuffer _shadowLightBuffer;
 
 	std::vector<GameObject*> _physicsObjects;
 

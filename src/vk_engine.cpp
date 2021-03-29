@@ -209,10 +209,10 @@ void VulkanEngine::init(Application* app)
 	init_default_renderpass();
 	init_framebuffers();
 	init_sync_structures();
-	init_shadow_pass();
 	load_meshes();
 	init_descriptors(); // descriptors are needed at pipeline create, so before materials
 	load_materials();
+	init_shadow_pass();
 	init_scene();
 	init_imgui();
 	init_gui_data();
@@ -1308,7 +1308,18 @@ FrameData& VulkanEngine::get_current_frame()
 
 void VulkanEngine::init_shadow_pass()
 {
+	prepareShadowMapFramebuffer(*this, &_offscreenPass);
 
+	_shadowLightBuffer = create_buffer(sizeof(glm::mat4), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VMA_MEMORY_USAGE_CPU_TO_GPU);
+	_mainDeletionQueue.push_function([=]() {
+		vmaDestroyBuffer(_allocator, _shadowLightBuffer._buffer, _shadowLightBuffer._allocation);
+	});
+
+	std::array<VkDescriptorSetLayout, 2> setLayouts{};
+
+	setupDescriptorSetLayouts(*this, setLayouts, &_shadowPipelineLayout);
+	initShadowPipeline(*this, _offscreenPass, _shadowPipelineLayout, &_shadowPipeline);
+	setupDescriptorSets(*this, setLayouts);
 }
 
 // First render pass: Generate shadow map by rendering the scene from light's POV
@@ -1355,10 +1366,24 @@ void VulkanEngine::shadow_pass(VkCommandBuffer& cmd)
 	vkCmdSetDepthBias(cmd, _depthBiasConstant, 0.0f, _depthBiasSlope);
 
 	vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, _shadowPipeline);
-	vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, _shadowPipelineLayout, 0, 1, &_shadowDescriptorSet, 0, nullptr);
+	vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, _shadowPipelineLayout, 0, 1, &_shadowDescriptorSetLight, 0, nullptr);
+	vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, _shadowPipelineLayout, 1, 1, &get_current_frame().objectDescriptor, 0, nullptr);
 
-	// Notice we never bind a vertex buffer bc we're only interested in depth buffer
-	vkCmdDraw(cmd, 0, 1, 0, 0);
+	Mesh* lastMesh{ nullptr };
+
+	uint32_t idx{ 0 };
+	for (const RenderObject& object : _renderables) {
+		// only bind the mesh if it's a different one from last bind
+		if (object.mesh != lastMesh) {
+			// bind the mesh vertex buffer with offset 0
+			VkDeviceSize offset{ 0 };
+			vkCmdBindVertexBuffers(cmd, 0, 1, &object.mesh->_vertexBuffer._buffer, &offset);
+			lastMesh = object.mesh;
+		}
+
+		vkCmdDraw(cmd, object.mesh->_vertices.size(), 1, 0, idx);
+		++idx;
+	}
 
 	vkCmdEndRenderPass(cmd);
 }
@@ -1387,9 +1412,20 @@ void VulkanEngine::draw()
 	cmdBeginInfo.pInheritanceInfo = nullptr;
 	cmdBeginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
 
-	shadow_pass(get_current_frame()._mainCommandBuffer);
-
 	VK_CHECK(vkBeginCommandBuffer(get_current_frame()._mainCommandBuffer, &cmdBeginInfo));
+
+	// write all the objects' matrices into the SSBO (used in both shadow pass and draw objects)
+	void* objectData;
+	vmaMapMemory(_allocator, get_current_frame().objectBuffer._allocation, &objectData);
+	GPUObjectData* objectSSBO{ (GPUObjectData*)objectData };
+	uint32_t idx{ 0 };
+	for (const RenderObject& object : _renderables) {
+		objectSSBO[idx].modelMatrix = object.transformMatrix;
+		++idx;
+	}
+	vmaUnmapMemory(_allocator, get_current_frame().objectBuffer._allocation);
+
+	shadow_pass(get_current_frame()._mainCommandBuffer);
 
 	VkClearValue clearValue{};
 	clearValue.color = { {1.00, 0.00, 0.00, 1.0} };
@@ -1398,9 +1434,6 @@ void VulkanEngine::draw()
 	depthClear.depthStencil.depth = 1.0f;
 
 	std::array<VkClearValue, 2> clearValues{ clearValue, depthClear };
-
-	// shadow pass
-
 
 	// start the main renderpass. we will use the clear color from above,
 	// and the framebuffer corresponding to the index the swapchain gave us
@@ -1521,16 +1554,7 @@ void VulkanEngine::draw_objects(VkCommandBuffer cmd, const std::multiset<RenderO
 	//glm::mat4 bedRotate{ glm::rotate(_guiData.bedAngle, glm::vec3{ 0.0, 1.0, 0.0 }) };
 	//_guiData.bed->transformMatrix = bedTranslate * bedScale * bedRotate;
 
-	// write all the objects' matrices into the SSBO
-	void* objectData;
-	vmaMapMemory(_allocator, get_current_frame().objectBuffer._allocation, &objectData);
-	GPUObjectData* objectSSBO{ (GPUObjectData*)objectData };
-	uint32_t idx{ 0 };
-	for (const RenderObject& object : renderables) {
-		objectSSBO[idx].modelMatrix = object.transformMatrix;
-		++idx;
-	}
-	vmaUnmapMemory(_allocator, get_current_frame().objectBuffer._allocation);
+	// we use to write object matrices to SSBO right here
 
 	Mesh* lastMesh{ nullptr };
 	Material* lastMaterial{ nullptr };
@@ -1538,7 +1562,7 @@ void VulkanEngine::draw_objects(VkCommandBuffer cmd, const std::multiset<RenderO
 	uint32_t pipelineBinds{ 0 };
 	uint32_t vertexBufferBinds{ 0 };
 
-	idx = 0;
+	uint32_t idx{ 0 };
 	for (const RenderObject& object : renderables) {
 		// only bind the pipeline if it doesn't match with the already bound one
 		if (object.material != lastMaterial) {
