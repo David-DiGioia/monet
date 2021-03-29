@@ -508,6 +508,9 @@ void prepareShadowMapFramebuffer(VulkanEngine& engine, OffscreenPass* offscreenP
 	allocInfo.requiredFlags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
 
 	VK_CHECK(vmaCreateImage(engine._allocator, &imageInfo, &allocInfo, &offscreenPass->depth.image._image, &offscreenPass->depth.image._allocation, nullptr));
+	engine._mainDeletionQueue.push_function([=, &engine]() {
+		vmaDestroyImage(engine._allocator, offscreenPass->depth.image._image, offscreenPass->depth.image._allocation);
+	});
 
 	VkImageViewCreateInfo depthStencilView{};
 	depthStencilView.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
