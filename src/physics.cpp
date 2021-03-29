@@ -102,6 +102,16 @@ PxRigidDynamic* PhysicsEngine::addToPhysicsEngineDynamic(const PxTransform& t, P
 	return body;
 }
 
+PxRigidDynamic* PhysicsEngine::addToPhysicsEngineDynamicMass(const PxTransform& t, PxShape* shape, float mass)
+{
+	PxTransform localTm(PxVec3(0.0f, 0.0f, 0));
+	PxRigidDynamic* body{ _physics->createRigidDynamic(t.transform(localTm)) };
+	body->attachShape(*shape);
+	body->setMass(mass);
+	_scene->addActor(*body);
+	return body;
+}
+
 PxRigidStatic* PhysicsEngine::addToPhysicsEngineStatic(const PxTransform& t, PxShape* shape)
 {
 	PxTransform localTm(PxVec3(0.0f, 0.0f, 0));

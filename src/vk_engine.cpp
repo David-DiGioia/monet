@@ -165,6 +165,24 @@ void GameObject::addForce(glm::vec3 force)
 	_physicsObject->is<PxRigidDynamic>()->addForce(physx::PxVec3{ force.x, force.y, force.z });
 }
 
+void GameObject::setVelocity(glm::vec3 velocity)
+{
+	PxVec3 v{};
+	v.x = velocity.x;
+	v.y = velocity.y;
+	v.z = velocity.z;
+	_physicsObject->is<PxRigidDynamic>()->setLinearVelocity(v);
+}
+
+void GameObject::setMass(float mass)
+{
+	_physicsObject->is<PxRigidDynamic>()->setMass(mass);
+}
+
+float GameObject::getMass()
+{
+	return _physicsObject->is<PxRigidDynamic>()->getMass();
+}
 
 void VulkanEngine::init(Application* app)
 {
@@ -1651,6 +1669,17 @@ void VulkanEngine::add_to_physics_engine_dynamic(GameObject* go, PxShape* shape,
 		_physicsObjects.push_back(go);
 	} else {
 		_physicsEngine.addToPhysicsEngineDynamic(PxTransform{}, shape, density);
+	}
+}
+
+void VulkanEngine::add_to_physics_engine_dynamic_mass(GameObject* go, PxShape* shape, float mass)
+{
+	if (go) {
+		PxRigidDynamic* physicsObject{ _physicsEngine.addToPhysicsEngineDynamicMass(go->getTransform().to_physx(), shape, mass) };
+		go->setPhysicsObject(physicsObject);
+		_physicsObjects.push_back(go);
+	} else {
+		_physicsEngine.addToPhysicsEngineDynamicMass(PxTransform{}, shape, mass);
 	}
 }
 
