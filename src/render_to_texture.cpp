@@ -476,6 +476,9 @@ void prepareShadowMapRenderpass(VulkanEngine& engine, OffscreenPass* offscreenPa
 	renderPassCreateInfo.pDependencies = dependencies.data();
 
 	VK_CHECK(vkCreateRenderPass(engine._device, &renderPassCreateInfo, nullptr, &offscreenPass->renderPass));
+	engine._mainDeletionQueue.push_function([=, &engine]() {
+		vkDestroyRenderPass(engine._device, offscreenPass->renderPass, nullptr);
+	});
 }
 
 // Setup the offscreen framebuffer for rendering the scene from light's point-of-view to
@@ -525,6 +528,9 @@ void prepareShadowMapFramebuffer(VulkanEngine& engine, OffscreenPass* offscreenP
 	depthStencilView.subresourceRange.layerCount = 1;
 	depthStencilView.image = offscreenPass->depth.image._image;
 	VK_CHECK(vkCreateImageView(engine._device, &depthStencilView, nullptr, &offscreenPass->depth.imageView));
+	engine._mainDeletionQueue.push_function([=, &engine]() {
+		vkDestroyImageView(engine._device, offscreenPass->depth.imageView, nullptr);
+	});
 
 	// Create sampler to sample from to depth attachment
 	// Used to sample in the fragment shader for shadowed rendering
@@ -544,6 +550,9 @@ void prepareShadowMapFramebuffer(VulkanEngine& engine, OffscreenPass* offscreenP
 	sampler.maxLod = 1.0f;
 	sampler.borderColor = VK_BORDER_COLOR_FLOAT_OPAQUE_WHITE;
 	VK_CHECK(vkCreateSampler(engine._device, &sampler, nullptr, &offscreenPass->depthSampler));
+	engine._mainDeletionQueue.push_function([=, &engine]() {
+		vkDestroySampler(engine._device, offscreenPass->depthSampler, nullptr);
+	});
 
 	prepareShadowMapRenderpass(engine, offscreenPass);
 
@@ -559,6 +568,9 @@ void prepareShadowMapFramebuffer(VulkanEngine& engine, OffscreenPass* offscreenP
 	fbufCreateInfo.layers = 1;
 
 	VK_CHECK(vkCreateFramebuffer(engine._device, &fbufCreateInfo, nullptr, &offscreenPass->frameBuffer));
+	engine._mainDeletionQueue.push_function([=, &engine]() {
+		vkDestroyFramebuffer(engine._device, offscreenPass->frameBuffer, nullptr);
+	});
 }
 
 void setupDescriptorSetLayouts(VulkanEngine& engine, std::array<VkDescriptorSetLayout, 2>& setLayoutsOut, VkPipelineLayout* pipelineLayout)
@@ -591,6 +603,10 @@ void setupDescriptorSetLayouts(VulkanEngine& engine, std::array<VkDescriptorSetL
 
 	vkCreateDescriptorSetLayout(engine._device, &lightSetInfo, nullptr, &setLayoutsOut[0]);
 	vkCreateDescriptorSetLayout(engine._device, &objectSetInfo, nullptr, &setLayoutsOut[1]);
+	engine._mainDeletionQueue.push_function([=, &engine]() {
+		vkDestroyDescriptorSetLayout(engine._device, setLayoutsOut[1], nullptr);
+		vkDestroyDescriptorSetLayout(engine._device, setLayoutsOut[0], nullptr);
+	});
 
 	//VkPipelineLayoutCreateInfo pPipelineLayoutCreateInfo = vks::initializers::pipelineLayoutCreateInfo(&descriptorSetLayout, 1);
 	VkPipelineLayoutCreateInfo pipelineLayoutCreateInfo{};
@@ -601,6 +617,9 @@ void setupDescriptorSetLayouts(VulkanEngine& engine, std::array<VkDescriptorSetL
 	pipelineLayoutCreateInfo.pPushConstantRanges = nullptr;
 
 	VK_CHECK(vkCreatePipelineLayout(engine._device, &pipelineLayoutCreateInfo, nullptr, pipelineLayout));
+	engine._mainDeletionQueue.push_function([=, &engine]() {
+		vkDestroyPipelineLayout(engine._device, *pipelineLayout, nullptr);
+	});
 }
 
 // Only sets up the light uniform buffer descriptor set, since the objects one is already set up
@@ -740,6 +759,11 @@ void initShadowPipeline(VulkanEngine& engine, OffscreenPass& offscreenPass, VkPi
 	pipelineCI.renderPass = offscreenPass.renderPass;
 
 	VK_CHECK(vkCreateGraphicsPipelines(engine._device, VK_NULL_HANDLE, 1, &pipelineCI, nullptr, pipeline));
+	engine._mainDeletionQueue.push_function([=, &engine]() {
+		vkDestroyPipeline(engine._device, *pipeline, nullptr);
+	});
+
+	vkDestroyShaderModule(engine._device, vertShader, nullptr);
 }
 
 //void buildCommandBuffers()
