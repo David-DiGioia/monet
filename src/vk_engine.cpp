@@ -359,18 +359,21 @@ void VulkanEngine::init_scene()
 	cube.mesh = get_mesh("cube");
 	cube.material = get_material("testCubemapMat");
 	cube.transformMatrix = glm::mat4{ 1.0 };
+	cube.castShadow = false;
 	_renderables.insert(cube);
 
 	_app->init(*this);
 }
 
-const RenderObject* VulkanEngine::create_render_object(const std::string& meshName, const std::string& matName)
+const RenderObject* VulkanEngine::create_render_object(const std::string& meshName, const std::string& matName, bool castShadow)
 {
 	RenderObject object{};
 	object.mesh = get_mesh(meshName);
 	object.material = get_material(matName);
 	object.transformMatrix = glm::mat4(1.0);
+	object.castShadow = castShadow;
 	_renderables.insert(object);
+
 	return &(*_renderables.find(object));
 }
 
@@ -1379,6 +1382,22 @@ void VulkanEngine::shadow_pass(VkCommandBuffer& cmd)
 	scissor.offset.y = 0;
 	vkCmdSetScissor(cmd, 0, 1, &scissor);
 
+	float near_plane{ 1.0f };
+	float far_plane{ 12.0f };
+	glm::mat4 lightProjection{ glm::ortho(-10.0f, 10.0f, -10.0f, 10.0f, near_plane, far_plane) };
+	lightProjection[1][1] *= -1;
+
+	glm::mat4 lightView{ glm::lookAt(glm::vec3(-4.0f, 8.0f, -2.0f),
+		glm::vec3(0.0f, 0.0f, 0.0f),
+		glm::vec3(0.0f, 1.0f, 0.0f)) };
+
+	glm::mat4 lightSpaceMatrix{ lightProjection * lightView };
+
+	void* data;
+	vmaMapMemory(_allocator, _shadowLightBuffer._allocation, &data);
+	std::memcpy(data, &lightSpaceMatrix, sizeof(glm::mat4));
+	vmaUnmapMemory(_allocator, _shadowLightBuffer._allocation);
+
 	// Set depth bias (aka "Polygon offset")
 	// Required to avoid shadow mapping artifacts
 	vkCmdSetDepthBias(cmd, _depthBiasConstant, 0.0f, _depthBiasSlope);
@@ -1391,6 +1410,9 @@ void VulkanEngine::shadow_pass(VkCommandBuffer& cmd)
 
 	uint32_t idx{ 0 };
 	for (const RenderObject& object : _renderables) {
+		if (!object.castShadow)
+			continue;
+
 		// only bind the mesh if it's a different one from last bind
 		if (object.mesh != lastMesh) {
 			// bind the mesh vertex buffer with offset 0

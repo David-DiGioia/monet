@@ -121,6 +121,7 @@ struct RenderObject {
 	Mesh* mesh;
 	Material* material;
 	mutable glm::mat4 transformMatrix;
+	bool castShadow;
 
 	bool operator<(const RenderObject& other) const;
 };
@@ -357,7 +358,7 @@ public:
 	// returns nullptr if it can't be found
 	Mesh* get_mesh(const std::string& name);
 
-	const RenderObject* create_render_object(const std::string& meshName, const std::string& matName);
+	const RenderObject* create_render_object(const std::string& meshName, const std::string& matName, bool castShadow=true);
 
 	const RenderObject* create_render_object(const std::string& name);
 
