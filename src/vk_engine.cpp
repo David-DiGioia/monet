@@ -228,9 +228,10 @@ void VulkanEngine::init(Application* app)
 	init_framebuffers();
 	init_sync_structures();
 	load_meshes();
+	init_descriptor_pool();
+	init_shadow_pass();
 	init_descriptors(); // descriptors are needed at pipeline create, so before materials
 	load_materials();
-	init_shadow_pass();
 	init_scene();
 	init_imgui();
 	init_gui_data();
@@ -772,13 +773,12 @@ size_t VulkanEngine::pad_uniform_buffer_size(size_t originalSize)
 	return alignedSize;
 }
 
-void VulkanEngine::init_descriptors()
-{
+void VulkanEngine::init_descriptor_pool() {
 	std::vector<VkDescriptorPoolSize> sizes{
-		{ VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 10 },
-		{ VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, 10 },
-		{ VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 10 },
-		{ VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 100 }
+	{ VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 10 },
+	{ VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, 10 },
+	{ VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 10 },
+	{ VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 100 }
 	};
 
 	VkDescriptorPoolCreateInfo pool_info{};
@@ -792,12 +792,16 @@ void VulkanEngine::init_descriptors()
 	_mainDeletionQueue.push_function([=]() {
 		vkDestroyDescriptorPool(_device, _descriptorPool, nullptr);
 	});
+}
 
+void VulkanEngine::init_descriptors()
+{
 	// cameraBind needs to be accessed from fragment shader to get camPos
 	VkDescriptorSetLayoutBinding cameraBind{ vkinit::descriptorset_layout_binding(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_VERTEX_BIT, 0) };
 	VkDescriptorSetLayoutBinding sceneBind{ vkinit::descriptorset_layout_binding(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, 1) };
+	VkDescriptorSetLayoutBinding shadowMapBind{ vkinit::descriptorset_layout_binding(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT, 2) };
 
-	std::array<VkDescriptorSetLayoutBinding, 2> bindings{ cameraBind, sceneBind };
+	std::array<VkDescriptorSetLayoutBinding, 3> bindings{ cameraBind, sceneBind, shadowMapBind };
 
 	VkDescriptorSetLayoutCreateInfo setInfo{};
 	setInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
@@ -871,6 +875,15 @@ void VulkanEngine::init_descriptors()
 		sceneInfo.offset = 0;
 		sceneInfo.range = sizeof(GPUSceneData);
 
+		VkDescriptorImageInfo shadowMapInfo{};
+		// offscreen renderpass that generates shadow map transitions it to this layout once it's finished
+		shadowMapInfo.imageLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL;
+		shadowMapInfo.imageView = get_current_frame()._shadow.depth.imageView;
+		shadowMapInfo.sampler = get_current_frame()._shadow.depthSampler;
+
+		// TODO: the imageView and sampler might need to be per-frame resources.. or whole offscreen pass?
+		//todo;
+
 		VkDescriptorBufferInfo objectInfo{};
 		objectInfo.buffer = _frames[i].objectBuffer._buffer;
 		objectInfo.offset = 0;
@@ -878,8 +891,9 @@ void VulkanEngine::init_descriptors()
 
 		VkWriteDescriptorSet cameraWrite{ vkinit::write_descriptor_buffer(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, _frames[i].globalDescriptor, &cameraInfo, 0) };
 		VkWriteDescriptorSet sceneWrite{ vkinit::write_descriptor_buffer(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, _frames[i].globalDescriptor, &sceneInfo, 1) };
+		VkWriteDescriptorSet shadowMapWrite{ vkinit::write_descriptor_image(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, _frames[i].globalDescriptor, &shadowMapInfo, 2) };
 		VkWriteDescriptorSet objectWrite{ vkinit::write_descriptor_buffer(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, _frames[i].objectDescriptor, &objectInfo, 0) };
-		std::array<VkWriteDescriptorSet, 3> setWrites{ cameraWrite, sceneWrite, objectWrite };
+		std::array<VkWriteDescriptorSet, 4> setWrites{ cameraWrite, sceneWrite, shadowMapWrite, objectWrite };
 		vkUpdateDescriptorSets(_device, setWrites.size(), setWrites.data(), 0, nullptr);
 	}
 }
@@ -959,6 +973,7 @@ void VulkanEngine::init_default_renderpass()
 
 	VkAttachmentReference depth_attachment_ref{};
 	depth_attachment_ref.attachment = 1;
+	// the attachment will be transitioned to this layout by the implementation
 	depth_attachment_ref.layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
 
 	// we are going to create 1 subpass, which is the minimum you can do
@@ -976,6 +991,26 @@ void VulkanEngine::init_default_renderpass()
 	render_pass_info.pAttachments = attachments.data();
 	render_pass_info.subpassCount = 1;
 	render_pass_info.pSubpasses = &subpass;
+
+	// added for shadow map:
+	std::array<VkSubpassDependency, 2> dependencies{};
+
+	dependencies[0].srcSubpass = VK_SUBPASS_EXTERNAL;
+	dependencies[0].dstSubpass = 0;
+	dependencies[0].srcStageMask = VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;
+	dependencies[0].srcAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT;
+	dependencies[0].dstStageMask = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
+	dependencies[0].dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
+
+	dependencies[1].srcSubpass = 0;
+	dependencies[1].dstSubpass = VK_SUBPASS_EXTERNAL;
+	dependencies[1].srcStageMask = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
+	dependencies[1].srcAccessMask = VK_ACCESS_SHADER_READ_BIT;
+	dependencies[1].dstStageMask = VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;
+	dependencies[1].dstAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT;
+
+	render_pass_info.dependencyCount = dependencies.size();
+	render_pass_info.pDependencies = dependencies.data();
 
 	VK_CHECK(vkCreateRenderPass(_device, &render_pass_info, nullptr, &_renderPass));
 
@@ -1329,18 +1364,26 @@ FrameData& VulkanEngine::get_current_frame()
 
 void VulkanEngine::init_shadow_pass()
 {
-	prepareShadowMapFramebuffer(*this, &_offscreenPass);
+	_shadowGlobal._width = SHADOWMAP_DIM;
+	_shadowGlobal._height = SHADOWMAP_DIM;
 
-	_shadowLightBuffer = create_buffer(sizeof(glm::mat4), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VMA_MEMORY_USAGE_CPU_TO_GPU);
-	_mainDeletionQueue.push_function([=]() {
-		vmaDestroyBuffer(_allocator, _shadowLightBuffer._buffer, _shadowLightBuffer._allocation);
-	});
-
+	prepareShadowMapRenderpass(*this, &_shadowGlobal._renderPass);
 	std::array<VkDescriptorSetLayout, 2> setLayouts{};
+	setupDescriptorSetLayouts(*this, setLayouts, &_shadowGlobal._shadowPipelineLayout);
+	initShadowPipeline(*this, _shadowGlobal._renderPass, _shadowGlobal._shadowPipelineLayout, &_shadowGlobal._shadowPipeline);
 
-	setupDescriptorSetLayouts(*this, setLayouts, &_shadowPipelineLayout);
-	initShadowPipeline(*this, _offscreenPass, _shadowPipelineLayout, &_shadowPipeline);
-	setupDescriptorSets(*this, setLayouts);
+	for (auto i{ 0 }; i < FRAME_OVERLAP; ++i) {
+		ShadowFrameResources& shadowFrame{ _frames[i % FRAME_OVERLAP]._shadow };
+
+		prepareShadowMapFramebuffer(*this, _shadowGlobal, &shadowFrame);
+
+		shadowFrame._shadowLightBuffer = create_buffer(sizeof(glm::mat4), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VMA_MEMORY_USAGE_CPU_TO_GPU);
+		_mainDeletionQueue.push_function([=]() {
+			vmaDestroyBuffer(_allocator, shadowFrame._shadowLightBuffer._buffer, shadowFrame._shadowLightBuffer._allocation);
+		});
+
+		setupDescriptorSets(*this, shadowFrame, setLayouts);
+	}
 }
 
 // First render pass: Generate shadow map by rendering the scene from light's POV
@@ -1357,18 +1400,18 @@ void VulkanEngine::shadow_pass(VkCommandBuffer& cmd)
 	VkRenderPassBeginInfo renderPassBeginInfo{};
 	renderPassBeginInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
 	renderPassBeginInfo.pNext = nullptr;
-	renderPassBeginInfo.renderPass = _offscreenPass.renderPass;
-	renderPassBeginInfo.framebuffer = _offscreenPass.frameBuffer;
-	renderPassBeginInfo.renderArea.extent.width = _offscreenPass.width;
-	renderPassBeginInfo.renderArea.extent.height = _offscreenPass.height;
+	renderPassBeginInfo.renderPass = _shadowGlobal._renderPass;
+	renderPassBeginInfo.framebuffer = get_current_frame()._shadow.frameBuffer;
+	renderPassBeginInfo.renderArea.extent.width = _shadowGlobal._width;
+	renderPassBeginInfo.renderArea.extent.height = _shadowGlobal._height;
 	renderPassBeginInfo.clearValueCount = 1;
 	renderPassBeginInfo.pClearValues = clearValues.data();
 
 	vkCmdBeginRenderPass(cmd, &renderPassBeginInfo, VK_SUBPASS_CONTENTS_INLINE);
 
 	VkViewport viewport{};
-	viewport.width = (float)_offscreenPass.width;
-	viewport.height = (float)_offscreenPass.height;
+	viewport.width = (float)_shadowGlobal._width;
+	viewport.height = (float)_shadowGlobal._height;
 	viewport.minDepth = 0.0f;
 	viewport.maxDepth = 1.0f;
 	viewport.x = 0;
@@ -1376,35 +1419,36 @@ void VulkanEngine::shadow_pass(VkCommandBuffer& cmd)
 	vkCmdSetViewport(cmd, 0, 1, &viewport);
 
 	VkRect2D scissor{};
-	scissor.extent.width = _offscreenPass.width;
-	scissor.extent.height = _offscreenPass.height;
+	scissor.extent.width = _shadowGlobal._width;
+	scissor.extent.height = _shadowGlobal._height;
 	scissor.offset.x = 0;
 	scissor.offset.y = 0;
 	vkCmdSetScissor(cmd, 0, 1, &scissor);
 
-	float near_plane{ 1.0f };
+	float near_plane{ 0.5f };
 	float far_plane{ 12.0f };
-	glm::mat4 lightProjection{ glm::ortho(-10.0f, 10.0f, -10.0f, 10.0f, near_plane, far_plane) };
+	float scale{ 5.0f };
+	glm::mat4 lightProjection{ glm::ortho(-scale, scale, -scale, scale, near_plane, far_plane) };
 	lightProjection[1][1] *= -1;
 
 	glm::mat4 lightView{ glm::lookAt(glm::vec3(-4.0f, 8.0f, -2.0f),
 		glm::vec3(0.0f, 0.0f, 0.0f),
 		glm::vec3(0.0f, 1.0f, 0.0f)) };
 
-	glm::mat4 lightSpaceMatrix{ lightProjection * lightView };
+	_shadowGlobal._lightSpaceMatrix = lightProjection * lightView;
 
 	void* data;
-	vmaMapMemory(_allocator, _shadowLightBuffer._allocation, &data);
-	std::memcpy(data, &lightSpaceMatrix, sizeof(glm::mat4));
-	vmaUnmapMemory(_allocator, _shadowLightBuffer._allocation);
+	vmaMapMemory(_allocator, get_current_frame()._shadow._shadowLightBuffer._allocation, &data);
+	std::memcpy(data, &_shadowGlobal._lightSpaceMatrix, sizeof(glm::mat4));
+	vmaUnmapMemory(_allocator, get_current_frame()._shadow._shadowLightBuffer._allocation);
 
 	// Set depth bias (aka "Polygon offset")
 	// Required to avoid shadow mapping artifacts
-	vkCmdSetDepthBias(cmd, _depthBiasConstant, 0.0f, _depthBiasSlope);
+	vkCmdSetDepthBias(cmd, _shadowGlobal._depthBiasConstant, 0.0f, _shadowGlobal._depthBiasSlope);
 
-	vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, _shadowPipeline);
-	vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, _shadowPipelineLayout, 0, 1, &_shadowDescriptorSetLight, 0, nullptr);
-	vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, _shadowPipelineLayout, 1, 1, &get_current_frame().objectDescriptor, 0, nullptr);
+	vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, _shadowGlobal._shadowPipeline);
+	vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, _shadowGlobal._shadowPipelineLayout, 0, 1, &get_current_frame()._shadow._shadowDescriptorSetLight, 0, nullptr);
+	vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, _shadowGlobal._shadowPipelineLayout, 1, 1, &get_current_frame().objectDescriptor, 0, nullptr);
 
 	Mesh* lastMesh{ nullptr };
 
@@ -1426,6 +1470,30 @@ void VulkanEngine::shadow_pass(VkCommandBuffer& cmd)
 	}
 
 	vkCmdEndRenderPass(cmd);
+
+	//VkImageMemoryBarrier barrier{};
+	//barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+	//barrier.image = _offscreenPass.depth.image._image;
+	//barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+	//barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+	//barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT;
+	//barrier.subresourceRange.baseArrayLayer = 0;
+	//barrier.subresourceRange.layerCount = 1;
+	//barrier.subresourceRange.levelCount = 1;
+	//barrier.subresourceRange.baseMipLevel = 0;
+	////barrier.oldLayout = VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL;
+	//barrier.oldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+	//barrier.newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+	//barrier.srcAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+	//barrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
+
+	//vkCmdPipelineBarrier(cmd,
+	//	VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT,
+	//	VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, 0,
+	//	0, nullptr,
+	//	0, nullptr,
+	//	1, &barrier);
+
 }
 
 void VulkanEngine::draw()
@@ -1545,7 +1613,7 @@ void VulkanEngine::draw_objects(VkCommandBuffer cmd, const std::multiset<RenderO
 {
 	TracyVkZone(get_current_frame()._tracyContext, cmd, "Draw objects");
 
-	_sceneParameters.ambientColor = { glm::vec3{0.01f}, 1 };
+	_sceneParameters.lightSpaceMatrix = _shadowGlobal._lightSpaceMatrix;
 	_sceneParameters.numLights = 0;
 
 	// Assume _camTransform and _sceneParamters lights are updated here if they need to be

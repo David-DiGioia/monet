@@ -8,9 +8,10 @@ layout (location = 3) in vec2 vTexCoord;
 
 layout (location = 0) out vec2 texCoord;
 layout (location = 1) out vec3 fragPos;
-layout (location = 2) out vec3 camPos;
-layout (location = 3) out mat3 outTBN;
-layout (location = 6) out vec3 lightPos[MAX_NUM_TOTAL_LIGHTS];
+layout (location = 2) out vec4 fragPosLightSpace;
+layout (location = 3) out vec3 camPos;
+layout (location = 4) out mat3 outTBN;
+layout (location = 7) out vec3 lightPos[MAX_NUM_TOTAL_LIGHTS];
 
 layout (set = 0, binding = 0) uniform CameraBuffer {
     mat4 viewProjOrigin;
@@ -24,9 +25,7 @@ struct Light {
 };
 
 layout (set = 0, binding = 1) uniform SceneData {
-    vec4 ambientColor;
-    vec4 sunDirection;
-    vec4 sunColor; // w is for sun power
+    mat4 lightSpaceMatrix; // for shadow mapping
     vec4 camPos; // w is unused
     Light lights[MAX_NUM_TOTAL_LIGHTS];
     int numLights;
@@ -69,6 +68,7 @@ void main()
     // TBN = transpose(TBN);
 
     fragPos = worldPos4.xyz;
+    fragPosLightSpace = sceneData.lightSpaceMatrix * worldPos4;
     camPos = sceneData.camPos.xyz;
     outTBN = TBN;
 

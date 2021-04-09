@@ -11,7 +11,6 @@
 // 6 faces per cube, 2 traingles per face, 3 vertices per triangle
 constexpr uint32_t NUM_VERTICES_PLANE{ 2 * 3 };
 constexpr uint32_t NUM_VERTICES_CUBE{ 6 * NUM_VERTICES_PLANE };
-constexpr uint32_t SHADOWMAP_DIM{ 2048 };
 constexpr VkFormat DEPTH_FORMAT{ VK_FORMAT_D16_UNORM };
 
 glm::vec3 vertexDataCube[NUM_VERTICES_CUBE]{
@@ -421,8 +420,7 @@ Texture render_to_texture(VulkanEngine& engine, VkDescriptorSet equirectangularS
 
 // Shadow mapping -----------------------------------------------------------------------------
 
-// Called by prepareShadowMapFramebuffer
-void prepareShadowMapRenderpass(VulkanEngine& engine, OffscreenPass* offscreenPass)
+void prepareShadowMapRenderpass(VulkanEngine& engine, VkRenderPass* renderpass)
 {
 	VkAttachmentDescription attachmentDescription{};
 	attachmentDescription.format = DEPTH_FORMAT;
@@ -436,34 +434,32 @@ void prepareShadowMapRenderpass(VulkanEngine& engine, OffscreenPass* offscreenPa
 	// Attachment will be transitioned to shader read at render pass end
 	attachmentDescription.finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL;
 
-	VkAttachmentReference depthReference = {};
+	VkAttachmentReference depthReference{};
 	depthReference.attachment = 0;
 	// Attachment will be used as depth/stencil during render pass
 	depthReference.layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
 
-	VkSubpassDescription subpass = {};
+	VkSubpassDescription subpass{};
 	subpass.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
 	subpass.colorAttachmentCount = 0;
 	subpass.pDepthStencilAttachment = &depthReference;
 
 	// Use subpass dependencies for layout transitions
-	std::array<VkSubpassDependency, 2> dependencies;
+	std::array<VkSubpassDependency, 2> dependencies{};
 
 	dependencies[0].srcSubpass = VK_SUBPASS_EXTERNAL;
 	dependencies[0].dstSubpass = 0;
 	dependencies[0].srcStageMask = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
-	dependencies[0].dstStageMask = VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
 	dependencies[0].srcAccessMask = VK_ACCESS_SHADER_READ_BIT;
-	dependencies[0].dstAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
-	dependencies[0].dependencyFlags = VK_DEPENDENCY_BY_REGION_BIT;
+	dependencies[0].dstStageMask = VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;
+	dependencies[0].dstAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT;
 
 	dependencies[1].srcSubpass = 0;
 	dependencies[1].dstSubpass = VK_SUBPASS_EXTERNAL;
-	dependencies[1].srcStageMask = VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;
+	dependencies[1].srcStageMask = VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;
+	dependencies[1].srcAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT;
 	dependencies[1].dstStageMask = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
-	dependencies[1].srcAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
 	dependencies[1].dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
-	dependencies[1].dependencyFlags = VK_DEPENDENCY_BY_REGION_BIT;
 
 	VkRenderPassCreateInfo renderPassCreateInfo{};
 	renderPassCreateInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
@@ -472,30 +468,29 @@ void prepareShadowMapRenderpass(VulkanEngine& engine, OffscreenPass* offscreenPa
 	renderPassCreateInfo.pAttachments = &attachmentDescription;
 	renderPassCreateInfo.subpassCount = 1;
 	renderPassCreateInfo.pSubpasses = &subpass;
-	renderPassCreateInfo.dependencyCount = static_cast<uint32_t>(dependencies.size());
-	renderPassCreateInfo.pDependencies = dependencies.data();
+	//renderPassCreateInfo.dependencyCount = static_cast<uint32_t>(dependencies.size());
+	//renderPassCreateInfo.pDependencies = dependencies.data();
+	renderPassCreateInfo.dependencyCount = 0;
+	renderPassCreateInfo.pDependencies = nullptr;
 
-	VK_CHECK(vkCreateRenderPass(engine._device, &renderPassCreateInfo, nullptr, &offscreenPass->renderPass));
+	VK_CHECK(vkCreateRenderPass(engine._device, &renderPassCreateInfo, nullptr, renderpass));
 	engine._mainDeletionQueue.push_function([=, &engine]() {
-		vkDestroyRenderPass(engine._device, offscreenPass->renderPass, nullptr);
+		vkDestroyRenderPass(engine._device, *renderpass, nullptr);
 	});
 }
 
 // Setup the offscreen framebuffer for rendering the scene from light's point-of-view to
 // The depth attachment of this framebuffer will then be used to sample from in the fragment shader of the shadowing pass
-void prepareShadowMapFramebuffer(VulkanEngine& engine, OffscreenPass* offscreenPass)
+void prepareShadowMapFramebuffer(VulkanEngine& engine, const ShadowGlobalResources& shadowGlobal, ShadowFrameResources* shadowFrame)
 {
-	offscreenPass->width = SHADOWMAP_DIM;
-	offscreenPass->height = SHADOWMAP_DIM;
-
 	// For shadow mapping we only need a depth attachment
 	VkImageCreateInfo imageInfo{};
 	imageInfo.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
 	imageInfo.pNext = nullptr;
 	imageInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
 	imageInfo.imageType = VK_IMAGE_TYPE_2D;
-	imageInfo.extent.width = offscreenPass->width;
-	imageInfo.extent.height = offscreenPass->height;
+	imageInfo.extent.width = shadowGlobal._width;
+	imageInfo.extent.height = shadowGlobal._height;
 	imageInfo.extent.depth = 1;
 	imageInfo.mipLevels = 1;
 	imageInfo.arrayLayers = 1;
@@ -510,9 +505,9 @@ void prepareShadowMapFramebuffer(VulkanEngine& engine, OffscreenPass* offscreenP
 	allocInfo.usage = VMA_MEMORY_USAGE_GPU_ONLY;
 	allocInfo.requiredFlags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
 
-	VK_CHECK(vmaCreateImage(engine._allocator, &imageInfo, &allocInfo, &offscreenPass->depth.image._image, &offscreenPass->depth.image._allocation, nullptr));
+	VK_CHECK(vmaCreateImage(engine._allocator, &imageInfo, &allocInfo, &shadowFrame->depth.image._image, &shadowFrame->depth.image._allocation, nullptr));
 	engine._mainDeletionQueue.push_function([=, &engine]() {
-		vmaDestroyImage(engine._allocator, offscreenPass->depth.image._image, offscreenPass->depth.image._allocation);
+		vmaDestroyImage(engine._allocator, shadowFrame->depth.image._image, shadowFrame->depth.image._allocation);
 	});
 
 	VkImageViewCreateInfo depthStencilView{};
@@ -526,10 +521,10 @@ void prepareShadowMapFramebuffer(VulkanEngine& engine, OffscreenPass* offscreenP
 	depthStencilView.subresourceRange.levelCount = 1;
 	depthStencilView.subresourceRange.baseArrayLayer = 0;
 	depthStencilView.subresourceRange.layerCount = 1;
-	depthStencilView.image = offscreenPass->depth.image._image;
-	VK_CHECK(vkCreateImageView(engine._device, &depthStencilView, nullptr, &offscreenPass->depth.imageView));
+	depthStencilView.image = shadowFrame->depth.image._image;
+	VK_CHECK(vkCreateImageView(engine._device, &depthStencilView, nullptr, &shadowFrame->depth.imageView));
 	engine._mainDeletionQueue.push_function([=, &engine]() {
-		vkDestroyImageView(engine._device, offscreenPass->depth.imageView, nullptr);
+		vkDestroyImageView(engine._device, shadowFrame->depth.imageView, nullptr);
 	});
 
 	// Create sampler to sample from to depth attachment
@@ -549,27 +544,25 @@ void prepareShadowMapFramebuffer(VulkanEngine& engine, OffscreenPass* offscreenP
 	sampler.minLod = 0.0f;
 	sampler.maxLod = 1.0f;
 	sampler.borderColor = VK_BORDER_COLOR_FLOAT_OPAQUE_WHITE;
-	VK_CHECK(vkCreateSampler(engine._device, &sampler, nullptr, &offscreenPass->depthSampler));
+	VK_CHECK(vkCreateSampler(engine._device, &sampler, nullptr, &shadowFrame->depthSampler));
 	engine._mainDeletionQueue.push_function([=, &engine]() {
-		vkDestroySampler(engine._device, offscreenPass->depthSampler, nullptr);
+		vkDestroySampler(engine._device, shadowFrame->depthSampler, nullptr);
 	});
-
-	prepareShadowMapRenderpass(engine, offscreenPass);
 
 	// Create frame buffer
 	VkFramebufferCreateInfo fbufCreateInfo{};
 	fbufCreateInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
 	fbufCreateInfo.pNext = nullptr;
-	fbufCreateInfo.renderPass = offscreenPass->renderPass;
+	fbufCreateInfo.renderPass = shadowGlobal._renderPass;
 	fbufCreateInfo.attachmentCount = 1;
-	fbufCreateInfo.pAttachments = &offscreenPass->depth.imageView;
-	fbufCreateInfo.width = offscreenPass->width;
-	fbufCreateInfo.height = offscreenPass->height;
+	fbufCreateInfo.pAttachments = &shadowFrame->depth.imageView;
+	fbufCreateInfo.width = shadowGlobal._width;
+	fbufCreateInfo.height = shadowGlobal._height;
 	fbufCreateInfo.layers = 1;
 
-	VK_CHECK(vkCreateFramebuffer(engine._device, &fbufCreateInfo, nullptr, &offscreenPass->frameBuffer));
+	VK_CHECK(vkCreateFramebuffer(engine._device, &fbufCreateInfo, nullptr, &shadowFrame->frameBuffer));
 	engine._mainDeletionQueue.push_function([=, &engine]() {
-		vkDestroyFramebuffer(engine._device, offscreenPass->frameBuffer, nullptr);
+		vkDestroyFramebuffer(engine._device, shadowFrame->frameBuffer, nullptr);
 	});
 }
 
@@ -623,12 +616,12 @@ void setupDescriptorSetLayouts(VulkanEngine& engine, std::array<VkDescriptorSetL
 }
 
 // Only sets up the light uniform buffer descriptor set, since the objects one is already set up
-void setupDescriptorSets(VulkanEngine& engine, std::array<VkDescriptorSetLayout, 2>& setLayouts)
+void setupDescriptorSets(VulkanEngine& engine, ShadowFrameResources& shadowFrame, std::array<VkDescriptorSetLayout, 2>& setLayouts)
 {
 	// Image descriptor for the shadow map attachment
 	VkDescriptorImageInfo shadowMapDescriptor{};
-	shadowMapDescriptor.sampler = engine._offscreenPass.depthSampler;
-	shadowMapDescriptor.imageView = engine._offscreenPass.depth.imageView;
+	shadowMapDescriptor.sampler = shadowFrame.depthSampler;
+	shadowMapDescriptor.imageView = shadowFrame.depth.imageView;
 	// imageLayout is which layout it will be in already, it won't change it to this for us (the renderpass transitiosn it to this for us)
 	shadowMapDescriptor.imageLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL;
 
@@ -639,40 +632,21 @@ void setupDescriptorSets(VulkanEngine& engine, std::array<VkDescriptorSetLayout,
 	allocInfo.pSetLayouts = setLayouts.data();
 
 	// Offscreen shadow map generation
-	VK_CHECK(vkAllocateDescriptorSets(engine._device, &allocInfo, &engine._shadowDescriptorSetLight));
+	VK_CHECK(vkAllocateDescriptorSets(engine._device, &allocInfo, &shadowFrame._shadowDescriptorSetLight));
 	VkDescriptorBufferInfo bufferInfo{};
 	bufferInfo.offset = 0;
 	bufferInfo.range = VK_WHOLE_SIZE;
-	bufferInfo.buffer = engine._shadowLightBuffer._buffer;
+	bufferInfo.buffer = shadowFrame._shadowLightBuffer._buffer;
 
 	std::vector<VkWriteDescriptorSet> writeDescriptorSets{
 		// Set 0, Binding 0 : Vertex shader uniform buffer (LightBuffer)
-		vkinit::write_descriptor_buffer(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, engine._shadowDescriptorSetLight, &bufferInfo, 0),
+		vkinit::write_descriptor_buffer(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, shadowFrame._shadowDescriptorSetLight, &bufferInfo, 0),
 	};
 
 	vkUpdateDescriptorSets(engine._device, writeDescriptorSets.size(), writeDescriptorSets.data(), 0, nullptr);
-
-	//bufferInfo.buffer = engine.
-
-	//writeDescriptorSets = {
-	//	// Set 1, Binding 0 : Object buffer
-	//	vkinit::write_descriptor_buffer(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, engine._shadowDescriptorSetObjects, &bufferInfo, 0),
-	//};
-
-	//vkUpdateDescriptorSets(engine._device, writeDescriptorSets.size(), writeDescriptorSets.data(), 0, nullptr);
-
-	//// Scene rendering with shadow map applied
-	//VK_CHECK_RESULT(vkAllocateDescriptorSets(device, &allocInfo, &descriptorSets.scene));
-	//writeDescriptorSets = {
-	//	// Binding 0 : Vertex shader uniform buffer
-	//	vks::initializers::writeDescriptorSet(descriptorSets.scene, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 0, &uniformBuffers.scene.descriptor),
-	//	// Binding 1 : Fragment shader shadow sampler
-	//	vks::initializers::writeDescriptorSet(descriptorSets.scene, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, &shadowMapDescriptor)
-	//};
-	//vkUpdateDescriptorSets(device, writeDescriptorSets.size(), writeDescriptorSets.data(), 0, nullptr);
 }
 
-void initShadowPipeline(VulkanEngine& engine, OffscreenPass& offscreenPass, VkPipelineLayout pipelineLayout, VkPipeline* pipeline)
+void initShadowPipeline(VulkanEngine& engine, VkRenderPass& renderpass, VkPipelineLayout pipelineLayout, VkPipeline* pipeline)
 {
 	VkPipelineInputAssemblyStateCreateInfo inputAssemblyStateCI{ vkinit::input_assembly_create_info(VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST) };
 
@@ -691,7 +665,7 @@ void initShadowPipeline(VulkanEngine& engine, OffscreenPass& offscreenPass, VkPi
 	colorBlendStateCI.pAttachments = &blendAttachmentState;
 
 	//VkPipelineDepthStencilStateCreateInfo depthStencilStateCI = vks::initializers::pipelineDepthStencilStateCreateInfo(VK_TRUE, VK_TRUE, VK_COMPARE_OP_LESS_OR_EQUAL);
-	VkPipelineDepthStencilStateCreateInfo depthStencilStateCI{ vkinit::depth_stencil_create_info(VK_TRUE, VK_TRUE, VK_COMPARE_OP_LESS_OR_EQUAL) };
+	VkPipelineDepthStencilStateCreateInfo depthStencilStateCI{ vkinit::depth_stencil_create_info(true, true, VK_COMPARE_OP_LESS_OR_EQUAL) };
 
 	//VkPipelineViewportStateCreateInfo viewportStateCI = vks::initializers::pipelineViewportStateCreateInfo(1, 1, 0);
 
@@ -745,7 +719,7 @@ void initShadowPipeline(VulkanEngine& engine, OffscreenPass& offscreenPass, VkPi
 	VkGraphicsPipelineCreateInfo pipelineCI{};
 	pipelineCI.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
 	pipelineCI.layout = pipelineLayout;
-	pipelineCI.renderPass = offscreenPass.renderPass;
+	pipelineCI.renderPass = renderpass;
 	pipelineCI.pInputAssemblyState = &inputAssemblyStateCI;
 	pipelineCI.pRasterizationState = &rasterizationStateCI;
 	pipelineCI.pColorBlendState = &colorBlendStateCI;
@@ -756,7 +730,7 @@ void initShadowPipeline(VulkanEngine& engine, OffscreenPass& offscreenPass, VkPi
 	pipelineCI.pStages = &vertStage;
 	pipelineCI.pVertexInputState = &vertexInputInfo;
 	pipelineCI.pDynamicState = &dynamicStateCI;
-	pipelineCI.renderPass = offscreenPass.renderPass;
+	pipelineCI.renderPass = renderpass;
 
 	VK_CHECK(vkCreateGraphicsPipelines(engine._device, VK_NULL_HANDLE, 1, &pipelineCI, nullptr, pipeline));
 	engine._mainDeletionQueue.push_function([=, &engine]() {
@@ -765,101 +739,3 @@ void initShadowPipeline(VulkanEngine& engine, OffscreenPass& offscreenPass, VkPi
 
 	vkDestroyShaderModule(engine._device, vertShader, nullptr);
 }
-
-//void buildCommandBuffers()
-//{
-//	VkCommandBufferBeginInfo cmdBufInfo = vks::initializers::commandBufferBeginInfo();
-//
-//	VkClearValue clearValues[2];
-//	VkViewport viewport;
-//	VkRect2D scissor;
-//
-//	for (int32_t i = 0; i < drawCmdBuffers.size(); ++i)
-//	{
-//		VK_CHECK_RESULT(vkBeginCommandBuffer(drawCmdBuffers[i], &cmdBufInfo));
-//
-//		/*
-//			First render pass: Generate shadow map by rendering the scene from light's POV
-//		*/
-//		{
-//			clearValues[0].depthStencil = { 1.0f, 0 };
-//
-//			VkRenderPassBeginInfo renderPassBeginInfo = vks::initializers::renderPassBeginInfo();
-//			renderPassBeginInfo.renderPass = offscreenPass.renderPass;
-//			renderPassBeginInfo.framebuffer = offscreenPass.frameBuffer;
-//			renderPassBeginInfo.renderArea.extent.width = offscreenPass.width;
-//			renderPassBeginInfo.renderArea.extent.height = offscreenPass.height;
-//			renderPassBeginInfo.clearValueCount = 1;
-//			renderPassBeginInfo.pClearValues = clearValues;
-//
-//			vkCmdBeginRenderPass(drawCmdBuffers[i], &renderPassBeginInfo, VK_SUBPASS_CONTENTS_INLINE);
-//
-//			viewport = vks::initializers::viewport((float)offscreenPass.width, (float)offscreenPass.height, 0.0f, 1.0f);
-//			vkCmdSetViewport(drawCmdBuffers[i], 0, 1, &viewport);
-//
-//			scissor = vks::initializers::rect2D(offscreenPass.width, offscreenPass.height, 0, 0);
-//			vkCmdSetScissor(drawCmdBuffers[i], 0, 1, &scissor);
-//
-//			// Set depth bias (aka "Polygon offset")
-//			// Required to avoid shadow mapping artifacts
-//			vkCmdSetDepthBias(
-//				drawCmdBuffers[i],
-//				depthBiasConstant,
-//				0.0f,
-//				depthBiasSlope);
-//
-//			vkCmdBindPipeline(drawCmdBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, pipelines.offscreen);
-//			vkCmdBindDescriptorSets(drawCmdBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, 1, &descriptorSets.offscreen, 0, nullptr);
-//			scenes[sceneIndex].draw(drawCmdBuffers[i]);
-//
-//			vkCmdEndRenderPass(drawCmdBuffers[i]);
-//		}
-//
-//		/*
-//			Note: Explicit synchronization is not required between the render pass, as this is done implicit via sub pass dependencies
-//		*/
-//
-//		/*
-//			Second pass: Scene rendering with applied shadow map
-//		*/
-//
-//		{
-//			clearValues[0].color = defaultClearColor;
-//			clearValues[1].depthStencil = { 1.0f, 0 };
-//
-//			VkRenderPassBeginInfo renderPassBeginInfo = vks::initializers::renderPassBeginInfo();
-//			renderPassBeginInfo.renderPass = renderPass;
-//			renderPassBeginInfo.framebuffer = frameBuffers[i];
-//			renderPassBeginInfo.renderArea.extent.width = width;
-//			renderPassBeginInfo.renderArea.extent.height = height;
-//			renderPassBeginInfo.clearValueCount = 2;
-//			renderPassBeginInfo.pClearValues = clearValues;
-//
-//			vkCmdBeginRenderPass(drawCmdBuffers[i], &renderPassBeginInfo, VK_SUBPASS_CONTENTS_INLINE);
-//
-//			viewport = vks::initializers::viewport((float)width, (float)height, 0.0f, 1.0f);
-//			vkCmdSetViewport(drawCmdBuffers[i], 0, 1, &viewport);
-//
-//			scissor = vks::initializers::rect2D(width, height, 0, 0);
-//			vkCmdSetScissor(drawCmdBuffers[i], 0, 1, &scissor);
-//
-//			// Visualize shadow map
-//			if (displayShadowMap) {
-//				vkCmdBindDescriptorSets(drawCmdBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, 1, &descriptorSets.debug, 0, nullptr);
-//				vkCmdBindPipeline(drawCmdBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, pipelines.debug);
-//				vkCmdDraw(drawCmdBuffers[i], 3, 1, 0, 0);
-//			}
-//
-//			// 3D scene
-//			vkCmdBindDescriptorSets(drawCmdBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, 1, &descriptorSets.scene, 0, nullptr);
-//			vkCmdBindPipeline(drawCmdBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, (filterPCF) ? pipelines.sceneShadowPCF : pipelines.sceneShadow);
-//			scenes[sceneIndex].draw(drawCmdBuffers[i]);
-//
-//			drawUI(drawCmdBuffers[i]);
-//
-//			vkCmdEndRenderPass(drawCmdBuffers[i]);
-//		}
-//
-//		VK_CHECK_RESULT(vkEndCommandBuffer(drawCmdBuffers[i]));
-//	}
-//}

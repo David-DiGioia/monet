@@ -3,9 +3,10 @@
 
 layout (location = 0) in vec2 texCoord;
 layout (location = 1) in vec3 fragPos;
-layout (location = 2) in vec3 camPos;
-layout (location = 3) in mat3 TBN;
-layout (location = 6) in vec3 lightPos[MAX_NUM_TOTAL_LIGHTS];
+layout (location = 2) in vec4 fragPosLightSpace;
+layout (location = 3) in vec3 camPos;
+layout (location = 4) in mat3 TBN;
+layout (location = 7) in vec3 lightPos[MAX_NUM_TOTAL_LIGHTS];
 
 layout (location = 0) out vec4 outFragColor;
 
@@ -28,6 +29,8 @@ layout (set = 0, binding = 1) uniform SceneData {
     Light lights[MAX_NUM_TOTAL_LIGHTS];
     int numLights;
 } sceneData;
+
+layout (set = 0, binding = 2) uniform sampler2D shadowMap;
 
 layout (set = 2, binding = 0) uniform sampler2D diffuseTex;
 layout (set = 2, binding = 1) uniform sampler2D normalTex;
@@ -126,6 +129,22 @@ vec3 analytic_lights(vec3 N, vec3 V, vec3 F0, vec3 diffuse, float roughness, flo
     return Lo;
 }
 
+float shadowCalculation(vec4 fragPosLightSpace) {
+    // perform perspective divide
+    vec3 projCoords = fragPosLightSpace.xyz / fragPosLightSpace.w;
+    // fragment's lightspace position is in range [-1, 1] so we map it to rang [0, 1]
+    projCoords.xy = projCoords.xy * 0.5 + 0.5;
+    // get closest depth from light's persepctive
+    float closestDepth = texture(shadowMap, projCoords.xy).r;
+    // get depth of current fragment from light's perspective
+    float currentDepth = projCoords.z;
+    // check whether current frag pos is in shadow
+    // float shadow = currentDepth > closestDepth ? 1.0 : 0.0;
+    float shadow = closestDepth;
+
+    return shadow;
+}
+
 void main()
 {
     vec3 diffuse = texture(diffuseTex, texCoord).rgb;
@@ -167,6 +186,10 @@ void main()
     vec3 color = ambient + Lo;
     // tonemap using Reinhard operator (this should really be done in post probably)
     // color = color / (color + 1.0);
+
+    float shadow = shadowCalculation(fragPosLightSpace);
+    // color = mix(color, vec3(1.0, 0.0, 0.0), shadow);
+    color = vec3(shadow);
 
     outFragColor = vec4(color, 1.0);
 }

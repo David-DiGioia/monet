@@ -16,29 +16,25 @@ void TestApp::init(VulkanEngine& engine)
 
 	_camera.pos = glm::vec3{ 0.0, 2.0, 2.0 };
 
-	GameObject bed{ engine.create_render_object("bed") };
+	GameObject bed{ engine.create_render_object("bed", "default") };
 
-	_sofa.setRenderObject(engine.create_render_object("sofa"));
+	_sofa.setRenderObject(engine.create_render_object("sofa", "default"));
 	_sofa.setPos(glm::vec3(-2.5, 0.0, 0.4));
 	_sofa.setRot(glm::rotate(glm::radians(110.0f), glm::vec3{ 0.0, 1.0, 0.0 }));
 
-	GameObject chair{ engine.create_render_object("chair") };
+	GameObject chair{ engine.create_render_object("chair", "default") };
 	chair.setPos(glm::vec3(-2.1, 0.0, -2.0));
 	chair.setRot(glm::rotate(glm::radians(80.0f), glm::vec3{ 0.0, 1.0, 0.0 }));
 
-	float halfExtent{ 1.0f };
-	PxMaterial* material{ engine.create_physics_material(0.5, 0.5, 0.6) };
-	PxShape* shape{ engine.create_physics_shape(PxBoxGeometry(halfExtent, halfExtent, halfExtent), *material) };
+	//float halfExtent{ 1.0f };
+	//PxMaterial* material{ engine.create_physics_material(0.5, 0.5, 0.6) };
+	//PxShape* shape{ engine.create_physics_shape(PxBoxGeometry(halfExtent, halfExtent, halfExtent), *material) };
 
-	_cube.setRenderObject(engine.create_render_object("cube", "default"));
-	_cube.setPos(glm::vec3(0.0, 3.0, 0.0));
-	engine.add_to_physics_engine_dynamic(&_cube, shape);
+	//_cube.setRenderObject(engine.create_render_object("cube", "default"));
+	//_cube.setPos(glm::vec3(0.0, 3.0, 0.0));
+	//engine.add_to_physics_engine_dynamic(&_cube, shape);
 
 	
-	//PxTransformFromPlaneEquation(const PxPlane & plane);
-	//PxShape* groundShape{ engine.create_physics_shape(groundPlane, *material) };
-	//engine.add_to_physics_engine_dynamic(nullptr, groundShape);
-
 	GameObject plane{ engine.create_render_object("plane", "default") };
 
 	Light light{};
@@ -58,9 +54,6 @@ void TestApp::updateCamera(VulkanEngine& engine)
 
 void TestApp::update(VulkanEngine& engine, float delta)
 {
-	glm::vec3 pos{ _sofa.getPos() };
-	pos.x += delta;
-	_sofa.setPos(pos);
 	_lights[0].position.x = std::sinf(_time) * 3.0f;
 
 	updateCamera(engine);
@@ -70,9 +63,7 @@ void TestApp::update(VulkanEngine& engine, float delta)
 
 void TestApp::fixedUpdate(VulkanEngine& engine)
 {
-	if (_applyForce) {
-		_cube.addForce(glm::vec3{ 1000.0, 1000.0, 0.0 });
-	}
+
 }
 
 bool TestApp::input(float delta)

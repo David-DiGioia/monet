@@ -297,6 +297,10 @@ VkBool32 default_debug_callback (VkDebugUtilsMessageSeverityFlagBitsEXT messageS
 	auto mt = to_string_message_type (messageType);
 	printf ("[%s: %s]\n%s\n", ms, mt, pCallbackData->pMessage);
 
+	if (messageSeverity == VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT) {
+		return VK_FALSE;
+	}
+
 	return VK_FALSE;
 }
 

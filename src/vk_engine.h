@@ -35,6 +35,7 @@
 // number of frames to overlap when rendering
 constexpr uint32_t FRAME_OVERLAP{ 2 };
 constexpr size_t MAX_NUM_TOTAL_LIGHTS{ 10 }; // this must match glsl shader!
+constexpr uint32_t SHADOWMAP_DIM{ 2048 };
 
 struct VulkanEngine;
 
@@ -55,9 +56,7 @@ struct Texture {
 };
 
 struct GPUSceneData {
-	glm::vec4 ambientColor;
-	glm::vec4 sunDirection;
-	glm::vec4 sunColor; // w is for sun power
+	glm::mat4 lightSpaceMatrix;
 	glm::vec4 camPos; // w is unused
 	Light lights[MAX_NUM_TOTAL_LIGHTS];
 	uint32_t numLights;
@@ -71,6 +70,39 @@ struct GPUCameraData {
 
 struct GPUObjectData {
 	glm::mat4 modelMatrix;
+};
+
+//struct OffscreenPass {
+//	uint32_t width, height;
+//	VkRenderPass renderPass;
+//	std::array<VkFramebuffer, FRAME_OVERLAP> frameBuffers;
+//	std::array <Texture, FRAME_OVERLAP> depths;
+//	std::array <VkSampler, FRAME_OVERLAP> depthSamplers;
+//	std::array <VkDescriptorImageInfo, FRAME_OVERLAP> descriptors;
+//};
+
+struct ShadowGlobalResources {
+	uint32_t _width, _height;
+	VkRenderPass _renderPass;
+	// Depth bias (and slope) are used to avoid shadowing artifacts
+	// Constant depth bias factor (always applied)
+	float _depthBiasConstant{ 1.25f };
+	// Slope depth bias factor, applied depending on polygon's slope
+	float _depthBiasSlope{ 1.75f };
+	VkPipeline _shadowPipeline;
+	VkPipelineLayout _shadowPipelineLayout;
+	glm::mat4 _lightSpaceMatrix;
+};
+
+struct ShadowFrameResources {
+	VkFramebuffer frameBuffer;
+	Texture depth;
+	VkSampler depthSampler;
+	VkDescriptorImageInfo descriptor;
+	VkPipelineLayout _shadowPipelineLayout;
+	VkDescriptorSet _shadowDescriptorSetLight;
+	VkDescriptorSet _shadowDescriptorSetObjects;
+	AllocatedBuffer _shadowLightBuffer;
 };
 
 struct FrameData {
@@ -97,6 +129,8 @@ struct FrameData {
 	VkDescriptorSet objectDescriptor;
 
 	TracyVkCtx _tracyContext;
+
+	ShadowFrameResources _shadow;
 };
 
 // note that we store the VkPipeline and layout by value, not pointer.
@@ -205,15 +239,6 @@ struct MeshPushConstants {
 	glm::mat4 render_matrix;
 };
 
-struct OffscreenPass {
-	uint32_t width, height;
-	VkFramebuffer frameBuffer;
-	Texture depth;
-	VkRenderPass renderPass;
-	VkSampler depthSampler;
-	VkDescriptorImageInfo descriptor;
-};
-
 struct DeletionQueue
 {
 	std::deque<std::function<void()>> deletors;
@@ -301,17 +326,20 @@ public:
 	// frame storage
 	FrameData _frames[FRAME_OVERLAP];
 
-	OffscreenPass _offscreenPass;
-	// Depth bias (and slope) are used to avoid shadowing artifacts
-	// Constant depth bias factor (always applied)
-	float _depthBiasConstant{ 1.25f };
-	// Slope depth bias factor, applied depending on polygon's slope
-	float _depthBiasSlope{ 1.75f };
-	VkPipeline _shadowPipeline;
-	VkPipelineLayout _shadowPipelineLayout;
-	VkDescriptorSet _shadowDescriptorSetLight;
-	VkDescriptorSet _shadowDescriptorSetObjects;
-	AllocatedBuffer _shadowLightBuffer;
+	ShadowGlobalResources _shadowGlobal;
+
+	//OffscreenPass _offscreenPass;
+	//// Depth bias (and slope) are used to avoid shadowing artifacts
+	//// Constant depth bias factor (always applied)
+	//float _depthBiasConstant{ 1.25f };
+	//// Slope depth bias factor, applied depending on polygon's slope
+	//float _depthBiasSlope{ 1.75f };
+	//VkPipeline _shadowPipeline;
+	//VkPipelineLayout _shadowPipelineLayout;
+	//VkDescriptorSet _shadowDescriptorSetLight;
+	//VkDescriptorSet _shadowDescriptorSetObjects;
+	//AllocatedBuffer _shadowLightBuffer;
+	//glm::mat4 _lightSpaceMatrix;
 
 	std::vector<GameObject*> _physicsObjects;
 
@@ -422,6 +450,8 @@ private:
 	void draw_objects(VkCommandBuffer cmd, const std::multiset<RenderObject>& renderables);
 
 	void init_descriptors();
+
+	void init_descriptor_pool();
 
 	size_t pad_uniform_buffer_size(size_t originalSize);
 
