@@ -55,7 +55,7 @@ void TestApp::updateCamera(VulkanEngine& engine)
 void TestApp::update(VulkanEngine& engine, float delta)
 {
 	_lights[0].position.x = std::sinf(_time) * 3.0f;
-	_sofa.setPos(_couchPos);
+	_sofa.setPos(_sofaPos);
 	_bed.setPos(_bedPos);
 	_chair.setPos(_chairPos);
 
@@ -169,7 +169,7 @@ void TestApp::gui()
 	//	ImGui::DragFloat("theta", &_camRotTheta, 0.005f);
 	//}
 
-	ImGui::DragFloat3("Couch Pos", (float*)&_couchPos, 0.005f);
+	ImGui::DragFloat3("Sofa Pos", (float*)&_sofaPos, 0.005f);
 	ImGui::DragFloat3("Bed Pos", (float*)&_bedPos, 0.005f);
 	ImGui::DragFloat3("Chair Pos", (float*)&_chairPos, 0.005f);
 

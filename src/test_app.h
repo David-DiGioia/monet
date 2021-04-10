@@ -41,7 +41,7 @@ private:
 	// physics variables
 	bool _applyForce{ false };
 
-	glm::vec3 _couchPos{ 0.0, 0.0, 0.0 };
 	glm::vec3 _bedPos{ 0.0, 0.0, 0.0 };
-	glm::vec3 _chairPos{ 0.0, 0.0, 0.0 };
+	glm::vec3 _sofaPos{ -2.5, 0.0, 0.4 };
+	glm::vec3 _chairPos{ -2.1, 0.0, -2.0 };
 };

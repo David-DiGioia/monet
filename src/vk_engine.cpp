@@ -1438,7 +1438,7 @@ void VulkanEngine::shadow_pass(VkCommandBuffer& cmd)
 	glm::mat4 lightProjection{ glm::ortho(-scale, scale, -scale, scale, near_plane, far_plane) };
 	lightProjection[1][1] *= -1;
 
-	glm::mat4 lightView{ glm::lookAt(glm::vec3(-4.0f, 8.0f, -2.0f),
+	glm::mat4 lightView{ glm::lookAt(glm::vec3(4.0f, 8.0f, 2.0f),
 		glm::vec3(0.0f, 0.0f, 0.0f),
 		glm::vec3(0.0f, 1.0f, 0.0f)) };
 

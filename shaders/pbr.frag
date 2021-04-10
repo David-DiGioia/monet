@@ -141,7 +141,7 @@ float shadowCalculation(vec4 fragPosLightSpace) {
     // check whether current frag pos is in shadow
     float shadow = currentDepth > closestDepth ? 1.0 : 0.0;
 
-    return closestDepth;
+    return shadow;
 }
 
 void main()
@@ -178,11 +178,14 @@ void main()
 
     const float MAX_REFLECTION_LOD = 8.0;
     vec3 prefilteredColor = textureLod(prefilterMap, R, roughness * MAX_REFLECTION_LOD).rgb;
+
+    prefilteredColor = clamp(prefilteredColor, 0.0, 0.6 + 100.0 * (1.0 - shadow));
+
     vec3 F = fresnelSchlickRoughness(max(dot(N, V), 0.0), F0, roughness);
     vec2 envBRDF = texture(brdfLUT, vec2(max(dot(N, V), 0.0), roughness)).rg;
     vec3 specular = prefilteredColor * (F * envBRDF.x + envBRDF.y);
 
-    specular = specular * (1.0 - shadow);
+    // specular = specular * (1.0 - shadow);
 
     // we don't multiply specular by kS since we already have a Fresnel multiplication in there
     vec3 ambient = (kD * diffuse + specular) * ao;
@@ -190,9 +193,6 @@ void main()
     vec3 color = ambient + Lo;
     // tonemap using Reinhard operator (this should really be done in post probably)
     // color = color / (color + 1.0);
-
-    color = vec3(shadow);
-
 
     outFragColor = vec4(color, 1.0);
 }
