@@ -36,10 +36,12 @@ private:
 	GameObject _sofa{};
 	GameObject _cube{};
 	GameObject _bed{};
+	GameObject _chair{};
 
 	// physics variables
 	bool _applyForce{ false };
 
-	float _couchPos{ 0.0f };
-	float _bedPos{ 0.0f };
+	glm::vec3 _couchPos{ 0.0, 0.0, 0.0 };
+	glm::vec3 _bedPos{ 0.0, 0.0, 0.0 };
+	glm::vec3 _chairPos{ 0.0, 0.0, 0.0 };
 };

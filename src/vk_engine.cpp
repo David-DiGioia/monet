@@ -1457,49 +1457,26 @@ void VulkanEngine::shadow_pass(VkCommandBuffer& cmd)
 	vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, _shadowGlobal._shadowPipelineLayout, 0, 1, &get_current_frame()._shadow._shadowDescriptorSetLight, 0, nullptr);
 	vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, _shadowGlobal._shadowPipelineLayout, 1, 1, &get_current_frame()._shadow._shadowDescriptorSetObjects, 0, nullptr);
 
-
 	Mesh* lastMesh{ nullptr };
 
 	uint32_t idx{ 0 };
 	for (const RenderObject& object : _renderables) {
-		if (!object.castShadow)
-			continue;
+		if (object.castShadow) {
 
-		// only bind the mesh if it's a different one from last bind
-		if (object.mesh != lastMesh) {
-			// bind the mesh vertex buffer with offset 0
-			VkDeviceSize offset{ 0 };
-			vkCmdBindVertexBuffers(cmd, 0, 1, &object.mesh->_vertexBuffer._buffer, &offset);
-			lastMesh = object.mesh;
+			// only bind the mesh if it's a different one from last bind
+			if (object.mesh != lastMesh) {
+				// bind the mesh vertex buffer with offset 0
+				VkDeviceSize offset{ 0 };
+				vkCmdBindVertexBuffers(cmd, 0, 1, &object.mesh->_vertexBuffer._buffer, &offset);
+				lastMesh = object.mesh;
+			}
+
+			vkCmdDraw(cmd, object.mesh->_vertices.size(), 1, 0, idx);
 		}
-
-		vkCmdDraw(cmd, object.mesh->_vertices.size(), 1, 0, idx);
 		++idx;
 	}
 
 	vkCmdEndRenderPass(cmd);
-
-	//VkImageMemoryBarrier barrier{};
-	//barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
-	//barrier.image = get_current_frame()._shadow.depth.image._image;
-	//barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-	//barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-	//barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT;
-	//barrier.subresourceRange.baseArrayLayer = 0;
-	//barrier.subresourceRange.layerCount = 1;
-	//barrier.subresourceRange.levelCount = 1;
-	//barrier.subresourceRange.baseMipLevel = 0;
-	////barrier.oldLayout = VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL;
-	//barrier.oldLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL;
-	//barrier.newLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL;
-	//barrier.srcAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
-	//barrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
-	//vkCmdPipelineBarrier(cmd,
-	//	VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT,
-	//	VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, 0,
-	//	0, nullptr,
-	//	0, nullptr,
-	//	1, &barrier);
 }
 
 void VulkanEngine::draw()
@@ -1526,7 +1503,8 @@ void VulkanEngine::draw()
 	cmdBeginInfo.pInheritanceInfo = nullptr;
 	cmdBeginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
 
-	VK_CHECK(vkBeginCommandBuffer(get_current_frame()._mainCommandBuffer, &cmdBeginInfo));
+	// Assume _camTransform and _sceneParamters lights are updated here if they need to be
+	_app->update(*this, _delta);
 
 	// write all the objects' matrices into the SSBO (used in both shadow pass and draw objects)
 	void* objectData;
@@ -1538,6 +1516,9 @@ void VulkanEngine::draw()
 		++idx;
 	}
 	vmaUnmapMemory(_allocator, get_current_frame().objectBuffer._allocation);
+	vmaFlushAllocation(_allocator, get_current_frame().objectBuffer._allocation, 0, VK_WHOLE_SIZE);
+
+	VK_CHECK(vkBeginCommandBuffer(get_current_frame()._mainCommandBuffer, &cmdBeginInfo));
 
 	shadow_pass(get_current_frame()._mainCommandBuffer);
 
@@ -1622,16 +1603,6 @@ void VulkanEngine::draw_objects(VkCommandBuffer cmd, const std::multiset<RenderO
 	_sceneParameters.lightSpaceMatrix = _shadowGlobal._lightSpaceMatrix;
 	_sceneParameters.numLights = 0;
 
-	// Assume _camTransform and _sceneParamters lights are updated here if they need to be
-	_app->update(*this, _delta);
-
-	//glm::mat4 rotTheta{ glm::rotate(_camRotTheta, glm::vec3{ 1.0f, 0.0f, 0.0f }) };
-	//glm::mat4 rotPhi{ glm::rotate(_camRotPhi, glm::vec3{ 0.0f, 1.0f, 0.0f }) };
-	//_camRot = rotPhi * rotTheta;
-	//glm::mat4 translate{ glm::translate(glm::mat4(1.0f), _camPos) };
-	//glm::mat4 view{ translate * _camRot };
-	//glm::mat4 viewOrigin{ _camRot };
-
 	glm::mat4 view{ _camTransform.mat4() };
 	glm::mat4 viewOrigin{ _camTransform.rot };
 
@@ -1662,13 +1633,6 @@ void VulkanEngine::draw_objects(VkCommandBuffer cmd, const std::multiset<RenderO
 	sceneData += pad_uniform_buffer_size(sizeof(GPUSceneData)) * frameIndex;
 	std::memcpy(sceneData, &_sceneParameters, sizeof(GPUSceneData));
 	vmaUnmapMemory(_allocator, _sceneParameterBuffer._allocation);
-
-	//glm::mat4 bedTranslate{ glm::translate(glm::mat4{ 1.0 }, glm::vec3(0.0, 0.0, 0.0)) };
-	//glm::mat4 bedScale{ glm::scale(glm::mat4{1.0}, glm::vec3{1.0}) };
-	//glm::mat4 bedRotate{ glm::rotate(_guiData.bedAngle, glm::vec3{ 0.0, 1.0, 0.0 }) };
-	//_guiData.bed->transformMatrix = bedTranslate * bedScale * bedRotate;
-
-	// we use to write object matrices to SSBO right here
 
 	Mesh* lastMesh{ nullptr };
 	Material* lastMaterial{ nullptr };
@@ -1720,6 +1684,7 @@ void VulkanEngine::draw_objects(VkCommandBuffer cmd, const std::multiset<RenderO
 		vkCmdDraw(cmd, object.mesh->_vertices.size(), 1, 0, idx);
 		++idx;
 	}
+
 	//std::cout << "pipeline binds: " << pipelineBinds << "\nvertex buffer binds: " << vertexBufferBinds << "\n\n";
 }
 

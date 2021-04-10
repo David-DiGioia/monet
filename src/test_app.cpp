@@ -22,9 +22,9 @@ void TestApp::init(VulkanEngine& engine)
 	_sofa.setPos(glm::vec3(-2.5, 0.0, 0.4));
 	_sofa.setRot(glm::rotate(glm::radians(110.0f), glm::vec3{ 0.0, 1.0, 0.0 }));
 
-	GameObject chair{ engine.create_render_object("chair") };
-	chair.setPos(glm::vec3(-2.1, 0.0, -2.0));
-	chair.setRot(glm::rotate(glm::radians(80.0f), glm::vec3{ 0.0, 1.0, 0.0 }));
+	_chair.setRenderObject(engine.create_render_object("chair"));
+	_chair.setPos(glm::vec3(-2.1, 0.0, -2.0));
+	_chair.setRot(glm::rotate(glm::radians(80.0f), glm::vec3{ 0.0, 1.0, 0.0 }));
 
 	//float halfExtent{ 1.0f };
 	//PxMaterial* material{ engine.create_physics_material(0.5, 0.5, 0.6) };
@@ -55,8 +55,9 @@ void TestApp::updateCamera(VulkanEngine& engine)
 void TestApp::update(VulkanEngine& engine, float delta)
 {
 	_lights[0].position.x = std::sinf(_time) * 3.0f;
-	_sofa.setPos(glm::vec3{ _couchPos, 0.0, 0.0 });
-	_bed.setPos(glm::vec3{ _bedPos, 0.0, 0.0 });
+	_sofa.setPos(_couchPos);
+	_bed.setPos(_bedPos);
+	_chair.setPos(_chairPos);
 
 	updateCamera(engine);
 	engine.set_scene_lights(_lights);
@@ -168,8 +169,9 @@ void TestApp::gui()
 	//	ImGui::DragFloat("theta", &_camRotTheta, 0.005f);
 	//}
 
-	ImGui::DragFloat("Couch Pos", &_couchPos, 0.005f);
-	ImGui::DragFloat("Bed Pos", &_bedPos, 0.005f);
+	ImGui::DragFloat3("Couch Pos", (float*)&_couchPos, 0.005f);
+	ImGui::DragFloat3("Bed Pos", (float*)&_bedPos, 0.005f);
+	ImGui::DragFloat3("Chair Pos", (float*)&_chairPos, 0.005f);
 
 	//ImGui::SliderFloat("Roughness", &_guiData.roughness_mult, 0.0f, 1.0f);
 
