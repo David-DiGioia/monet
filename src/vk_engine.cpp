@@ -1536,7 +1536,7 @@ void VulkanEngine::draw()
 	shadow_pass(get_current_frame()._mainCommandBuffer);
 
 	VkClearValue clearValue{};
-	clearValue.color = { {1.00, 0.00, 0.00, 1.0} };
+	clearValue.color = { {0.0, 0.0, 0.1, 1.0} };
 
 	VkClearValue depthClear{};
 	depthClear.depthStencil.depth = 1.0f;
