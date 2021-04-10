@@ -999,8 +999,10 @@ void VulkanEngine::init_default_renderpass()
 	dependencies[0].dstSubpass = 0;
 	dependencies[0].srcStageMask = VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;
 	dependencies[0].srcAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT;
-	dependencies[0].dstStageMask = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
-	dependencies[0].dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
+	// early fragment since that's where depth attachment (not shadowmap) is load_op_clear'd
+	dependencies[0].dstStageMask = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT | VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
+	// depth_write for load_op_clear for depth pass (not shadowmap)
+	dependencies[0].dstAccessMask = VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
 
 	dependencies[1].srcSubpass = 0;
 	dependencies[1].dstSubpass = VK_SUBPASS_EXTERNAL;
@@ -1473,7 +1475,7 @@ void VulkanEngine::shadow_pass(VkCommandBuffer& cmd)
 
 	//VkImageMemoryBarrier barrier{};
 	//barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
-	//barrier.image = _offscreenPass.depth.image._image;
+	//barrier.image = get_current_frame()._shadow.depth.image._image;
 	//barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
 	//barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
 	//barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT;
@@ -1482,18 +1484,16 @@ void VulkanEngine::shadow_pass(VkCommandBuffer& cmd)
 	//barrier.subresourceRange.levelCount = 1;
 	//barrier.subresourceRange.baseMipLevel = 0;
 	////barrier.oldLayout = VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL;
-	//barrier.oldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-	//barrier.newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+	//barrier.oldLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL;
+	//barrier.newLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL;
 	//barrier.srcAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
 	//barrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
-
 	//vkCmdPipelineBarrier(cmd,
 	//	VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT,
 	//	VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, 0,
 	//	0, nullptr,
 	//	0, nullptr,
 	//	1, &barrier);
-
 }
 
 void VulkanEngine::draw()

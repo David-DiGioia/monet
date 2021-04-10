@@ -457,7 +457,7 @@ void prepareShadowMapRenderpass(VulkanEngine& engine, VkRenderPass* renderpass)
 	dependencies[1].srcSubpass = 0;
 	dependencies[1].dstSubpass = VK_SUBPASS_EXTERNAL;
 	dependencies[1].srcStageMask = VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;
-	dependencies[1].srcAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT;
+	dependencies[1].srcAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
 	dependencies[1].dstStageMask = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
 	dependencies[1].dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
 
@@ -468,10 +468,8 @@ void prepareShadowMapRenderpass(VulkanEngine& engine, VkRenderPass* renderpass)
 	renderPassCreateInfo.pAttachments = &attachmentDescription;
 	renderPassCreateInfo.subpassCount = 1;
 	renderPassCreateInfo.pSubpasses = &subpass;
-	//renderPassCreateInfo.dependencyCount = static_cast<uint32_t>(dependencies.size());
-	//renderPassCreateInfo.pDependencies = dependencies.data();
-	renderPassCreateInfo.dependencyCount = 0;
-	renderPassCreateInfo.pDependencies = nullptr;
+	renderPassCreateInfo.dependencyCount = static_cast<uint32_t>(dependencies.size());
+	renderPassCreateInfo.pDependencies = dependencies.data();
 
 	VK_CHECK(vkCreateRenderPass(engine._device, &renderPassCreateInfo, nullptr, renderpass));
 	engine._mainDeletionQueue.push_function([=, &engine]() {
