@@ -614,7 +614,7 @@ void setupDescriptorSetLayouts(VulkanEngine& engine, std::array<VkDescriptorSetL
 }
 
 // Only sets up the light uniform buffer descriptor set, since the objects one is already set up
-void setupDescriptorSets(VulkanEngine& engine, ShadowFrameResources& shadowFrame, std::array<VkDescriptorSetLayout, 2>& setLayouts)
+void setupDescriptorSets(VulkanEngine& engine, ShadowFrameResources& shadowFrame, VkBuffer& objectBuffer, std::array<VkDescriptorSetLayout, 2>& setLayouts)
 {
 	// Image descriptor for the shadow map attachment
 	VkDescriptorImageInfo shadowMapDescriptor{};
@@ -623,22 +623,36 @@ void setupDescriptorSets(VulkanEngine& engine, ShadowFrameResources& shadowFrame
 	// imageLayout is which layout it will be in already, it won't change it to this for us (the renderpass transitiosn it to this for us)
 	shadowMapDescriptor.imageLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL;
 
-	VkDescriptorSetAllocateInfo allocInfo{};
-	allocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
-	allocInfo.descriptorPool = engine._descriptorPool;
-	allocInfo.descriptorSetCount = setLayouts.size();
-	allocInfo.pSetLayouts = setLayouts.data();
+	VkDescriptorSetAllocateInfo allocInfoLight{};
+	allocInfoLight.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
+	allocInfoLight.descriptorPool = engine._descriptorPool;
+	allocInfoLight.descriptorSetCount = 1;
+	allocInfoLight.pSetLayouts = &setLayouts[0];
 
-	// Offscreen shadow map generation
-	VK_CHECK(vkAllocateDescriptorSets(engine._device, &allocInfo, &shadowFrame._shadowDescriptorSetLight));
-	VkDescriptorBufferInfo bufferInfo{};
-	bufferInfo.offset = 0;
-	bufferInfo.range = VK_WHOLE_SIZE;
-	bufferInfo.buffer = shadowFrame._shadowLightBuffer._buffer;
+	VkDescriptorSetAllocateInfo allocInfoObjects{};
+	allocInfoObjects.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
+	allocInfoObjects.descriptorPool = engine._descriptorPool;
+	allocInfoObjects.descriptorSetCount = 1;
+	allocInfoObjects.pSetLayouts = &setLayouts[1];
+
+	VK_CHECK(vkAllocateDescriptorSets(engine._device, &allocInfoLight, &shadowFrame._shadowDescriptorSetLight));
+	VK_CHECK(vkAllocateDescriptorSets(engine._device, &allocInfoObjects, &shadowFrame._shadowDescriptorSetObjects));
+
+	VkDescriptorBufferInfo lightInfo{};
+	lightInfo.offset = 0;
+	lightInfo.range = VK_WHOLE_SIZE;
+	lightInfo.buffer = shadowFrame._shadowLightBuffer._buffer;
+
+	VkDescriptorBufferInfo objectInfo{};
+	objectInfo.offset = 0;
+	objectInfo.range = VK_WHOLE_SIZE;
+	objectInfo.buffer = objectBuffer;
 
 	std::vector<VkWriteDescriptorSet> writeDescriptorSets{
 		// Set 0, Binding 0 : Vertex shader uniform buffer (LightBuffer)
-		vkinit::write_descriptor_buffer(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, shadowFrame._shadowDescriptorSetLight, &bufferInfo, 0),
+		vkinit::write_descriptor_buffer(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, shadowFrame._shadowDescriptorSetLight, &lightInfo, 0),
+		// Set 1, Binding 0 : Object SSBO
+		vkinit::write_descriptor_buffer(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, shadowFrame._shadowDescriptorSetObjects, &objectInfo, 0),
 	};
 
 	vkUpdateDescriptorSets(engine._device, writeDescriptorSets.size(), writeDescriptorSets.data(), 0, nullptr);
@@ -650,10 +664,8 @@ void initShadowPipeline(VulkanEngine& engine, VkRenderPass& renderpass, VkPipeli
 
 	VkPipelineRasterizationStateCreateInfo rasterizationStateCI{ vkinit::rasterization_state_create_info(VK_POLYGON_MODE_FILL) };
 
-	//VkPipelineColorBlendAttachmentState blendAttachmentState = vks::initializers::pipelineColorBlendAttachmentState(0xf, VK_FALSE);
 	VkPipelineColorBlendAttachmentState blendAttachmentState{ vkinit::color_blend_attachment_state() };
 
-	//VkPipelineColorBlendStateCreateInfo colorBlendStateCI = vks::initializers::pipelineColorBlendStateCreateInfo(1, &blendAttachmentState);
 	VkPipelineColorBlendStateCreateInfo colorBlendStateCI{};
 	colorBlendStateCI.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
 	colorBlendStateCI.pNext = nullptr;
@@ -662,10 +674,8 @@ void initShadowPipeline(VulkanEngine& engine, VkRenderPass& renderpass, VkPipeli
 	colorBlendStateCI.attachmentCount = 1;
 	colorBlendStateCI.pAttachments = &blendAttachmentState;
 
-	//VkPipelineDepthStencilStateCreateInfo depthStencilStateCI = vks::initializers::pipelineDepthStencilStateCreateInfo(VK_TRUE, VK_TRUE, VK_COMPARE_OP_LESS_OR_EQUAL);
 	VkPipelineDepthStencilStateCreateInfo depthStencilStateCI{ vkinit::depth_stencil_create_info(true, true, VK_COMPARE_OP_LESS_OR_EQUAL) };
 
-	//VkPipelineViewportStateCreateInfo viewportStateCI = vks::initializers::pipelineViewportStateCreateInfo(1, 1, 0);
 
 	// Note that we don't have any scissors or viewports since we set VK_DYNAMIC_STATE_VIEWPORT flag in VkPipelineDynamicStateCreateInfo, which means we set it
 	// dynamically with vkCmdSetViewport 
@@ -676,7 +686,6 @@ void initShadowPipeline(VulkanEngine& engine, VkRenderPass& renderpass, VkPipeli
 	viewportStateCI.viewportCount = 1;
 	viewportStateCI.pViewports = nullptr;
 
-	//VkPipelineMultisampleStateCreateInfo multisampleStateCI = vks::initializers::pipelineMultisampleStateCreateInfo(VK_SAMPLE_COUNT_1_BIT, 0);
 	VkPipelineMultisampleStateCreateInfo multisampleStateCI{};
 	multisampleStateCI.sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
 	multisampleStateCI.rasterizationSamples = VK_SAMPLE_COUNT_1_BIT;

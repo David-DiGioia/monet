@@ -35,7 +35,11 @@ private:
 	// objects
 	GameObject _sofa{};
 	GameObject _cube{};
+	GameObject _bed{};
 
 	// physics variables
 	bool _applyForce{ false };
+
+	float _couchPos{ 0.0f };
+	float _bedPos{ 0.0f };
 };

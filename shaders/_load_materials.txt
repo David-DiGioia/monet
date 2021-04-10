@@ -155,7 +155,7 @@ bind:	7
 	format:	R32G32B32A32_SFLOAT
 END
 
-/*
+
 name:	bed
 vert:	pbr.vert.spv
 frag:	pbr.frag.spv
@@ -319,5 +319,5 @@ bind:	7
 	path:	integrated_brdf_map
 	format:	R32G32B32A32_SFLOAT
 END
-*/
+
 

@@ -229,6 +229,7 @@ void VulkanEngine::init(Application* app)
 	init_sync_structures();
 	load_meshes();
 	init_descriptor_pool();
+	init_object_buffers();
 	init_shadow_pass();
 	init_descriptors(); // descriptors are needed at pipeline create, so before materials
 	load_materials();
@@ -707,8 +708,8 @@ void VulkanEngine::init_pipeline(const MaterialCreateInfo& info, const std::stri
 
 	std::array<VkDescriptorSetLayout, 3> setLayouts{ _globalSetLayout, _objectSetLayout, materialSetLayout };
 
-	pipeline_layout_info.pPushConstantRanges = &push_constant;
 	pipeline_layout_info.pushConstantRangeCount = 1;
+	pipeline_layout_info.pPushConstantRanges = &push_constant;
 	pipeline_layout_info.setLayoutCount = setLayouts.size();
 	pipeline_layout_info.pSetLayouts = setLayouts.data();
 
@@ -794,6 +795,16 @@ void VulkanEngine::init_descriptor_pool() {
 	});
 }
 
+void VulkanEngine::init_object_buffers() {
+	for (auto i{ 0 }; i < FRAME_OVERLAP; ++i) {
+		_frames[i].objectBuffer = create_buffer(sizeof(GPUObjectData) * MAX_OBJECTS, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, VMA_MEMORY_USAGE_CPU_TO_GPU);
+
+		_mainDeletionQueue.push_function([=]() {
+			vmaDestroyBuffer(_allocator, _frames[i].objectBuffer._buffer, _frames[i].objectBuffer._allocation);
+		});
+	}
+}
+
 void VulkanEngine::init_descriptors()
 {
 	// cameraBind needs to be accessed from fragment shader to get camPos
@@ -834,13 +845,10 @@ void VulkanEngine::init_descriptors()
 	});
 
 	for (auto i{ 0 }; i < FRAME_OVERLAP; ++i) {
-		const uint32_t MAX_OBJECTS{ 10000 };
 
-		_frames[i].objectBuffer = create_buffer(sizeof(GPUObjectData) * MAX_OBJECTS, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, VMA_MEMORY_USAGE_CPU_TO_GPU);
 		_frames[i].cameraBuffer = create_buffer(sizeof(GPUCameraData), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VMA_MEMORY_USAGE_CPU_TO_GPU);
 
 		_mainDeletionQueue.push_function([=]() {
-			vmaDestroyBuffer(_allocator, _frames[i].objectBuffer._buffer, _frames[i].objectBuffer._allocation);
 			vmaDestroyBuffer(_allocator, _frames[i].cameraBuffer._buffer, _frames[i].cameraBuffer._allocation);
 		});
 
@@ -878,11 +886,8 @@ void VulkanEngine::init_descriptors()
 		VkDescriptorImageInfo shadowMapInfo{};
 		// offscreen renderpass that generates shadow map transitions it to this layout once it's finished
 		shadowMapInfo.imageLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL;
-		shadowMapInfo.imageView = get_current_frame()._shadow.depth.imageView;
-		shadowMapInfo.sampler = get_current_frame()._shadow.depthSampler;
-
-		// TODO: the imageView and sampler might need to be per-frame resources.. or whole offscreen pass?
-		//todo;
+		shadowMapInfo.imageView = _frames[i]._shadow.depth.imageView;
+		shadowMapInfo.sampler = _frames[i]._shadow.depthSampler;
 
 		VkDescriptorBufferInfo objectInfo{};
 		objectInfo.buffer = _frames[i].objectBuffer._buffer;
@@ -1384,7 +1389,7 @@ void VulkanEngine::init_shadow_pass()
 			vmaDestroyBuffer(_allocator, shadowFrame._shadowLightBuffer._buffer, shadowFrame._shadowLightBuffer._allocation);
 		});
 
-		setupDescriptorSets(*this, shadowFrame, setLayouts);
+		setupDescriptorSets(*this, shadowFrame, _frames[i].objectBuffer._buffer, setLayouts);
 	}
 }
 
@@ -1450,7 +1455,8 @@ void VulkanEngine::shadow_pass(VkCommandBuffer& cmd)
 
 	vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, _shadowGlobal._shadowPipeline);
 	vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, _shadowGlobal._shadowPipelineLayout, 0, 1, &get_current_frame()._shadow._shadowDescriptorSetLight, 0, nullptr);
-	vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, _shadowGlobal._shadowPipelineLayout, 1, 1, &get_current_frame().objectDescriptor, 0, nullptr);
+	vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, _shadowGlobal._shadowPipelineLayout, 1, 1, &get_current_frame()._shadow._shadowDescriptorSetObjects, 0, nullptr);
+
 
 	Mesh* lastMesh{ nullptr };
 

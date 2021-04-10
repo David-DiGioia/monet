@@ -36,6 +36,7 @@
 constexpr uint32_t FRAME_OVERLAP{ 2 };
 constexpr size_t MAX_NUM_TOTAL_LIGHTS{ 10 }; // this must match glsl shader!
 constexpr uint32_t SHADOWMAP_DIM{ 2048 };
+constexpr uint32_t MAX_OBJECTS{ 10000 };
 
 struct VulkanEngine;
 
@@ -450,6 +451,8 @@ private:
 	void draw_objects(VkCommandBuffer cmd, const std::multiset<RenderObject>& renderables);
 
 	void init_descriptors();
+
+	void init_object_buffers();
 
 	void init_descriptor_pool();
 

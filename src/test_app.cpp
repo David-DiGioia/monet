@@ -16,13 +16,13 @@ void TestApp::init(VulkanEngine& engine)
 
 	_camera.pos = glm::vec3{ 0.0, 2.0, 2.0 };
 
-	GameObject bed{ engine.create_render_object("bed", "default") };
+	_bed.setRenderObject(engine.create_render_object("bed"));
 
-	_sofa.setRenderObject(engine.create_render_object("sofa", "default"));
+	_sofa.setRenderObject(engine.create_render_object("sofa"));
 	_sofa.setPos(glm::vec3(-2.5, 0.0, 0.4));
 	_sofa.setRot(glm::rotate(glm::radians(110.0f), glm::vec3{ 0.0, 1.0, 0.0 }));
 
-	GameObject chair{ engine.create_render_object("chair", "default") };
+	GameObject chair{ engine.create_render_object("chair") };
 	chair.setPos(glm::vec3(-2.1, 0.0, -2.0));
 	chair.setRot(glm::rotate(glm::radians(80.0f), glm::vec3{ 0.0, 1.0, 0.0 }));
 
@@ -55,6 +55,8 @@ void TestApp::updateCamera(VulkanEngine& engine)
 void TestApp::update(VulkanEngine& engine, float delta)
 {
 	_lights[0].position.x = std::sinf(_time) * 3.0f;
+	_sofa.setPos(glm::vec3{ _couchPos, 0.0, 0.0 });
+	_bed.setPos(glm::vec3{ _bedPos, 0.0, 0.0 });
 
 	updateCamera(engine);
 	engine.set_scene_lights(_lights);
@@ -136,7 +138,7 @@ bool TestApp::input(float delta)
 
 void TestApp::gui()
 {
-	ImGui::ShowDemoWindow();
+	//ImGui::ShowDemoWindow();
 
 	//// Main body of the Demo window starts here.
 	//if (!ImGui::Begin("Debug"))
@@ -166,10 +168,8 @@ void TestApp::gui()
 	//	ImGui::DragFloat("theta", &_camRotTheta, 0.005f);
 	//}
 
-	//if (ImGui::CollapsingHeader("Bed"))
-	//{
-	//	ImGui::DragFloat("Bed angle", &_guiData.bedAngle, 0.005f);
-	//}
+	ImGui::DragFloat("Couch Pos", &_couchPos, 0.005f);
+	ImGui::DragFloat("Bed Pos", &_bedPos, 0.005f);
 
 	//ImGui::SliderFloat("Roughness", &_guiData.roughness_mult, 0.0f, 1.0f);
 

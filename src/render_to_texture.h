@@ -14,4 +14,4 @@ void initShadowPipeline(VulkanEngine& engine, VkRenderPass& renderpass, VkPipeli
 
 void setupDescriptorSetLayouts(VulkanEngine& engine, std::array<VkDescriptorSetLayout, 2>& setLayoutsOut, VkPipelineLayout* pipelineLayout);
 
-void setupDescriptorSets(VulkanEngine& engine, ShadowFrameResources& shadowFrame, std::array<VkDescriptorSetLayout, 2>& setLayouts);
+void setupDescriptorSets(VulkanEngine& engine, ShadowFrameResources& shadowFrame, VkBuffer& objectBuffer, std::array<VkDescriptorSetLayout, 2>& setLayouts);
