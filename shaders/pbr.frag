@@ -46,6 +46,9 @@ layout (set = 2, binding = 6) uniform samplerCube prefilterMap;
 layout (set = 2, binding = 7) uniform sampler2D brdfLUT;
 
 const float PI = 3.14159265359;
+// Lower values result in darker shadows
+const float IRRADIANCE_SHADOW_CLAMP = 0.4;
+const float SPECULAR_SHADOW_CLAMP = 0.6;
 
 // F0 is the surface reflection at zero incidence (looking directly at surface)
 vec3 fresnelSchlick(float cosTheta, vec3 F0)
@@ -172,14 +175,14 @@ void main()
 
     float shadow = shadowCalculation(fragPosLightSpace);
     vec3 irradiance = texture(irradianceMap, N).rgb;
-    irradiance = clamp(irradiance, 0.0, 0.6 + 100.0 * (1.0 - shadow));
+    irradiance = clamp(irradiance, 0.0, IRRADIANCE_SHADOW_CLAMP + 100.0 * (1.0 - shadow));
 
     diffuse = irradiance * diffuse;
 
     const float MAX_REFLECTION_LOD = 8.0;
     vec3 prefilteredColor = textureLod(prefilterMap, R, roughness * MAX_REFLECTION_LOD).rgb;
 
-    prefilteredColor = clamp(prefilteredColor, 0.0, 0.6 + 100.0 * (1.0 - shadow));
+    prefilteredColor = clamp(prefilteredColor, 0.0, SPECULAR_SHADOW_CLAMP + 100.0 * (1.0 - shadow));
 
     vec3 F = fresnelSchlickRoughness(max(dot(N, V), 0.0), F0, roughness);
     vec2 envBRDF = texture(brdfLUT, vec2(max(dot(N, V), 0.0), roughness)).rg;
