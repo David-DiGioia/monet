@@ -329,18 +329,9 @@ public:
 
 	ShadowGlobalResources _shadowGlobal;
 
-	//OffscreenPass _offscreenPass;
-	//// Depth bias (and slope) are used to avoid shadowing artifacts
-	//// Constant depth bias factor (always applied)
-	//float _depthBiasConstant{ 1.25f };
-	//// Slope depth bias factor, applied depending on polygon's slope
-	//float _depthBiasSlope{ 1.75f };
-	//VkPipeline _shadowPipeline;
-	//VkPipelineLayout _shadowPipelineLayout;
-	//VkDescriptorSet _shadowDescriptorSetLight;
-	//VkDescriptorSet _shadowDescriptorSetObjects;
-	//AllocatedBuffer _shadowLightBuffer;
-	//glm::mat4 _lightSpaceMatrix;
+	VkSampleCountFlagBits _msaaSamples;
+	AllocatedImage _colorImage;
+	VkImageView _colorImageView;
 
 	std::vector<GameObject*> _physicsObjects;
 
@@ -471,6 +462,8 @@ private:
 	void shadow_pass(VkCommandBuffer& cmd);
 
 	void init_shadow_pass();
+
+	VkSampleCountFlagBits get_max_usable_sample_count(VkPhysicalDevice physicalDevice);
 };
 
 class PipelineBuilder {
