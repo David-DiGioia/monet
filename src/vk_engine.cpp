@@ -1179,7 +1179,7 @@ void VulkanEngine::init_swapchain()
 	_mainDeletionQueue.push_function([=]() {
 		vkDestroyImageView(_device, _colorImageView, nullptr);
 		vkDestroyImageView(_device, _depthImageView, nullptr);
-		vmaDestroyImage(_allocator, _colorImage._image, _depthImage._allocation);
+		vmaDestroyImage(_allocator, _colorImage._image, _colorImage._allocation);
 		vmaDestroyImage(_allocator, _depthImage._image, _depthImage._allocation);
 	});
 }
