@@ -20,7 +20,7 @@ namespace vkinit {
 
 	VkPipelineRasterizationStateCreateInfo rasterization_state_create_info(VkPolygonMode polygonMode);
 
-	VkPipelineMultisampleStateCreateInfo multisampling_state_create_info(VkSampleCountFlagBits msaaSamples);
+	VkPipelineMultisampleStateCreateInfo multisampling_state_create_info(VkSampleCountFlagBits msaaSamples, float minSampleShading);
 
 	VkPipelineColorBlendAttachmentState color_blend_attachment_state();
 

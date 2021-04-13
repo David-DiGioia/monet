@@ -77,17 +77,17 @@ VkPipelineRasterizationStateCreateInfo vkinit::rasterization_state_create_info(V
 	return info;
 }
 
-VkPipelineMultisampleStateCreateInfo vkinit::multisampling_state_create_info(VkSampleCountFlagBits msaaSamples)
+VkPipelineMultisampleStateCreateInfo vkinit::multisampling_state_create_info(VkSampleCountFlagBits msaaSamples, float minSampleShading)
 {
 	VkPipelineMultisampleStateCreateInfo info{};
 	info.sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
 	info.pNext = nullptr;
 	// Sample shading takes multiple samples from shaders
-	info.sampleShadingEnable = VK_FALSE;
+	info.sampleShadingEnable = minSampleShading == 0.0f ? VK_FALSE : VK_TRUE;
 	// This only effects edges of geometry
 	info.rasterizationSamples = msaaSamples;
 	// Ratio of rasterizationSamples to take for shaders (usually less than 1.0)
-	info.minSampleShading = 1.0f;
+	info.minSampleShading = minSampleShading;
 	info.pSampleMask = nullptr;
 	info.alphaToCoverageEnable = VK_FALSE;
 	info.alphaToOneEnable = VK_FALSE;

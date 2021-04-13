@@ -747,7 +747,7 @@ void VulkanEngine::init_pipeline(const MaterialCreateInfo& info, const std::stri
 	pipelineBuilder._scissor.offset = { 0, 0 };
 	pipelineBuilder._scissor.extent = _windowExtent;
 	pipelineBuilder._rasterizer = vkinit::rasterization_state_create_info(VK_POLYGON_MODE_FILL);
-	pipelineBuilder._multisampling = vkinit::multisampling_state_create_info(_msaaSamples);
+	pipelineBuilder._multisampling = vkinit::multisampling_state_create_info(_msaaSamples, 0.5f);
 	pipelineBuilder._colorBlendAttachment = vkinit::color_blend_attachment_state();
 	pipelineBuilder._depthStencil = vkinit::depth_stencil_create_info(true, true, VK_COMPARE_OP_LESS_OR_EQUAL);
 	VertexInputDescription vertexDescription{ Vertex::get_vertex_description() };
@@ -1204,8 +1204,8 @@ void VulkanEngine::init_vulkan()
 	// get the surface of the window we opened with SDL
 	SDL_Vulkan_CreateSurface(_window, _instance, &_surface);
 
-	//VkPhysicalDeviceFeatures features{};
-	//features.shaderFloat64 = VK_TRUE;
+	VkPhysicalDeviceFeatures features{};
+	features.sampleRateShading = VK_TRUE;
 
 	// use vkbootstrap to select a gpu.
 	// we want a gpu that can write to the SDL surface and supports Vulkan 1.1
@@ -1213,7 +1213,7 @@ void VulkanEngine::init_vulkan()
 	vkb::PhysicalDevice physicalDevice{ selector
 		.set_minimum_version(1, 1)
 		.set_surface(_surface)
-		//.set_required_features(features)
+		.set_required_features(features)
 		.select()
 		.value() };
 
