@@ -108,7 +108,6 @@ struct ShadowFrameResources {
 
 struct FrameData {
 	VkSemaphore _presentSemaphore;
-	VkSemaphore _renderSemaphore;
 	VkFence _renderFence;
 
 	// This belongs to a frame because it's fast to reset a whole
@@ -286,6 +285,7 @@ public:
 	VkFormat _swapchainImageFormat;
 	std::vector<VkImage> _swapchainImages;
 	std::vector<VkImageView> _swapchainImageViews;
+	std::vector<VkSemaphore> _renderSemaphores;
 
 	VkQueue _graphicsQueue;
 	uint32_t _graphicsQueueFamily;

@@ -942,15 +942,22 @@ void VulkanEngine::init_sync_structures()
 		vkDestroyFence(_device, _uploadContext._uploadFence, nullptr);
 	});
 
+	_renderSemaphores.resize(_swapchainImages.size());
+	for (auto i{ 0 }; i < _swapchainImages.size(); ++i) {
+		VK_CHECK(vkCreateSemaphore(_device, &semaphoreCreateInfo, nullptr, &_renderSemaphores[i]));
+
+		_mainDeletionQueue.push_function([=]() {
+			vkDestroySemaphore(_device, _renderSemaphores[i], nullptr);
+		});
+	}
+
 	for (auto i{ 0 }; i < FRAME_OVERLAP; ++i) {
 		VK_CHECK(vkCreateFence(_device, &fenceCreateInfo, nullptr, &_frames[i]._renderFence));
 		VK_CHECK(vkCreateSemaphore(_device, &semaphoreCreateInfo, nullptr, &_frames[i]._presentSemaphore));
-		VK_CHECK(vkCreateSemaphore(_device, &semaphoreCreateInfo, nullptr, &_frames[i]._renderSemaphore));
 
 		_mainDeletionQueue.push_function([=]() {
 			vkDestroyFence(_device, _frames[i]._renderFence, nullptr);
 			vkDestroySemaphore(_device, _frames[i]._presentSemaphore, nullptr);
-			vkDestroySemaphore(_device, _frames[i]._renderSemaphore, nullptr);
 		});
 	}
 }
@@ -1613,7 +1620,7 @@ void VulkanEngine::draw()
 	submit.waitSemaphoreCount = 1;
 	submit.pWaitSemaphores = &get_current_frame()._presentSemaphore;
 	submit.signalSemaphoreCount = 1;
-	submit.pSignalSemaphores = &get_current_frame()._renderSemaphore;
+	submit.pSignalSemaphores = &_renderSemaphores[swapchainImageIndex];
 	submit.commandBufferCount = 1;
 	submit.pCommandBuffers = &get_current_frame()._mainCommandBuffer;
 
@@ -1630,7 +1637,7 @@ void VulkanEngine::draw()
 	presentInfo.swapchainCount = 1;
 	presentInfo.pSwapchains = &_swapchain;
 	presentInfo.waitSemaphoreCount = 1;
-	presentInfo.pWaitSemaphores = &get_current_frame()._renderSemaphore;
+	presentInfo.pWaitSemaphores = &_renderSemaphores[swapchainImageIndex];
 	presentInfo.pImageIndices = &swapchainImageIndex;
 
 	uint32_t msEndTime{ SDL_GetTicks() };
