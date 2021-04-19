@@ -737,7 +737,9 @@ void VulkanEngine::init_pipeline(const MaterialCreateInfo& info, const std::stri
 	pipelineBuilder._vertexInputInfo = vkinit::vertex_input_state_create_info();
 	// input assembly is the configuration for drawing triangle lists, strips, or individual points
 	pipelineBuilder._inputAssembly = vkinit::input_assembly_create_info(VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST);
-	// build viewport and scissor from the swapchain extents
+
+	// ---------------------------------------------------------------------------------------
+	// NOTE: Viewport and scissors are ignored atm, since we use dynamic viewport and scissors
 	pipelineBuilder._viewport.x = 0.0f;
 	pipelineBuilder._viewport.y = 0.0f;
 	pipelineBuilder._viewport.width = (float)_windowExtent.width;
@@ -746,6 +748,8 @@ void VulkanEngine::init_pipeline(const MaterialCreateInfo& info, const std::stri
 	pipelineBuilder._viewport.maxDepth = 1.0f;
 	pipelineBuilder._scissor.offset = { 0, 0 };
 	pipelineBuilder._scissor.extent = _windowExtent;
+	// ---------------------------------------------------------------------------------------
+
 	pipelineBuilder._rasterizer = vkinit::rasterization_state_create_info(VK_POLYGON_MODE_FILL);
 	pipelineBuilder._multisampling = vkinit::multisampling_state_create_info(_msaaSamples, 0.5f);
 	pipelineBuilder._colorBlendAttachment = vkinit::color_blend_attachment_state();
@@ -766,7 +770,7 @@ void VulkanEngine::init_pipeline(const MaterialCreateInfo& info, const std::stri
 		vkinit::pipeline_shader_stage_create_info(VK_SHADER_STAGE_FRAGMENT_BIT, fragShader)
 	);
 
-	VkPipeline pipeline{ pipelineBuilder.build_pipeline(_device, _renderPass) };
+	VkPipeline pipeline{ pipelineBuilder.build_pipeline(_device, _renderPass, true) };
 
 	create_material(info, pipeline, layout, materialSetLayout);
 
@@ -1599,6 +1603,20 @@ void VulkanEngine::draw()
 
 	vkCmdBeginRenderPass(get_current_frame()._mainCommandBuffer, &rpInfo, VK_SUBPASS_CONTENTS_INLINE);
 
+	VkViewport viewport{};
+	viewport.width = (float)_windowExtent.width;
+	viewport.height = (float)_windowExtent.height;
+	viewport.minDepth = 0.0f;
+	viewport.maxDepth = 1.0f;
+	viewport.x = 0;
+	viewport.y = 0;
+	vkCmdSetViewport(get_current_frame()._mainCommandBuffer, 0, 1, &viewport);
+
+	VkRect2D scissor{};
+	scissor.extent = _windowExtent;
+	scissor.offset = { 0, 0 };
+	vkCmdSetScissor(get_current_frame()._mainCommandBuffer, 0, 1, &scissor);
+
 	draw_objects(get_current_frame()._mainCommandBuffer, _renderables);
 
 	ImGui_ImplVulkan_RenderDrawData(ImGui::GetDrawData(), get_current_frame()._mainCommandBuffer);
@@ -1869,17 +1887,33 @@ void VulkanEngine::run()
 	}
 }
 
-VkPipeline PipelineBuilder::build_pipeline(VkDevice device, VkRenderPass pass)
+VkPipeline PipelineBuilder::build_pipeline(VkDevice device, VkRenderPass pass, bool dynamicState)
 {
-	// make viewport state from our stored viewport and scissor
-	// at the moment we won't support multiple viewports or scissors
+	VkGraphicsPipelineCreateInfo pipelineInfo{};
+
 	VkPipelineViewportStateCreateInfo viewportState{};
 	viewportState.sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
 	viewportState.pNext = nullptr;
 	viewportState.viewportCount = 1;
-	viewportState.pViewports = &_viewport;
 	viewportState.scissorCount = 1;
-	viewportState.pScissors = &_scissor;
+
+	VkPipelineDynamicStateCreateInfo dynamicStateCI{};
+	std::vector<VkDynamicState> dynamicStateEnables = { VK_DYNAMIC_STATE_VIEWPORT, VK_DYNAMIC_STATE_SCISSOR };
+
+	if (dynamicState) {
+		dynamicStateCI.sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO;
+		dynamicStateCI.dynamicStateCount = (uint32_t)dynamicStateEnables.size();
+		dynamicStateCI.pDynamicStates = dynamicStateEnables.data();
+
+		viewportState.pViewports = nullptr;
+		viewportState.pScissors = nullptr;
+		pipelineInfo.pDynamicState = &dynamicStateCI;
+
+	} else {
+		viewportState.pViewports = &_viewport;
+		viewportState.pScissors = &_scissor;
+		pipelineInfo.pDynamicState = nullptr;
+	}
 
 	// setup dummy color blending. We aren't using transparent objects yet
 	// the blending is just "no blend", but we do write to the color attachment
@@ -1891,7 +1925,6 @@ VkPipeline PipelineBuilder::build_pipeline(VkDevice device, VkRenderPass pass)
 	colorBlending.attachmentCount = 1;
 	colorBlending.pAttachments = &_colorBlendAttachment;
 
-	VkGraphicsPipelineCreateInfo pipelineInfo{};
 	pipelineInfo.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
 	pipelineInfo.pNext = nullptr;
 

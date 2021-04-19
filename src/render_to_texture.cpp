@@ -196,7 +196,7 @@ void create_rt_pipeline(VulkanEngine& engine, VkRenderPass renderpass, VkExtent2
 		vkinit::pipeline_shader_stage_create_info(VK_SHADER_STAGE_FRAGMENT_BIT, fragShader)
 	);
 
-	*outPipeline = pipelineBuilder.build_pipeline(engine._device, renderpass);
+	*outPipeline = pipelineBuilder.build_pipeline(engine._device, renderpass, false);
 
 	vkDestroyShaderModule(engine._device, vertShader, nullptr);
 	vkDestroyShaderModule(engine._device, fragShader, nullptr);
