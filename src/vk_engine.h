@@ -464,6 +464,10 @@ private:
 	void init_shadow_pass();
 
 	VkSampleCountFlagBits get_max_usable_sample_count(VkPhysicalDevice physicalDevice);
+
+	bool input();
+
+	void resize_window(int32_t width, int32_t height);
 };
 
 class PipelineBuilder {

@@ -12,7 +12,9 @@ public:
 
 	void fixedUpdate(VulkanEngine& engine) override;
 
-	bool input(float delta) override;
+	void input(const uint8_t* keystate, float delta) override;
+
+	bool events(SDL_Event e) override;
 
 	void gui() override;
 

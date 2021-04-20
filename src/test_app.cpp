@@ -3,7 +3,6 @@
 #include "glm/glm.hpp"
 #include "glm/gtx/transform.hpp"
 #include "imgui.h"
-#include "SDL.h"
 
 #include <cmath>
 #include <iostream>
@@ -34,7 +33,7 @@ void TestApp::init(VulkanEngine& engine)
 	//_cube.setPos(glm::vec3(0.0, 3.0, 0.0));
 	//engine.add_to_physics_engine_dynamic(&_cube, shape);
 
-	
+
 	GameObject plane{ engine.create_render_object("plane", "default") };
 
 	Light light{};
@@ -69,41 +68,9 @@ void TestApp::fixedUpdate(VulkanEngine& engine)
 
 }
 
-bool TestApp::input(float delta)
+void TestApp::input(const uint8_t* keystate, float delta)
 {
 	float speed{ 3.0f };
-	float camSensitivity{ 0.3f };
-	// mouse motion seems to be sampled 60fps regardless of framerate
-	constexpr float mouseDelta{ 1.0f / 60.0f };
-
-	const Uint8* keystate{ SDL_GetKeyboardState(nullptr) };
-
-	bool bQuit{ false };
-	SDL_Event e;
-	// Handle events on queue
-	while (SDL_PollEvent(&e))
-	{
-		switch (e.type)
-		{
-		case SDL_KEYDOWN:
-			if (e.key.keysym.sym == SDLK_f) {
-				_camMouseControls = !_camMouseControls;
-				SDL_SetRelativeMouseMode((SDL_bool)_camMouseControls);
-			}
-			break;
-		case SDL_MOUSEMOTION:
-			if (_camMouseControls) {
-				_camRotPhi -= e.motion.xrel * camSensitivity * mouseDelta;
-				_camRotTheta -= e.motion.yrel * camSensitivity * mouseDelta;
-				_camRotTheta = std::clamp(_camRotTheta, -pi / 2.0f, pi / 2.0f);
-			}
-			break;
-		case SDL_QUIT:
-			bQuit = true;
-			break;
-		}
-	}
-
 	glm::vec4 translate{ 0.0f };
 
 	// continuous-response keys
@@ -133,6 +100,34 @@ bool TestApp::input(float delta)
 	}
 
 	_camera.pos += glm::vec3{ _camera.rot * translate };
+}
+
+bool TestApp::events(SDL_Event e)
+{
+	float camSensitivity{ 0.3f };
+	// mouse motion seems to be sampled 60fps regardless of framerate
+	constexpr float mouseDelta{ 1.0f / 60.0f };
+	bool bQuit{ false };
+
+	switch (e.type)
+	{
+	case SDL_KEYDOWN:
+		if (e.key.keysym.sym == SDLK_f) {
+			_camMouseControls = !_camMouseControls;
+			SDL_SetRelativeMouseMode((SDL_bool)_camMouseControls);
+		}
+		break;
+	case SDL_MOUSEMOTION:
+		if (_camMouseControls) {
+			_camRotPhi -= e.motion.xrel * camSensitivity * mouseDelta;
+			_camRotTheta -= e.motion.yrel * camSensitivity * mouseDelta;
+			_camRotTheta = std::clamp(_camRotTheta, -pi / 2.0f, pi / 2.0f);
+		}
+		break;
+	case SDL_QUIT:
+		bQuit = true;
+		break;
+	}
 
 	return bQuit;
 }

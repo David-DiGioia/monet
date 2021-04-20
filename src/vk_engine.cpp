@@ -206,7 +206,7 @@ void VulkanEngine::init(Application* app)
 
 	//SDL_SetRelativeMouseMode((SDL_bool)_camMouseControls);
 
-	SDL_WindowFlags window_flags{ (SDL_WindowFlags)(SDL_WINDOW_VULKAN) };
+	SDL_WindowFlags window_flags{ (SDL_WindowFlags)(SDL_WINDOW_VULKAN | SDL_WINDOW_RESIZABLE) };
 
 	_window = SDL_CreateWindow(
 		"Vulkan Engine",
@@ -1868,6 +1868,34 @@ PxShape* VulkanEngine::create_physics_shape(const PxGeometry& geometry, const Px
 	return _physicsEngine.createShape(geometry, material, isExclusive, shapeFlags);
 }
 
+void VulkanEngine::resize_window(int32_t width, int32_t height)
+{
+
+}
+
+bool VulkanEngine::input() {
+	bool bQuit{ false };
+	const Uint8* keystate{ SDL_GetKeyboardState(nullptr) };
+	_app->input(keystate, _delta);
+
+	SDL_Event e;
+	while (SDL_PollEvent(&e)) {
+		bQuit = _app->events(e);
+
+		switch (e.type)
+		{
+		case SDL_WINDOWEVENT:
+			if (e.window.event == SDL_WINDOWEVENT_RESIZED) {
+				std::cout << "MESSAGE: Resizing window...\n";
+				resize_window(e.window.data1, e.window.data2);
+			}
+			break;
+		}
+	}
+
+	return bQuit;
+}
+
 void VulkanEngine::run()
 {
 	bool bQuit{ false };
@@ -1879,7 +1907,10 @@ void VulkanEngine::run()
 		_delta = std::chrono::duration_cast<std::chrono::microseconds>(currentTime - _lastTime).count() / 1000000.0f;
 		_lastTime = currentTime;
 
-		bQuit = _app->input(_delta);
+		SDL_Event e;
+		// Handle events on queue
+
+		bQuit = input();
 		gui();
 		draw();
 		showFPS();
