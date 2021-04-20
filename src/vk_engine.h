@@ -405,11 +405,13 @@ public:
 
 	void set_gravity(float gravity);
 
+	void resize_window(int32_t width, int32_t height);
+
 private:
 
 	void init_vulkan();
 
-	void init_swapchain();
+	void init_swapchain(VkSwapchainKHR oldSwapChain);
 
 	void init_commands();
 
@@ -466,8 +468,6 @@ private:
 	VkSampleCountFlagBits get_max_usable_sample_count(VkPhysicalDevice physicalDevice);
 
 	bool input();
-
-	void resize_window(int32_t width, int32_t height);
 };
 
 class PipelineBuilder {

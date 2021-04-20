@@ -184,6 +184,19 @@ float GameObject::getMass()
 	return _physicsObject->is<PxRigidDynamic>()->getMass();
 }
 
+// For continous resizing... laggy, and need to do work to draw it every frame it's resized soooo... not worth it atm
+//int resizingEventWatcher(void* data, SDL_Event* event) {
+//	if (event->type == SDL_WINDOWEVENT && event->window.event == SDL_WINDOWEVENT_RESIZED) {
+//		SDL_Window* win = SDL_GetWindowFromID(event->window.windowID);
+//		VulkanEngine* engine{ (VulkanEngine*)data };
+//		if (win == engine->_window) {
+//			std::cout << "resizing.....\n";
+//			engine->resize_window(event->window.data1, event->window.data2);
+//		}
+//	}
+//	return 0;
+//}
+
 void VulkanEngine::init(Application* app)
 {
 	// We initialize SDL and create a window with it. 
@@ -221,7 +234,7 @@ void VulkanEngine::init(Application* app)
 
 	_app = app;
 	init_vulkan();
-	init_swapchain();
+	init_swapchain(VK_NULL_HANDLE);
 	init_commands();
 	init_tracy();
 	init_default_renderpass();
@@ -236,6 +249,8 @@ void VulkanEngine::init(Application* app)
 	init_scene();
 	init_imgui();
 	init_gui_data();
+
+	//SDL_AddEventWatch(resizingEventWatcher, this);
 
 	// everything went fine
 	_isInitialized = true;
@@ -1129,7 +1144,7 @@ void VulkanEngine::init_commands()
 	}
 }
 
-void VulkanEngine::init_swapchain()
+void VulkanEngine::init_swapchain(VkSwapchainKHR oldSwapChain)
 {
 	vkb::SwapchainBuilder swapchainBuilder{ _chosenGPU, _device, _surface };
 
@@ -1138,6 +1153,7 @@ void VulkanEngine::init_swapchain()
 		.set_desired_present_mode(VK_PRESENT_MODE_MAILBOX_KHR)
 		//.set_desired_present_mode(VK_PRESENT_MODE_FIFO_KHR)
 		.set_desired_extent(_windowExtent.width, _windowExtent.height)
+		.set_old_swapchain(oldSwapChain)
 		.build()
 		.value() };
 
@@ -1870,7 +1886,14 @@ PxShape* VulkanEngine::create_physics_shape(const PxGeometry& geometry, const Px
 
 void VulkanEngine::resize_window(int32_t width, int32_t height)
 {
+	// destroy framebuffers
+	// destroy swapchain
 
+	_windowExtent.width = width;
+	_windowExtent.height = height;
+
+	init_swapchain(_swapchain);
+	init_framebuffers();
 }
 
 bool VulkanEngine::input() {
@@ -1885,8 +1908,8 @@ bool VulkanEngine::input() {
 		switch (e.type)
 		{
 		case SDL_WINDOWEVENT:
-			if (e.window.event == SDL_WINDOWEVENT_RESIZED) {
-				std::cout << "MESSAGE: Resizing window...\n";
+			if (e.window.event == SDL_WINDOWEVENT_SIZE_CHANGED) {
+				std::cout << "Size Changed...\n";
 				resize_window(e.window.data1, e.window.data2);
 			}
 			break;
