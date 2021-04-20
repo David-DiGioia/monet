@@ -22,12 +22,6 @@ Furniture and ground lit by an HDRI
 ![](showcase/furniture_hdri_00.png?raw=true "fence_synchronization")
 ![](showcase/furniture_hdri_01.png?raw=true "fence_synchronization")
 
-Camera lit by two different HDRIs
-![](showcase/camera_00.png?raw=true "fence_synchronization")
-
-Coffee cart lit by two different HDRIs
-![](showcase/coffee_cart_00.png?raw=true "fence_synchronization")
-
 ## Plans
 
  * SSAO
