@@ -184,18 +184,21 @@ float GameObject::getMass()
 	return _physicsObject->is<PxRigidDynamic>()->getMass();
 }
 
-// For continous resizing... laggy, and need to do work to draw it every frame it's resized soooo... not worth it atm
-//int resizingEventWatcher(void* data, SDL_Event* event) {
-//	if (event->type == SDL_WINDOWEVENT && event->window.event == SDL_WINDOWEVENT_RESIZED) {
-//		SDL_Window* win = SDL_GetWindowFromID(event->window.windowID);
-//		VulkanEngine* engine{ (VulkanEngine*)data };
-//		if (win == engine->_window) {
-//			std::cout << "resizing.....\n";
-//			engine->resize_window(event->window.data1, event->window.data2);
-//		}
-//	}
-//	return 0;
-//}
+int resizingEventWatcher(void* data, SDL_Event* event) {
+	if (event->type == SDL_WINDOWEVENT && event->window.event == SDL_WINDOWEVENT_RESIZED) {
+		SDL_Window* win = SDL_GetWindowFromID(event->window.windowID);
+		VulkanEngine* engine{ (VulkanEngine*)data };
+		if (win == engine->_window && (event->window.data1 == 0 || event->window.data1 == 0)) {
+			int width{ 0 };
+			int height{ 0 };
+
+			while (width == 0 || height == 0) {
+				SDL_GetWindowSize(engine->_window, &width, &height);
+			}
+		}
+	}
+	return 0;
+}
 
 void VulkanEngine::init(Application* app)
 {
@@ -1934,6 +1937,14 @@ bool VulkanEngine::input() {
 				std::cout << "Window resized\n";
 				resize_window(e.window.data1, e.window.data2);
 			}
+			else if (e.window.event == SDL_WINDOWEVENT_MINIMIZED) {
+				std::cout << "Window minimized\n";
+				_minimized = true;
+			}
+			else if (e.window.event == SDL_WINDOWEVENT_RESTORED) {
+				std::cout << "Window restored\n";
+				_minimized = false;
+			}
 			break;
 		}
 	}
@@ -1952,14 +1963,13 @@ void VulkanEngine::run()
 		_delta = std::chrono::duration_cast<std::chrono::microseconds>(currentTime - _lastTime).count() / 1000000.0f;
 		_lastTime = currentTime;
 
-		SDL_Event e;
-		// Handle events on queue
-
 		bQuit = input();
-		gui();
-		draw();
-		showFPS();
-		update_physics();
+		if (!_minimized) {
+			gui();
+			draw();
+			showFPS();
+			update_physics();
+		}
 	}
 }
 

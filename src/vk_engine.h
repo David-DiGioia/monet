@@ -352,6 +352,8 @@ public:
 	// measure ms of each frame without vsync
 	double _msDelta;
 
+	bool _minimized{ false };
+
 	// initializes everything in the engine
 	void init(Application* app);
 
