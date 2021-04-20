@@ -8,6 +8,8 @@ The purpose of this project is to learn Vulkan and modern rendering techniques.
 
  * PBR lighting form HDRI images, rendering all the necessary maps/LUTs at program startup
  * PBR lighting from point lights
+ * Shadow mapping
+ * Multisampling
  * Instrumented for profiling using Tracy
  * Dear ImGui support for debugging
  * Create materials with arbitrary descriptors by only modifying \_load_materials.txt.
@@ -28,7 +30,6 @@ Coffee cart lit by two different HDRIs
 
 ## Plans
 
- * Shadow mapping
  * SSAO
- * Multisampling
  * Cache assets for faster startup
+ * Skeletal animation
