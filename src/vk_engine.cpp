@@ -238,7 +238,7 @@ void VulkanEngine::init(Application* app)
 	init_commands();
 	init_tracy();
 	init_default_renderpass();
-	init_framebuffers();
+	init_framebuffers(false);
 	init_sync_structures();
 	load_meshes();
 	init_descriptor_pool();
@@ -1082,7 +1082,7 @@ void VulkanEngine::init_default_renderpass()
 	});
 }
 
-void VulkanEngine::init_framebuffers()
+void VulkanEngine::init_framebuffers(bool windowResize)
 {
 	// the framebuffer will connect the renderpass to the images for rendering
 	VkFramebufferCreateInfo fb_info{};
@@ -1110,10 +1110,12 @@ void VulkanEngine::init_framebuffers()
 		fb_info.pAttachments = attachments.data();
 		VK_CHECK(vkCreateFramebuffer(_device, &fb_info, nullptr, &_framebuffers[i]));
 
-		_mainDeletionQueue.push_function([=]() {
-			vkDestroyFramebuffer(_device, _framebuffers[i], nullptr);
-			vkDestroyImageView(_device, _swapchainImageViews[i], nullptr);
-		});
+		if (!windowResize) {
+			_mainDeletionQueue.push_function([=]() {
+				vkDestroyFramebuffer(_device, _framebuffers[i], nullptr);
+				vkDestroyImageView(_device, _swapchainImageViews[i], nullptr);
+			});
+		}
 	}
 }
 
@@ -1163,9 +1165,11 @@ void VulkanEngine::init_swapchain(VkSwapchainKHR oldSwapChain)
 	_swapchainImageViews = vkbSwapchain.get_image_views().value();
 	_swapchainImageFormat = vkbSwapchain.image_format;
 
-	_mainDeletionQueue.push_function([=]() {
-		vkDestroySwapchainKHR(_device, _swapchain, nullptr);
-	});
+	if (oldSwapChain == VK_NULL_HANDLE) {
+		_mainDeletionQueue.push_function([=]() {
+			vkDestroySwapchainKHR(_device, _swapchain, nullptr);
+		});
+	}
 
 	// depth image size will match the window
 	VkExtent3D depthImageExtent{
@@ -1202,13 +1206,14 @@ void VulkanEngine::init_swapchain(VkSwapchainKHR oldSwapChain)
 	VK_CHECK(vkCreateImageView(_device, &dview_info, nullptr, &_depthImageView));
 	VK_CHECK(vkCreateImageView(_device, &color_view_info, nullptr, &_colorImageView));
 
-	// add to deletion queues
-	_mainDeletionQueue.push_function([=]() {
-		vkDestroyImageView(_device, _colorImageView, nullptr);
-		vkDestroyImageView(_device, _depthImageView, nullptr);
-		vmaDestroyImage(_allocator, _colorImage._image, _colorImage._allocation);
-		vmaDestroyImage(_allocator, _depthImage._image, _depthImage._allocation);
-	});
+	if (oldSwapChain == VK_NULL_HANDLE) {
+		_mainDeletionQueue.push_function([=]() {
+			vkDestroyImageView(_device, _colorImageView, nullptr);
+			vkDestroyImageView(_device, _depthImageView, nullptr);
+			vmaDestroyImage(_allocator, _colorImage._image, _colorImage._allocation);
+			vmaDestroyImage(_allocator, _depthImage._image, _depthImage._allocation);
+		});
+	}
 }
 
 void VulkanEngine::init_vulkan()
@@ -1697,7 +1702,7 @@ void VulkanEngine::draw_objects(VkCommandBuffer cmd, const std::multiset<RenderO
 	view = glm::inverse(view);
 	viewOrigin = glm::inverse(viewOrigin);
 
-	glm::mat4 projection{ glm::perspective(glm::radians(70.0f), 1700.0f / 900.0f, 0.1f, 200.0f) };
+	glm::mat4 projection{ glm::perspective(glm::radians(70.0f), _windowExtent.width / (float)_windowExtent.height, 0.1f, 200.0f) };
 	projection[1][1] *= -1;
 
 	// fill a GPU camera data struct
@@ -1886,14 +1891,31 @@ PxShape* VulkanEngine::create_physics_shape(const PxGeometry& geometry, const Px
 
 void VulkanEngine::resize_window(int32_t width, int32_t height)
 {
+	vkDeviceWaitIdle(_device);
+
 	// destroy framebuffers
-	// destroy swapchain
+	const uint32_t swapchain_imagecount{ (uint32_t)_swapchainImages.size() };
+	for (auto i{ 0 }; i < swapchain_imagecount; ++i) {
+		vkDestroyFramebuffer(_device, _framebuffers[i], nullptr);
+		vkDestroyImageView(_device, _swapchainImageViews[i], nullptr);
+	}
+
+	// destroy color and depth images
+	vkDestroyImageView(_device, _colorImageView, nullptr);
+	vkDestroyImageView(_device, _depthImageView, nullptr);
+	vmaDestroyImage(_allocator, _colorImage._image, _colorImage._allocation);
+	vmaDestroyImage(_allocator, _depthImage._image, _depthImage._allocation);
 
 	_windowExtent.width = width;
 	_windowExtent.height = height;
 
+	VkSwapchainKHR oldSwapchain{ _swapchain };
+
 	init_swapchain(_swapchain);
-	init_framebuffers();
+	init_framebuffers(true);
+
+	// destroy old swapchain after we use it to initialize the new one
+	vkDestroySwapchainKHR(_device, oldSwapchain, nullptr);
 }
 
 bool VulkanEngine::input() {
@@ -1909,7 +1931,7 @@ bool VulkanEngine::input() {
 		{
 		case SDL_WINDOWEVENT:
 			if (e.window.event == SDL_WINDOWEVENT_SIZE_CHANGED) {
-				std::cout << "Size Changed...\n";
+				std::cout << "Window resized\n";
 				resize_window(e.window.data1, e.window.data2);
 			}
 			break;

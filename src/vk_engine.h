@@ -417,7 +417,7 @@ private:
 
 	void init_default_renderpass();
 
-	void init_framebuffers();
+	void init_framebuffers(bool windowResize);
 
 	void init_sync_structures();
 
