@@ -184,21 +184,21 @@ float GameObject::getMass()
 	return _physicsObject->is<PxRigidDynamic>()->getMass();
 }
 
-int resizingEventWatcher(void* data, SDL_Event* event) {
-	if (event->type == SDL_WINDOWEVENT && event->window.event == SDL_WINDOWEVENT_RESIZED) {
-		SDL_Window* win = SDL_GetWindowFromID(event->window.windowID);
-		VulkanEngine* engine{ (VulkanEngine*)data };
-		if (win == engine->_window && (event->window.data1 == 0 || event->window.data1 == 0)) {
-			int width{ 0 };
-			int height{ 0 };
-
-			while (width == 0 || height == 0) {
-				SDL_GetWindowSize(engine->_window, &width, &height);
-			}
-		}
-	}
-	return 0;
-}
+//int resizingEventWatcher(void* data, SDL_Event* event) {
+//	if (event->type == SDL_WINDOWEVENT && event->window.event == SDL_WINDOWEVENT_RESIZED) {
+//		SDL_Window* win = SDL_GetWindowFromID(event->window.windowID);
+//		VulkanEngine* engine{ (VulkanEngine*)data };
+//		if (win == engine->_window && (event->window.data1 == 0 || event->window.data1 == 0)) {
+//			int width{ 0 };
+//			int height{ 0 };
+//
+//			while (width == 0 || height == 0) {
+//				SDL_GetWindowSize(engine->_window, &width, &height);
+//			}
+//		}
+//	}
+//	return 0;
+//}
 
 void VulkanEngine::init(Application* app)
 {
