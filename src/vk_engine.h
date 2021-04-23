@@ -35,6 +35,8 @@
 // number of frames to overlap when rendering
 constexpr uint32_t FRAME_OVERLAP{ 2 };
 constexpr size_t MAX_NUM_TOTAL_LIGHTS{ 10 }; // this must match glsl shader!
+constexpr uint32_t SHADOWMAP_DIM{ 2048 };
+constexpr uint32_t MAX_OBJECTS{ 10000 };
 
 struct VulkanEngine;
 
@@ -55,9 +57,7 @@ struct Texture {
 };
 
 struct GPUSceneData {
-	glm::vec4 ambientColor;
-	glm::vec4 sunDirection;
-	glm::vec4 sunColor; // w is for sun power
+	glm::mat4 lightSpaceMatrix;
 	glm::vec4 camPos; // w is unused
 	Light lights[MAX_NUM_TOTAL_LIGHTS];
 	uint32_t numLights;
@@ -73,9 +73,41 @@ struct GPUObjectData {
 	glm::mat4 modelMatrix;
 };
 
+//struct OffscreenPass {
+//	uint32_t width, height;
+//	VkRenderPass renderPass;
+//	std::array<VkFramebuffer, FRAME_OVERLAP> frameBuffers;
+//	std::array <Texture, FRAME_OVERLAP> depths;
+//	std::array <VkSampler, FRAME_OVERLAP> depthSamplers;
+//	std::array <VkDescriptorImageInfo, FRAME_OVERLAP> descriptors;
+//};
+
+struct ShadowGlobalResources {
+	uint32_t _width, _height;
+	VkRenderPass _renderPass;
+	// Depth bias (and slope) are used to avoid shadowing artifacts
+	// Constant depth bias factor (always applied)
+	float _depthBiasConstant{ 1.25f };
+	// Slope depth bias factor, applied depending on polygon's slope
+	float _depthBiasSlope{ 1.75f };
+	VkPipeline _shadowPipeline;
+	VkPipelineLayout _shadowPipelineLayout;
+	glm::mat4 _lightSpaceMatrix;
+};
+
+struct ShadowFrameResources {
+	VkFramebuffer frameBuffer;
+	Texture depth;
+	VkSampler depthSampler;
+	VkDescriptorImageInfo descriptor;
+	VkPipelineLayout _shadowPipelineLayout;
+	VkDescriptorSet _shadowDescriptorSetLight;
+	VkDescriptorSet _shadowDescriptorSetObjects;
+	AllocatedBuffer _shadowLightBuffer;
+};
+
 struct FrameData {
 	VkSemaphore _presentSemaphore;
-	VkSemaphore _renderSemaphore;
 	VkFence _renderFence;
 
 	// This belongs to a frame because it's fast to reset a whole
@@ -97,6 +129,8 @@ struct FrameData {
 	VkDescriptorSet objectDescriptor;
 
 	TracyVkCtx _tracyContext;
+
+	ShadowFrameResources _shadow;
 };
 
 // note that we store the VkPipeline and layout by value, not pointer.
@@ -121,6 +155,7 @@ struct RenderObject {
 	Mesh* mesh;
 	Material* material;
 	mutable glm::mat4 transformMatrix;
+	bool castShadow;
 
 	bool operator<(const RenderObject& other) const;
 };
@@ -206,15 +241,6 @@ struct MeshPushConstants {
 	glm::mat4 render_matrix;
 };
 
-struct OffscreenPass {
-	uint32_t width, height;
-	VkFramebuffer frameBuffer;
-	Texture depth;
-	VkRenderPass renderPass;
-	VkSampler depthSampler;
-	VkDescriptorImageInfo descriptor;
-};
-
 struct DeletionQueue
 {
 	std::deque<std::function<void()>> deletors;
@@ -261,6 +287,7 @@ public:
 	VkFormat _swapchainImageFormat;
 	std::vector<VkImage> _swapchainImages;
 	std::vector<VkImageView> _swapchainImageViews;
+	std::vector<VkSemaphore> _renderSemaphores;
 
 	VkQueue _graphicsQueue;
 	uint32_t _graphicsQueueFamily;
@@ -282,12 +309,6 @@ public:
 
 	Transform _camTransform{};
 
-	//glm::vec3 _camPos;
-	//float _camRotPhi;
-	//float _camRotTheta;
-	//bool _camMouseControls;
-	//glm::mat4 _camRot;
-
 	VkDescriptorSetLayout _globalSetLayout;
 	VkDescriptorPool _descriptorPool;
 
@@ -308,7 +329,11 @@ public:
 	// frame storage
 	FrameData _frames[FRAME_OVERLAP];
 
-	OffscreenPass _offscreenPass;
+	ShadowGlobalResources _shadowGlobal;
+
+	VkSampleCountFlagBits _msaaSamples;
+	AllocatedImage _colorImage;
+	VkImageView _colorImageView;
 
 	std::vector<GameObject*> _physicsObjects;
 
@@ -328,6 +353,8 @@ public:
 
 	// measure ms of each frame without vsync
 	double _msDelta;
+
+	bool _minimized{ false };
 
 	// initializes everything in the engine
 	void init(Application* app);
@@ -355,7 +382,7 @@ public:
 	// returns nullptr if it can't be found
 	Mesh* get_mesh(const std::string& name);
 
-	const RenderObject* create_render_object(const std::string& meshName, const std::string& matName);
+	const RenderObject* create_render_object(const std::string& meshName, const std::string& matName, bool castShadow=true);
 
 	const RenderObject* create_render_object(const std::string& name);
 
@@ -382,17 +409,19 @@ public:
 
 	void set_gravity(float gravity);
 
+	void resize_window(int32_t width, int32_t height);
+
 private:
 
 	void init_vulkan();
 
-	void init_swapchain();
+	void init_swapchain(VkSwapchainKHR oldSwapChain);
 
 	void init_commands();
 
 	void init_default_renderpass();
 
-	void init_framebuffers();
+	void init_framebuffers(bool windowResize);
 
 	void init_sync_structures();
 
@@ -420,6 +449,10 @@ private:
 
 	void init_descriptors();
 
+	void init_object_buffers();
+
+	void init_descriptor_pool();
+
 	size_t pad_uniform_buffer_size(size_t originalSize);
 
 	void init_imgui();
@@ -431,6 +464,14 @@ private:
 	std::vector<Texture> textures_from_binding_paths(const std::vector<std::string>& bindingPaths);
 
 	void init_tracy();
+
+	void shadow_pass(VkCommandBuffer& cmd);
+
+	void init_shadow_pass();
+
+	VkSampleCountFlagBits get_max_usable_sample_count(VkPhysicalDevice physicalDevice);
+
+	bool input();
 };
 
 class PipelineBuilder {
@@ -447,5 +488,5 @@ public:
 	VkPipelineLayout _pipelineLayout;
 	VkPipelineDepthStencilStateCreateInfo _depthStencil;
 
-	VkPipeline build_pipeline(VkDevice device, VkRenderPass pass);
+	VkPipeline build_pipeline(VkDevice device, VkRenderPass pass, bool dynamicState);
 };

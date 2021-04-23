@@ -3,7 +3,6 @@
 #include "glm/glm.hpp"
 #include "glm/gtx/transform.hpp"
 #include "imgui.h"
-#include "SDL.h"
 
 #include <cmath>
 #include <iostream>
@@ -16,28 +15,24 @@ void TestApp::init(VulkanEngine& engine)
 
 	_camera.pos = glm::vec3{ 0.0, 2.0, 2.0 };
 
-	GameObject bed{ engine.create_render_object("bed") };
+	_bed.setRenderObject(engine.create_render_object("bed"));
 
 	_sofa.setRenderObject(engine.create_render_object("sofa"));
 	_sofa.setPos(glm::vec3(-2.5, 0.0, 0.4));
 	_sofa.setRot(glm::rotate(glm::radians(110.0f), glm::vec3{ 0.0, 1.0, 0.0 }));
 
-	GameObject chair{ engine.create_render_object("chair") };
-	chair.setPos(glm::vec3(-2.1, 0.0, -2.0));
-	chair.setRot(glm::rotate(glm::radians(80.0f), glm::vec3{ 0.0, 1.0, 0.0 }));
+	_chair.setRenderObject(engine.create_render_object("chair"));
+	_chair.setPos(glm::vec3(-2.1, 0.0, -2.0));
+	_chair.setRot(glm::rotate(glm::radians(80.0f), glm::vec3{ 0.0, 1.0, 0.0 }));
 
-	float halfExtent{ 1.0f };
-	PxMaterial* material{ engine.create_physics_material(0.5, 0.5, 0.6) };
-	PxShape* shape{ engine.create_physics_shape(PxBoxGeometry(halfExtent, halfExtent, halfExtent), *material) };
+	//float halfExtent{ 1.0f };
+	//PxMaterial* material{ engine.create_physics_material(0.5, 0.5, 0.6) };
+	//PxShape* shape{ engine.create_physics_shape(PxBoxGeometry(halfExtent, halfExtent, halfExtent), *material) };
 
-	_cube.setRenderObject(engine.create_render_object("cube", "default"));
-	_cube.setPos(glm::vec3(0.0, 3.0, 0.0));
-	engine.add_to_physics_engine_dynamic(&_cube, shape);
+	//_cube.setRenderObject(engine.create_render_object("cube", "default"));
+	//_cube.setPos(glm::vec3(0.0, 3.0, 0.0));
+	//engine.add_to_physics_engine_dynamic(&_cube, shape);
 
-	
-	//PxTransformFromPlaneEquation(const PxPlane & plane);
-	//PxShape* groundShape{ engine.create_physics_shape(groundPlane, *material) };
-	//engine.add_to_physics_engine_dynamic(nullptr, groundShape);
 
 	GameObject plane{ engine.create_render_object("plane", "default") };
 
@@ -58,10 +53,10 @@ void TestApp::updateCamera(VulkanEngine& engine)
 
 void TestApp::update(VulkanEngine& engine, float delta)
 {
-	glm::vec3 pos{ _sofa.getPos() };
-	pos.x += delta;
-	_sofa.setPos(pos);
 	_lights[0].position.x = std::sinf(_time) * 3.0f;
+	_sofa.setPos(_sofaPos);
+	_bed.setPos(_bedPos);
+	_chair.setPos(_chairPos);
 
 	updateCamera(engine);
 	engine.set_scene_lights(_lights);
@@ -70,46 +65,12 @@ void TestApp::update(VulkanEngine& engine, float delta)
 
 void TestApp::fixedUpdate(VulkanEngine& engine)
 {
-	if (_applyForce) {
-		_cube.addForce(glm::vec3{ 1000.0, 1000.0, 0.0 });
-	}
+
 }
 
-bool TestApp::input(float delta)
+void TestApp::input(const uint8_t* keystate, float delta)
 {
 	float speed{ 3.0f };
-	float camSensitivity{ 0.3f };
-	// mouse motion seems to be sampled 60fps regardless of framerate
-	constexpr float mouseDelta{ 1.0f / 60.0f };
-
-	const Uint8* keystate{ SDL_GetKeyboardState(nullptr) };
-
-	bool bQuit{ false };
-	SDL_Event e;
-	// Handle events on queue
-	while (SDL_PollEvent(&e))
-	{
-		switch (e.type)
-		{
-		case SDL_KEYDOWN:
-			if (e.key.keysym.sym == SDLK_f) {
-				_camMouseControls = !_camMouseControls;
-				SDL_SetRelativeMouseMode((SDL_bool)_camMouseControls);
-			}
-			break;
-		case SDL_MOUSEMOTION:
-			if (_camMouseControls) {
-				_camRotPhi -= e.motion.xrel * camSensitivity * mouseDelta;
-				_camRotTheta -= e.motion.yrel * camSensitivity * mouseDelta;
-				_camRotTheta = std::clamp(_camRotTheta, -pi / 2.0f, pi / 2.0f);
-			}
-			break;
-		case SDL_QUIT:
-			bQuit = true;
-			break;
-		}
-	}
-
 	glm::vec4 translate{ 0.0f };
 
 	// continuous-response keys
@@ -139,13 +100,41 @@ bool TestApp::input(float delta)
 	}
 
 	_camera.pos += glm::vec3{ _camera.rot * translate };
+}
+
+bool TestApp::events(SDL_Event e)
+{
+	float camSensitivity{ 0.3f };
+	// mouse motion seems to be sampled 60fps regardless of framerate
+	constexpr float mouseDelta{ 1.0f / 60.0f };
+	bool bQuit{ false };
+
+	switch (e.type)
+	{
+	case SDL_KEYDOWN:
+		if (e.key.keysym.sym == SDLK_f) {
+			_camMouseControls = !_camMouseControls;
+			SDL_SetRelativeMouseMode((SDL_bool)_camMouseControls);
+		}
+		break;
+	case SDL_MOUSEMOTION:
+		if (_camMouseControls) {
+			_camRotPhi -= e.motion.xrel * camSensitivity * mouseDelta;
+			_camRotTheta -= e.motion.yrel * camSensitivity * mouseDelta;
+			_camRotTheta = std::clamp(_camRotTheta, -pi / 2.0f, pi / 2.0f);
+		}
+		break;
+	case SDL_QUIT:
+		bQuit = true;
+		break;
+	}
 
 	return bQuit;
 }
 
 void TestApp::gui()
 {
-	ImGui::ShowDemoWindow();
+	//ImGui::ShowDemoWindow();
 
 	//// Main body of the Demo window starts here.
 	//if (!ImGui::Begin("Debug"))
@@ -175,10 +164,9 @@ void TestApp::gui()
 	//	ImGui::DragFloat("theta", &_camRotTheta, 0.005f);
 	//}
 
-	//if (ImGui::CollapsingHeader("Bed"))
-	//{
-	//	ImGui::DragFloat("Bed angle", &_guiData.bedAngle, 0.005f);
-	//}
+	ImGui::DragFloat3("Sofa Pos", (float*)&_sofaPos, 0.005f);
+	ImGui::DragFloat3("Bed Pos", (float*)&_bedPos, 0.005f);
+	ImGui::DragFloat3("Chair Pos", (float*)&_chairPos, 0.005f);
 
 	//ImGui::SliderFloat("Roughness", &_guiData.roughness_mult, 0.0f, 1.0f);
 

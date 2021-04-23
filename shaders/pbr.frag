@@ -3,9 +3,10 @@
 
 layout (location = 0) in vec2 texCoord;
 layout (location = 1) in vec3 fragPos;
-layout (location = 2) in vec3 camPos;
-layout (location = 3) in mat3 TBN;
-layout (location = 6) in vec3 lightPos[MAX_NUM_TOTAL_LIGHTS];
+layout (location = 2) in vec4 fragPosLightSpace;
+layout (location = 3) in vec3 camPos;
+layout (location = 4) in mat3 TBN;
+layout (location = 7) in vec3 lightPos[MAX_NUM_TOTAL_LIGHTS];
 
 layout (location = 0) out vec4 outFragColor;
 
@@ -29,6 +30,8 @@ layout (set = 0, binding = 1) uniform SceneData {
     int numLights;
 } sceneData;
 
+layout (set = 0, binding = 2) uniform sampler2D shadowMap;
+
 layout (set = 2, binding = 0) uniform sampler2D diffuseTex;
 layout (set = 2, binding = 1) uniform sampler2D normalTex;
 layout (set = 2, binding = 2) uniform sampler2D roughnessTex;
@@ -43,6 +46,9 @@ layout (set = 2, binding = 6) uniform samplerCube prefilterMap;
 layout (set = 2, binding = 7) uniform sampler2D brdfLUT;
 
 const float PI = 3.14159265359;
+// Lower values result in darker shadows
+const float IRRADIANCE_SHADOW_CLAMP = 0.4;
+const float SPECULAR_SHADOW_CLAMP = 0.6;
 
 // F0 is the surface reflection at zero incidence (looking directly at surface)
 vec3 fresnelSchlick(float cosTheta, vec3 F0)
@@ -126,6 +132,21 @@ vec3 analytic_lights(vec3 N, vec3 V, vec3 F0, vec3 diffuse, float roughness, flo
     return Lo;
 }
 
+float shadowCalculation(vec4 fragPosLightSpace) {
+    // perform perspective divide
+    vec3 projCoords = fragPosLightSpace.xyz / fragPosLightSpace.w;
+    // fragment's lightspace position is in range [-1, 1] so we map it to rang [0, 1]
+    projCoords.xy = projCoords.xy * 0.5 + 0.5;
+    // get closest depth from light's persepctive
+    float closestDepth = texture(shadowMap, projCoords.xy).r;
+    // get depth of current fragment from light's perspective
+    float currentDepth = clamp(projCoords.z, 0.0, 1.0);
+    // check whether current frag pos is in shadow
+    float shadow = currentDepth > closestDepth ? 1.0 : 0.0;
+
+    return shadow;
+}
+
 void main()
 {
     vec3 diffuse = texture(diffuseTex, texCoord).rgb;
@@ -152,14 +173,22 @@ void main()
     vec3 kD = 1.0 - kS;
     kD *= 1.0 - metallic;
 
+    float shadow = shadowCalculation(fragPosLightSpace);
     vec3 irradiance = texture(irradianceMap, N).rgb;
+    irradiance = clamp(irradiance, 0.0, IRRADIANCE_SHADOW_CLAMP + 100.0 * (1.0 - shadow));
+
     diffuse = irradiance * diffuse;
 
     const float MAX_REFLECTION_LOD = 8.0;
     vec3 prefilteredColor = textureLod(prefilterMap, R, roughness * MAX_REFLECTION_LOD).rgb;
+
+    prefilteredColor = clamp(prefilteredColor, 0.0, SPECULAR_SHADOW_CLAMP + 100.0 * (1.0 - shadow));
+
     vec3 F = fresnelSchlickRoughness(max(dot(N, V), 0.0), F0, roughness);
     vec2 envBRDF = texture(brdfLUT, vec2(max(dot(N, V), 0.0), roughness)).rg;
     vec3 specular = prefilteredColor * (F * envBRDF.x + envBRDF.y);
+
+    // specular = specular * (1.0 - shadow);
 
     // we don't multiply specular by kS since we already have a Fresnel multiplication in there
     vec3 ambient = (kD * diffuse + specular) * ao;

@@ -12,7 +12,9 @@ public:
 
 	void fixedUpdate(VulkanEngine& engine) override;
 
-	bool input(float delta) override;
+	void input(const uint8_t* keystate, float delta) override;
+
+	bool events(SDL_Event e) override;
 
 	void gui() override;
 
@@ -35,7 +37,13 @@ private:
 	// objects
 	GameObject _sofa{};
 	GameObject _cube{};
+	GameObject _bed{};
+	GameObject _chair{};
 
 	// physics variables
 	bool _applyForce{ false };
+
+	glm::vec3 _bedPos{ 0.0, 0.0, 0.0 };
+	glm::vec3 _sofaPos{ -2.5, 0.0, 0.4 };
+	glm::vec3 _chairPos{ -2.1, 0.0, -2.0 };
 };
