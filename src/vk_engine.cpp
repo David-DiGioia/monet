@@ -59,8 +59,8 @@ void printMat(const Mat& mat) {
 
 Transform::Transform()
 	: pos{ 0.0 }
-    , scale{ 1.0 }
-    , rot{ 1.0 }
+	, scale{ 1.0 }
+	, rot{ 1.0 }
 {}
 
 Transform::Transform(const PxTransform& pxt)
@@ -77,7 +77,7 @@ Transform::Transform(const PxTransform& pxt)
 
 glm::mat4 Transform::mat4()
 {
-	return glm::translate(glm::mat4{ 1.0 }, pos) * rot* glm::scale(glm::mat4{ 1.0 }, scale);
+	return glm::translate(glm::mat4{ 1.0 }, pos) * rot * glm::scale(glm::mat4{ 1.0 }, scale);
 }
 
 physx::PxTransform Transform::to_physx()
@@ -163,6 +163,11 @@ void GameObject::setRot(glm::mat4 rot)
 void GameObject::addForce(glm::vec3 force)
 {
 	_physicsObject->is<PxRigidDynamic>()->addForce(physx::PxVec3{ force.x, force.y, force.z });
+}
+
+void GameObject::addTorque(glm::vec3 torque)
+{
+	_physicsObject->is<PxRigidDynamic>()->addTorque(physx::PxVec3{ torque.x, torque.y, torque.z });
 }
 
 void GameObject::setVelocity(glm::vec3 velocity)
@@ -1449,7 +1454,11 @@ void VulkanEngine::draw_objects(VkCommandBuffer cmd, const std::multiset<RenderO
 	view = glm::inverse(view);
 	viewOrigin = glm::inverse(viewOrigin);
 
-	glm::mat4 projection{ glm::perspective(glm::radians(70.0f), 1700.0f / 900.0f, 0.1f, 200.0f) };
+	// normal projection matrix
+	//glm::mat4 projection{ glm::perspective(glm::radians(70.0f), 1700.0f / 900.0f, 0.5f, 600.0f) };
+	// projection[1][1] *= -1;
+	
+	glm::mat4 projection{ glm::infinitePerspective(glm::radians(70.0f), 1700.0f / 900.0f, 0.5f) };
 	projection[1][1] *= -1;
 
 	// fill a GPU camera data struct
