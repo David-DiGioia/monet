@@ -37,6 +37,8 @@ constexpr uint32_t FRAME_OVERLAP{ 2 };
 constexpr size_t MAX_NUM_TOTAL_LIGHTS{ 10 }; // this must match glsl shader!
 constexpr uint32_t SHADOWMAP_DIM{ 2048 };
 constexpr uint32_t MAX_OBJECTS{ 10000 };
+constexpr float FOV{ 70.0f }; // degrees
+constexpr float NEAR_PLANE{ 0.05f };
 
 struct VulkanEngine;
 

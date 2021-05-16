@@ -1714,7 +1714,7 @@ void VulkanEngine::draw_objects(VkCommandBuffer cmd, const std::multiset<RenderO
 	//glm::mat4 projection{ glm::perspective(glm::radians(70.0f), 1700.0f / 900.0f, 0.5f, 600.0f) };
 	// projection[1][1] *= -1;
 	
-	glm::mat4 projection{ glm::infinitePerspective(glm::radians(70.0f), _windowExtent.width / (float)_windowExtent.height, 0.05f) };
+	glm::mat4 projection{ glm::infinitePerspective(glm::radians(FOV), _windowExtent.width / (float)_windowExtent.height, NEAR_PLANE) };
 	projection[1][1] *= -1;
 
 	// fill a GPU camera data struct
