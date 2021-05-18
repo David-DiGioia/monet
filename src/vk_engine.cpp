@@ -255,6 +255,7 @@ void VulkanEngine::init(Application* app)
 	init_descriptors(); // descriptors are needed at pipeline create, so before materials
 	load_materials();
 	init_scene();
+	init_bounding_sphere();
 	init_imgui();
 	init_gui_data();
 
@@ -413,9 +414,7 @@ const RenderObject* VulkanEngine::create_render_object(const std::string& meshNa
 	object.material = get_material(matName);
 	object.transformMatrix = glm::mat4(1.0);
 	object.castShadow = castShadow;
-	_renderables.insert(object);
-
-	return &(*_renderables.find(object));
+	return &(*_renderables.insert(object));
 }
 
 const RenderObject* VulkanEngine::create_render_object(const std::string& name)
@@ -1480,6 +1479,25 @@ void VulkanEngine::init_shadow_pass()
 	}
 }
 
+// Minimal bounding sphere of view frustum. Only needs to be called when window is resized
+// or at startup. From:
+// https://lxjk.github.io/2017/04/15/Calculate-Minimal-Bounding-Sphere-of-Frustum.html
+void VulkanEngine::init_bounding_sphere() {
+	float widthHeightRatio{ _windowExtent.height / (float)_windowExtent.width };
+	float k{ std::sqrtf(1.0f + widthHeightRatio * widthHeightRatio) * std::tanf(glm::radians(FOV) / 2.0) };
+	float k2{ k * k };
+	float n{ NEAR_PLANE };
+	float f{ FAR_PLANE_SHADOW };
+
+	if (k2 >= (f - n) / (f + n)) {
+		_boundingSphereZ = -f;
+		_boundingSphereR = f * k;
+	} else {
+		_boundingSphereZ = -0.5f * (f + n) * (1 + k2);
+		_boundingSphereR = 0.5f * std::sqrtf((f-n) * (f-n) + 2 * (f*f + n*n) * k2 + (f + n) * (f + n) * k2 * k2);
+	}
+}
+
 // First render pass: Generate shadow map by rendering the scene from light's POV
 void VulkanEngine::shadow_pass(VkCommandBuffer& cmd)
 {
@@ -1521,13 +1539,28 @@ void VulkanEngine::shadow_pass(VkCommandBuffer& cmd)
 
 	float near_plane{ 0.5f };
 	float far_plane{ 12.0f };
-	float scale{ 5.0f };
+	float scale{ _boundingSphereR };
 	glm::mat4 lightProjection{ glm::ortho(-scale, scale, -scale, scale, near_plane, far_plane) };
 	lightProjection[1][1] *= -1;
 
-	glm::mat4 lightView{ glm::lookAt(glm::vec3(4.0f, 8.0f, 2.0f),
-		glm::vec3(0.0f, 0.0f, 0.0f),
-		glm::vec3(0.0f, 1.0f, 0.0f)) };
+	glm::vec3 center{ 0.0, 0.0, _boundingSphereZ };
+	center = _viewInv * glm::vec4{ center, 1.0f };
+	glm::vec3 dir{ glm::normalize(glm::vec3{ -4.0f, -8.0f, -2.0f }) };
+
+	float halfLength{ (far_plane - near_plane) / 2.0f };
+
+	glm::mat4 rotate{ glm::rotation(glm::vec3{ 0.0, 0.0, -1.0 }, dir) };
+	//glm::mat4 translate{ glm::translate(glm::vec3{ 4.0f, 8.0f, 2.0f }) };
+	glm::mat4 translate{ glm::translate(center - halfLength * dir) };
+	glm::mat4 lightView{ translate * rotate};
+	lightView = glm::inverse(lightView);
+
+	auto t = center - halfLength * dir;
+	std::cout << t.x << " " << t.y << " " << t.z << '\n';
+
+	//glm::mat4 lightView{ glm::lookAt(glm::vec3(4.0f, 8.0f, 2.0f),
+	//	glm::vec3(0.0f, 0.0f, 0.0f),
+	//	glm::vec3(0.0f, 1.0f, 0.0f)) };
 
 	_shadowGlobal._lightSpaceMatrix = lightProjection * lightView;
 
@@ -1564,6 +1597,31 @@ void VulkanEngine::shadow_pass(VkCommandBuffer& cmd)
 	}
 
 	vkCmdEndRenderPass(cmd);
+}
+
+void VulkanEngine::camera_transformation()
+{
+	glm::mat4 view{ _camTransform.mat4() };
+	glm::mat4 viewOrigin{ _camTransform.rot }; // for skybox
+	_viewInv = view; // for use in shadowpass with sun shadow
+
+	view = glm::inverse(view);
+	viewOrigin = glm::inverse(viewOrigin);
+
+	glm::mat4 projection{ glm::infinitePerspective(glm::radians(FOV), _windowExtent.width / (float)_windowExtent.height, NEAR_PLANE) };
+	projection[1][1] *= -1;
+
+	// fill a GPU camera data struct
+	GPUCameraData camData{};
+	camData.viewProjOrigin = projection * viewOrigin; // for skybox
+	camData.projection = projection;
+	camData.viewProj = projection * view;
+
+	// copy camera data to camera buffer
+	void* data;
+	vmaMapMemory(_allocator, get_current_frame().cameraBuffer._allocation, &data);
+	std::memcpy(data, &camData, sizeof(GPUCameraData));
+	vmaUnmapMemory(_allocator, get_current_frame().cameraBuffer._allocation);
 }
 
 void VulkanEngine::draw()
@@ -1607,6 +1665,7 @@ void VulkanEngine::draw()
 
 	VK_CHECK(vkBeginCommandBuffer(get_current_frame()._mainCommandBuffer, &cmdBeginInfo));
 
+	camera_transformation();
 	shadow_pass(get_current_frame()._mainCommandBuffer);
 
 	VkClearValue clearValue{};
@@ -1703,32 +1762,6 @@ void VulkanEngine::draw_objects(VkCommandBuffer cmd, const std::multiset<RenderO
 
 	_sceneParameters.lightSpaceMatrix = _shadowGlobal._lightSpaceMatrix;
 	_sceneParameters.numLights = 0;
-
-	glm::mat4 view{ _camTransform.mat4() };
-	glm::mat4 viewOrigin{ _camTransform.rot };
-
-	view = glm::inverse(view);
-	viewOrigin = glm::inverse(viewOrigin);
-
-	// normal projection matrix
-	//glm::mat4 projection{ glm::perspective(glm::radians(70.0f), 1700.0f / 900.0f, 0.5f, 600.0f) };
-	// projection[1][1] *= -1;
-	
-	glm::mat4 projection{ glm::infinitePerspective(glm::radians(FOV), _windowExtent.width / (float)_windowExtent.height, NEAR_PLANE) };
-	projection[1][1] *= -1;
-
-	// fill a GPU camera data struct
-	GPUCameraData camData{};
-	camData.viewProjOrigin = projection * viewOrigin; // for skybox
-	camData.projection = projection;
-	camData.viewProj = projection * view;
-
-	// copy camera data to camera buffer
-	void* data;
-	vmaMapMemory(_allocator, get_current_frame().cameraBuffer._allocation, &data);
-	std::memcpy(data, &camData, sizeof(GPUCameraData));
-	vmaUnmapMemory(_allocator, get_current_frame().cameraBuffer._allocation);
-
 	// copy scene data to scene buffer
 	_sceneParameters.camPos = glm::vec4(_camTransform.pos, 1.0);
 
@@ -1928,6 +1961,8 @@ void VulkanEngine::resize_window(int32_t width, int32_t height)
 
 	// destroy old swapchain after we use it to initialize the new one
 	vkDestroySwapchainKHR(_device, oldSwapchain, nullptr);
+
+	init_bounding_sphere();
 }
 
 bool VulkanEngine::input() {

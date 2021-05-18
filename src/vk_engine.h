@@ -39,6 +39,7 @@ constexpr uint32_t SHADOWMAP_DIM{ 2048 };
 constexpr uint32_t MAX_OBJECTS{ 10000 };
 constexpr float FOV{ 70.0f }; // degrees
 constexpr float NEAR_PLANE{ 0.05f };
+constexpr float FAR_PLANE_SHADOW{ 50.0f }; // Rendering has an inf far plane, this is only used for shadow maps
 
 struct VulkanEngine;
 
@@ -332,6 +333,9 @@ public:
 	FrameData _frames[FRAME_OVERLAP];
 
 	ShadowGlobalResources _shadowGlobal;
+	float _boundingSphereZ;
+	float _boundingSphereR;
+	glm::mat4 _viewInv;
 
 	VkSampleCountFlagBits _msaaSamples;
 	AllocatedImage _colorImage;
@@ -474,6 +478,10 @@ private:
 	VkSampleCountFlagBits get_max_usable_sample_count(VkPhysicalDevice physicalDevice);
 
 	bool input();
+
+	void init_bounding_sphere();
+
+	void camera_transformation();
 };
 
 class PipelineBuilder {
