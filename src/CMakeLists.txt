@@ -21,6 +21,8 @@ add_executable (vulkan_guide
  "physics.cpp"
  "util.h"
  "util.cpp"
+ "asset_loader.h"
+ "asset_loader.cpp"
 )
 
 
