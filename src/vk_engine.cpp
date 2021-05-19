@@ -1538,7 +1538,7 @@ void VulkanEngine::shadow_pass(VkCommandBuffer& cmd)
 	scissor.offset.y = 0;
 	vkCmdSetScissor(cmd, 0, 1, &scissor);
 
-	float near_plane{ 1.0f };
+	float near_plane{ 0.0f };
 	float far_plane{ 2.0f * _boundingSphereR };
 
 	float scale{ _boundingSphereR };
