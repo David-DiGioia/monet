@@ -35,11 +35,11 @@
 // number of frames to overlap when rendering
 constexpr uint32_t FRAME_OVERLAP{ 2 };
 constexpr size_t MAX_NUM_TOTAL_LIGHTS{ 10 }; // this must match glsl shader!
-constexpr uint32_t SHADOWMAP_DIM{ 2048 };
+constexpr uint32_t SHADOWMAP_DIM{ 4096 };
 constexpr uint32_t MAX_OBJECTS{ 10000 };
 constexpr float FOV{ 70.0f }; // degrees
 constexpr float NEAR_PLANE{ 0.05f };
-constexpr float FAR_PLANE_SHADOW{ 50.0f }; // Rendering has an inf far plane, this is only used for shadow maps
+constexpr float FAR_PLANE_SHADOW{ 25.0f }; // Rendering has an inf far plane, this is only used for shadow maps
 
 struct VulkanEngine;
 
@@ -336,7 +336,6 @@ public:
 	float _boundingSphereZ;
 	float _boundingSphereR;
 	glm::mat4 _viewInv;
-	float _tempFarPlane{ 10.0f };
 
 	VkSampleCountFlagBits _msaaSamples;
 	AllocatedImage _colorImage;

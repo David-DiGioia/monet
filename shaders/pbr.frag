@@ -144,7 +144,6 @@ float shadowCalculation(vec4 fragPosLightSpace) {
     // check whether current frag pos is in shadow
     float shadow = currentDepth > closestDepth ? 1.0 : 0.0;
 
-    return closestDepth;
     return shadow;
 }
 
@@ -197,8 +196,6 @@ void main()
     vec3 color = ambient + Lo;
     // tonemap using Reinhard operator (this should really be done in post probably)
     // color = color / (color + 1.0);
-
-    color = vec3(shadow);
 
     outFragColor = vec4(color, 1.0);
 }
