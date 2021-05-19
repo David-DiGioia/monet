@@ -25,15 +25,10 @@ void TestApp::init(VulkanEngine& engine)
 	_chair.setPos(glm::vec3(-2.1, 0.0, -2.0));
 	_chair.setRot(glm::rotate(glm::radians(80.0f), glm::vec3{ 0.0, 1.0, 0.0 }));
 
-	GameObject chair;
-	chair.setRenderObject(engine.create_render_object("chair"));
-	chair.setPos(glm::vec3(-2.1, 0.0, -12.0));
-
-	//for (int i{ 0 }; i < 10; ++i) {
-	//	GameObject chair;
-	//	chair.setRenderObject(engine.create_render_object("chair"));
-	//	chair.setPos(glm::vec3(-2.1, 0.0, -2.0 * (i + 2)));
-	//}
+	for (int i{ 0 }; i < 10; ++i) {
+		GameObject chair{ engine.create_render_object("chair") };
+		chair.setPos(glm::vec3(-2.1, 0.0, -2.0 * (i + 2)));
+	}
 
 	//float halfExtent{ 1.0f };
 	//PxMaterial* material{ engine.create_physics_material(0.5, 0.5, 0.6) };

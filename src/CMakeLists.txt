@@ -19,6 +19,8 @@ add_executable (vulkan_guide
  "test_app.cpp"
  "physics.h"
  "physics.cpp"
+ "util.h"
+ "util.cpp"
 )
 
 

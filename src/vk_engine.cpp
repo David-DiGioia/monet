@@ -28,6 +28,7 @@
 #include "../tracy/Tracy.hpp"		// CPU profiling
 #include "../tracy/TracyVulkan.hpp"	// GPU profiling
 #include "SDL_mixer.h"
+#include "util.h"
 
 #define VMA_IMPLEMENTATION
 #include "vk_mem_alloc.h"
@@ -1537,11 +1538,12 @@ void VulkanEngine::shadow_pass(VkCommandBuffer& cmd)
 	scissor.offset.y = 0;
 	vkCmdSetScissor(cmd, 0, 1, &scissor);
 
-	float near_plane{ 0.5f };
-	float far_plane{ 12.0f };
+	float near_plane{ 1.0f };
+	float far_plane{ _tempFarPlane };
+
 	float scale{ _boundingSphereR };
-	glm::mat4 lightProjection{ glm::ortho(-scale, scale, -scale, scale, near_plane, far_plane) };
-	lightProjection[1][1] *= -1;
+	glm::mat4 lightProjection{ ortho(-scale, scale, -scale, scale, near_plane, far_plane) };
+	//lightProjection[1][1] *= -1;
 
 	glm::vec3 center{ 0.0, 0.0, _boundingSphereZ };
 	center = _viewInv * glm::vec4{ center, 1.0f };
@@ -1550,8 +1552,8 @@ void VulkanEngine::shadow_pass(VkCommandBuffer& cmd)
 	float halfLength{ (far_plane - near_plane) / 2.0f };
 
 	glm::mat4 rotate{ glm::rotation(glm::vec3{ 0.0, 0.0, -1.0 }, dir) };
-	//glm::mat4 translate{ glm::translate(glm::vec3{ 4.0f, 8.0f, 2.0f }) };
-	glm::mat4 translate{ glm::translate(center - halfLength * dir) };
+	glm::mat4 translate{ glm::translate(glm::vec3{ 4.0f, 8.0f, 2.0f }) };
+	//glm::mat4 translate{ glm::translate(center - halfLength * dir) };
 	glm::mat4 lightView{ translate * rotate};
 	lightView = glm::inverse(lightView);
 
@@ -1857,6 +1859,9 @@ void VulkanEngine::gui()
 	// imgui commands ---------------------------------------
 
 	_app->gui();
+
+	// debug
+	ImGui::DragFloat("Far plane", (float*)&_tempFarPlane, 0.005f);
 }
 
 void VulkanEngine::add_to_physics_engine_dynamic(GameObject* go, PxShape* shape, float density)

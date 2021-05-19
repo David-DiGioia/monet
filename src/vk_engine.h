@@ -336,6 +336,7 @@ public:
 	float _boundingSphereZ;
 	float _boundingSphereR;
 	glm::mat4 _viewInv;
+	float _tempFarPlane{ 10.0f };
 
 	VkSampleCountFlagBits _msaaSamples;
 	AllocatedImage _colorImage;
