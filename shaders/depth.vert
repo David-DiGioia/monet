@@ -16,5 +16,7 @@ layout (std140, set = 1, binding = 0) readonly buffer ObjectBuffer {
 
 void main()
 {
-    gl_Position = lightData.lightSpaceMatrix * objectBuffer.objects[gl_BaseInstance].model * vec4(aPos, 1.0);
+    vec4 pos = lightData.lightSpaceMatrix * objectBuffer.objects[gl_BaseInstance].model * vec4(aPos, 1.0);
+    pos.z = max(0.0, pos.z); // shadow pancaking
+    gl_Position = pos;
 } 
