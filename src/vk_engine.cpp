@@ -1542,7 +1542,7 @@ void VulkanEngine::shadow_pass(VkCommandBuffer& cmd)
 	float far_plane{ 2.0f * _boundingSphereR };
 
 	float scale{ _boundingSphereR };
-	glm::mat4 lightProjection{ ortho(-scale, scale, -scale, scale, near_plane, far_plane) };
+	glm::mat4 lightProjection{ vkutil::ortho(-scale, scale, -scale, scale, near_plane, far_plane) };
 
 	glm::vec3 center{ 0.0, 0.0, _boundingSphereZ };
 	center = _viewInv * glm::vec4{ center, 1.0f };

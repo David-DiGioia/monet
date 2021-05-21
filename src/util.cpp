@@ -19,7 +19,7 @@
 * 
 * b = an = -n / (m-n)
 */
-glm::mat4 ortho(float left, float right, float bottom, float top, float zNear, float zFar)
+glm::mat4 vkutil::ortho(float left, float right, float bottom, float top, float zNear, float zFar)
 {
 	glm::mat4 result{ 1 };
 	result[0][0] = 2.0f / (right - left);

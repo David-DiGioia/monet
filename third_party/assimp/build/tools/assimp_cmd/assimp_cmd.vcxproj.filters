@@ -1,0 +1,47 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="16.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <ClCompile Include="C:\dev\vulkan-guide\third_party\assimp-5.0.1\tools\assimp_cmd\CompareDump.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\dev\vulkan-guide\third_party\assimp-5.0.1\tools\assimp_cmd\ImageExtractor.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\dev\vulkan-guide\third_party\assimp-5.0.1\tools\assimp_cmd\Main.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\dev\vulkan-guide\third_party\assimp-5.0.1\tools\assimp_cmd\WriteDumb.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\dev\vulkan-guide\third_party\assimp-5.0.1\tools\assimp_cmd\Info.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\dev\vulkan-guide\third_party\assimp-5.0.1\tools\assimp_cmd\Export.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="C:\dev\vulkan-guide\third_party\assimp-5.0.1\tools\assimp_cmd\Main.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="C:\dev\vulkan-guide\third_party\assimp-5.0.1\tools\assimp_cmd\resource.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <CustomBuild Include="C:\dev\vulkan-guide\third_party\assimp-5.0.1\tools\assimp_cmd\CMakeLists.txt" />
+  </ItemGroup>
+  <ItemGroup>
+    <ResourceCompile Include="C:\dev\vulkan-guide\third_party\assimp-5.0.1\tools\assimp_cmd\assimp_cmd.rc">
+      <Filter>Source Files</Filter>
+    </ResourceCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <Filter Include="Header Files">
+      <UniqueIdentifier>{251F8F32-2E78-31A7-B960-7FE1900E2034}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files">
+      <UniqueIdentifier>{B26CE3D0-C9A5-3255-851C-1FE5E6DED8D3}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+</Project>

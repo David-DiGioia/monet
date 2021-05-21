@@ -1,86 +1,78 @@
 find_package(Vulkan REQUIRED)
+include(ExternalProject)
 
 add_library(vkbootstrap STATIC)
 add_library(glm INTERFACE)
 add_library(vma INTERFACE)
 
 add_library(stb_image INTERFACE)
-
+add_library(json INTERFACE)
 add_library(tinyobjloader STATIC)
+add_library(spirv_reflect STATIC)
 
-#add_library(audio SHARED IMPORTED)
+add_library(fmt_lib STATIC)
 
-#set_target_properties(audio PROPERTIES LINKER_LANGUAGE CXX)
-
-#set_property(TARGET audio PROPERTY IMPORTED_LOCATION "${CMAKE_CURRENT_SOURCE_DIR}/SFML-2.5.1/bin/sfml-audio-2.dll")
-
+add_library(lz4 STATIC)
 
 
+#set(CMAKE_LIBRARY_OUTPUT_DIRECTORY "${PROJECT_SOURCE_DIR}/libs")
+#set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY "${PROJECT_SOURCE_DIR}/libs")
+
+add_subdirectory(gltf)
+
+ExternalProject_Add(nvtools
+SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/nvidia-texture-tools"
+BINARY_DIR "${CMAKE_CURRENT_SOURCE_DIR}/nvlibs"
+CMAKE_ARGS -DCMAKE_ARCHIVE_OUTPUT_DIRECTORY=${PROJECT_SOURCE_DIR}/libs -DCMAKE_LIBRARY_OUTPUT_DIRECTORY=${PROJECT_SOURCE_DIR}/libs -DCMAKE_CXX_STANDARD=17
+)
+
+add_library(nvtt INTERFACE)
+target_include_directories(nvtt INTERFACE "${CMAKE_CURRENT_SOURCE_DIR}/nvidia-texture-tools/src/nvtt")
+
+#set(nvttfolder "${PROJECT_SOURCE_DIR}/libs/Release")
+
+set(nvttfolder "${PROJECT_SOURCE_DIR}/libs/$<IF:$<CONFIG:Debug>,Debug,Release>")
+
+target_link_libraries(nvtt INTERFACE "${nvttfolder}/nvtt.lib")
+target_link_libraries(nvtt INTERFACE "${nvttfolder}/bc6h.lib")
+target_link_libraries(nvtt INTERFACE "${nvttfolder}/bc7.lib")
+target_link_libraries(nvtt INTERFACE "${nvttfolder}/EtcLib.lib")
+target_link_libraries(nvtt INTERFACE "${nvttfolder}/nvcore.lib")
+target_link_libraries(nvtt INTERFACE "${nvttfolder}/nvimage.lib")
+target_link_libraries(nvtt INTERFACE "${nvttfolder}/nvmath.lib")
+target_link_libraries(nvtt INTERFACE "${nvttfolder}/nvsquish.lib")
+target_link_libraries(nvtt INTERFACE "${nvttfolder}/nvthread.lib")
+target_link_libraries(nvtt INTERFACE "${nvttfolder}/posh.lib")
+target_link_libraries(nvtt INTERFACE "${nvttfolder}/rg_etc1.lib")
+#target_link_libraries(nvtt INTERFACE "${nvttfolder}/squish.lib")
 
 
-# For the shared libraries:
-# this call will succeed if it finds a SDL2_mixer.lib file
-find_library(AUDIO_LIB SDL2_mixer HINTS ${CMAKE_CURRENT_SOURCE_DIR}/SDL2_mixer-2.0.4/lib/x64)
-if(NOT AUDIO_LIB)
-    message(FATAL_ERROR "Library SDL2_mixer was not found!")
-endif()
+#add_subdirectory(nvidia-texture-tools)
 
-set (PROJECT_INCLUDE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/SDL2_mixer-2.0.4/include)
-
-include_directories(${PROJECT_INCLUDE_DIR})
-
-set (BIN_DIR_DEBUG ${CMAKE_CURRENT_SOURCE_DIR}/physx/lib/win.x86_64.vc142.md/bin/debug)
-set (BIN_DIR_RELEASE ${CMAKE_CURRENT_SOURCE_DIR}/physx/lib/win.x86_64.vc142.md/bin/checked)
-
-if (${CONFIG_MODE} MATCHES "debug")
-    set (BIN_DIR ${BIN_DIR_DEBUG})
-    message(STATUS "PhysX set to Debug mode")
-else()
-    set (BIN_DIR ${BIN_DIR_RELEASE})
-    message(STATUS "PhysX set to Release mode")
-endif()
-
-# set(BIN_DIR 
-#     $<$<CONFIG:Debug>:BIN_DIR_DEBUG>
-#     $<$<CONFIG:RelWithDebInfo>:BIN_DIR_RELEASE>
-#     $<$<CONFIG:Release>:BIN_DIR_RELEASE>
-#     $<$<CONFIG:MinSizeRel>:BIN_DIR_RELEASE>
-# )
-
-find_library(PHYSICS_LIB_00 LowLevel_static_64 HINTS ${BIN_DIR})
-find_library(PHYSICS_LIB_01 LowLevelAABB_static_64 HINTS ${BIN_DIR})
-find_library(PHYSICS_LIB_02 LowLevelDynamics_static_64 HINTS ${BIN_DIR})
-find_library(PHYSICS_LIB_03 PhysX_64 HINTS ${BIN_DIR})
-find_library(PHYSICS_LIB_04 PhysXCharacterKinematic_static_64 HINTS ${BIN_DIR})
-find_library(PHYSICS_LIB_05 PhysXCommon_64 HINTS ${BIN_DIR})
-find_library(PHYSICS_LIB_06 PhysXCooking_64 HINTS ${BIN_DIR})
-find_library(PHYSICS_LIB_07 PhysXExtensions_static_64 HINTS ${BIN_DIR})
-find_library(PHYSICS_LIB_08 PhysXFoundation_64 HINTS ${BIN_DIR})
-find_library(PHYSICS_LIB_09 PhysXPvdSDK_static_64 HINTS ${BIN_DIR})
-find_library(PHYSICS_LIB_10 PhysXTask_static_64 HINTS ${BIN_DIR})
-find_library(PHYSICS_LIB_11 PhysXVehicle_static_64 HINTS ${BIN_DIR})
-# find_library(PHYSICS_LIB_12 SampleBase_static_64 HINTS ${BIN_DIR})
-# find_library(PHYSICS_LIB_13 SampleFramework_static_64 HINTS ${BIN_DIR})
-# find_library(PHYSICS_LIB_14 SamplesToolkit_static_64 HINTS ${BIN_DIR})
-find_library(PHYSICS_LIB_15 SceneQuery_static_64 HINTS ${BIN_DIR})
-find_library(PHYSICS_LIB_16 SimulationController_static_64 HINTS ${BIN_DIR})
-# find_library(PHYSICS_LIB_17 SnippetRender_static_64 HINTS ${BIN_DIR})
-# find_library(PHYSICS_LIB_18 SnippetUtils_static_64 HINTS ${BIN_DIR})
-
-# if(NOT PHYSICS_LIB_00)
-#     message(FATAL_ERROR "Library PhysX was not found!")
-# endif()
-
-# set (PROJECT_INCLUDE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/physx/include)
-
-# include_directories(${PROJECT_INCLUDE_DIR})
-
-
+set(TRACY_DIR "${CMAKE_CURRENT_SOURCE_DIR}/tracy" CACHE FILEPATH "Path to Tracy")
+add_library(tracy OBJECT "${TRACY_DIR}/TracyClient.cpp")
+target_include_directories(tracy PUBLIC "${TRACY_DIR}")
+target_compile_definitions(tracy PUBLIC TRACY_ENABLE)
 target_sources(vkbootstrap PRIVATE 
     "${CMAKE_CURRENT_SOURCE_DIR}/vkbootstrap/VkBootstrap.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/vkbootstrap/VkBootstrap.cpp"
 )
 
+
+target_sources(spirv_reflect PRIVATE 
+    "${CMAKE_CURRENT_SOURCE_DIR}/spv_reflect/spirv_reflect.h"
+    "${CMAKE_CURRENT_SOURCE_DIR}/spv_reflect/spirv_reflect.c"
+)
+
+target_sources(lz4 PRIVATE 
+    "${CMAKE_CURRENT_SOURCE_DIR}/lz4/lz4.h"
+    "${CMAKE_CURRENT_SOURCE_DIR}/lz4/lz4.c"
+)
+
+target_include_directories(lz4 PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/lz4" )
+
+target_include_directories(spirv_reflect PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/spv_reflect" )
+target_include_directories(spirv_reflect PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/spv_reflect/include" )
 target_include_directories(vkbootstrap PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/vkbootstrap" )
 target_link_libraries(vkbootstrap PUBLIC Vulkan::Vulkan)
 
@@ -88,6 +80,8 @@ target_link_libraries(vkbootstrap PUBLIC Vulkan::Vulkan)
 target_include_directories(vma INTERFACE "${CMAKE_CURRENT_SOURCE_DIR}/vma" )
 
 target_include_directories(glm INTERFACE "${CMAKE_CURRENT_SOURCE_DIR}/glm" )
+
+target_include_directories(json INTERFACE "${CMAKE_CURRENT_SOURCE_DIR}/nlohmann_json" )
 
 target_sources(tinyobjloader PRIVATE 
     "${CMAKE_CURRENT_SOURCE_DIR}/tinyobjloader/tiny_obj_loader.h"
@@ -110,6 +104,9 @@ target_sources(imgui PRIVATE
 "${CMAKE_CURRENT_SOURCE_DIR}/imgui/imgui.h"
 "${CMAKE_CURRENT_SOURCE_DIR}/imgui/imgui.cpp"
 
+"${CMAKE_CURRENT_SOURCE_DIR}/imgui/imgui_stdlib.h"
+"${CMAKE_CURRENT_SOURCE_DIR}/imgui/imgui_stdlib.cpp"
+
 "${CMAKE_CURRENT_SOURCE_DIR}/imgui/imgui_demo.cpp"
 "${CMAKE_CURRENT_SOURCE_DIR}/imgui/imgui_draw.cpp"
 "${CMAKE_CURRENT_SOURCE_DIR}/imgui/imgui_widgets.cpp"
@@ -122,3 +119,69 @@ target_link_libraries(imgui PUBLIC Vulkan::Vulkan sdl2)
 
 
 target_include_directories(stb_image INTERFACE "${CMAKE_CURRENT_SOURCE_DIR}/stb_image" )
+
+add_library(assimp INTERFACE)
+
+
+set(assimp_dir "${CMAKE_CURRENT_SOURCE_DIR}/assimp/build")
+set(assimp_dll "${CMAKE_CURRENT_SOURCE_DIR}/assimp/build/code/Release/assimp-vc142-mt.dll")
+set(assimp_lib "${CMAKE_CURRENT_SOURCE_DIR}/assimp/build/code/Release/assimp-vc142-mt.lib")
+
+
+target_include_directories(assimp INTERFACE "${CMAKE_CURRENT_SOURCE_DIR}/assimp/include")
+target_link_libraries(assimp INTERFACE "${assimp_lib}" )
+
+
+## FMT LIB
+target_include_directories(fmt_lib PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/fmt_lib")
+
+file(GLOB FMT_FILES "${CMAKE_CURRENT_SOURCE_DIR}/fmt_lib/fmt/*")
+
+target_sources(fmt_lib PRIVATE ${FMT_FILES})
+
+
+# Custom code below -----------------------------------------------------------------------------
+
+
+# *** SDL2_mixer ***
+# this call will succeed if it finds a SDL2_mixer.lib file
+find_library(AUDIO_LIB SDL2_mixer HINTS ${CMAKE_CURRENT_SOURCE_DIR}/SDL2_mixer-2.0.4/lib/x64)
+if(NOT AUDIO_LIB)
+    message(FATAL_ERROR "Library SDL2_mixer was not found!")
+endif()
+set (SDL2_MIXER_INCLUDE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/SDL2_mixer-2.0.4/include)
+include_directories(${SDL2_MIXER_INCLUDE_DIR})
+
+
+# *** physx ***
+set (BIN_DIR_DEBUG ${CMAKE_CURRENT_SOURCE_DIR}/physx/lib/win.x86_64.vc142.md/bin/debug)
+set (BIN_DIR_RELEASE ${CMAKE_CURRENT_SOURCE_DIR}/physx/lib/win.x86_64.vc142.md/bin/checked)
+
+if (${CONFIG_MODE} MATCHES "debug")
+    set (BIN_DIR ${BIN_DIR_DEBUG})
+    message(STATUS "PhysX set to Debug mode")
+else()
+    set (BIN_DIR ${BIN_DIR_RELEASE})
+    message(STATUS "PhysX set to Release mode")
+endif()
+
+find_library(PHYSICS_LIB_00 LowLevel_static_64 HINTS ${BIN_DIR})
+find_library(PHYSICS_LIB_01 LowLevelAABB_static_64 HINTS ${BIN_DIR})
+find_library(PHYSICS_LIB_02 LowLevelDynamics_static_64 HINTS ${BIN_DIR})
+find_library(PHYSICS_LIB_03 PhysX_64 HINTS ${BIN_DIR})
+find_library(PHYSICS_LIB_04 PhysXCharacterKinematic_static_64 HINTS ${BIN_DIR})
+find_library(PHYSICS_LIB_05 PhysXCommon_64 HINTS ${BIN_DIR})
+find_library(PHYSICS_LIB_06 PhysXCooking_64 HINTS ${BIN_DIR})
+find_library(PHYSICS_LIB_07 PhysXExtensions_static_64 HINTS ${BIN_DIR})
+find_library(PHYSICS_LIB_08 PhysXFoundation_64 HINTS ${BIN_DIR})
+find_library(PHYSICS_LIB_09 PhysXPvdSDK_static_64 HINTS ${BIN_DIR})
+find_library(PHYSICS_LIB_10 PhysXTask_static_64 HINTS ${BIN_DIR})
+find_library(PHYSICS_LIB_11 PhysXVehicle_static_64 HINTS ${BIN_DIR})
+# find_library(PHYSICS_LIB_12 SampleBase_static_64 HINTS ${BIN_DIR})
+# find_library(PHYSICS_LIB_13 SampleFramework_static_64 HINTS ${BIN_DIR})
+# find_library(PHYSICS_LIB_14 SamplesToolkit_static_64 HINTS ${BIN_DIR})
+find_library(PHYSICS_LIB_15 SceneQuery_static_64 HINTS ${BIN_DIR})
+find_library(PHYSICS_LIB_16 SimulationController_static_64 HINTS ${BIN_DIR})
+# find_library(PHYSICS_LIB_17 SnippetRender_static_64 HINTS ${BIN_DIR})
+# find_library(PHYSICS_LIB_18 SnippetUtils_static_64 HINTS ${BIN_DIR})
+
