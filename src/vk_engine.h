@@ -179,12 +179,14 @@ public:
 	GameObject(const RenderObject* ro)
 		: _renderObject{ ro }
 		, _transform{}
+		, parent{ nullptr }
 		, _physicsObject{}
 	{}
 
 	GameObject()
 		: _renderObject{ nullptr }
 		, _transform{}
+		, parent{ nullptr }
 		, _physicsObject{}
 	{}
 
@@ -196,12 +198,13 @@ public:
 
 	Transform getTransform();
 
+	glm::mat4 getGlobalMat4();
+
 	glm::vec3 getPos();
 
 	glm::vec3 getScale();
 
 	glm::mat4 getRot();
-
 
 	void setTransform(Transform transform);
 
@@ -222,6 +225,8 @@ public:
 	void setMass(float mass);
 	
 	float getMass();
+
+	GameObject* parent;
 
 private:
 	void updateRenderMatrix();

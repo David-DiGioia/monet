@@ -114,12 +114,26 @@ void GameObject::setPhysicsObject(physx::PxRigidActor* body)
 
 void GameObject::updateRenderMatrix()
 {
-	_renderObject->transformMatrix = _transform.mat4();
+	_renderObject->transformMatrix = getGlobalMat4();
 }
 
 Transform GameObject::getTransform()
 {
 	return _transform;
+}
+
+glm::mat4 GameObject::getGlobalMat4()
+{
+	GameObject* go{ this };
+	glm::mat4 result{ _transform.mat4() };
+	go = go->parent;
+
+	while (go) {
+		result = go->getTransform().mat4() * result;
+		go = go->parent;
+	}
+
+	return result;
 }
 
 glm::vec3 GameObject::getPos()

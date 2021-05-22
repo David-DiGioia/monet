@@ -20,6 +20,7 @@ void TestApp::init(VulkanEngine& engine)
 	_sofa.setRenderObject(engine.create_render_object("sofa"));
 	_sofa.setPos(glm::vec3(-2.5, 0.0, 0.4));
 	_sofa.setRot(glm::rotate(glm::radians(110.0f), glm::vec3{ 0.0, 1.0, 0.0 }));
+	_sofa.parent = &_bed;
 
 	_chair.setRenderObject(engine.create_render_object("chair"));
 	_chair.setPos(glm::vec3(-2.1, 0.0, -2.0));
