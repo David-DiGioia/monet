@@ -2,6 +2,7 @@
 /bin
 /third_party/nvlibs
 /third_party/nvidia-texture-tools
+/assets_export
 
 # Ignore all HDRIs (files are too big)
 /assets/hdri/*.hdr

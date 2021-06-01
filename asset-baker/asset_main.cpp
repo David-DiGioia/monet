@@ -1171,23 +1171,24 @@ int main(int argc, char* argv[])
 				fs::create_directory(export_path.parent_path());
 			}
 
-			//if (p.path().extension() == ".png" || p.path().extension() == ".jpg" || p.path().extension() == ".TGA")
-			//{
-			//	std::cout << "found a texture" << std::endl;
-			//
-			//	auto newpath = p.path();
-			//
-			//
-			//	export_path.replace_extension(".tx");
-			//
-			//	convert_image(p.path(), export_path);
-			//}
-			//if (p.path().extension() == ".obj") {
-			//	std::cout << "found a mesh" << std::endl;
-			//
-			//	export_path.replace_extension(".mesh");
-			//	convert_mesh(p.path(), export_path);
-			//}
+			if (p.path().extension() == ".png" || p.path().extension() == ".jpg" || p.path().extension() == ".TGA")
+			{
+				std::cout << "found a texture" << std::endl;
+			
+				auto newpath = p.path();
+			
+			
+				export_path.replace_extension(".tx");
+			
+				convert_image(p.path(), export_path);
+			}
+			if (p.path().extension() == ".obj") {
+				std::cout << "found a mesh" << std::endl;
+			
+				export_path.replace_extension(".mesh");
+				convert_mesh(p.path(), export_path);
+			}
+
 			if (p.path().extension() == ".gltf")
 			{
 				using namespace tinygltf;

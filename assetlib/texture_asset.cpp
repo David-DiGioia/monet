@@ -71,8 +71,6 @@ void assets::unpack_texture_page(TextureInfo* info, int pageIndex, char* sourceb
 	}
 
 	if (info->compressionMode == CompressionMode::LZ4) {
-
-		
 		
 		//size doesnt fully match, its compressed
 		if(info->pages[pageIndex].compressedSize != info->pages[pageIndex].originalSize)
