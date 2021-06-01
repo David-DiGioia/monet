@@ -33,23 +33,43 @@ target_include_directories(monet PUBLIC
 target_link_libraries(monet ${AUDIO_LIB})
 
 target_link_libraries(monet
- ${PHYSICS_LIB_00}
- ${PHYSICS_LIB_01}
- ${PHYSICS_LIB_02}
- ${PHYSICS_LIB_03}
- ${PHYSICS_LIB_04}
- ${PHYSICS_LIB_05}
- ${PHYSICS_LIB_06}
- ${PHYSICS_LIB_07}
- ${PHYSICS_LIB_08}
- ${PHYSICS_LIB_09}
- ${PHYSICS_LIB_10}
- ${PHYSICS_LIB_11}
-#  ${PHYSICS_LIB_12}
-#  ${PHYSICS_LIB_13}
-#  ${PHYSICS_LIB_14}
- ${PHYSICS_LIB_15}
- ${PHYSICS_LIB_16}
-#  ${PHYSICS_LIB_17}
-#  ${PHYSICS_LIB_18}
+ debug ${PHYSICS_LIB_D_00}
+ debug ${PHYSICS_LIB_D_01}
+ debug ${PHYSICS_LIB_D_02}
+ debug ${PHYSICS_LIB_D_03}
+ debug ${PHYSICS_LIB_D_04}
+ debug ${PHYSICS_LIB_D_05}
+ debug ${PHYSICS_LIB_D_06}
+ debug ${PHYSICS_LIB_D_07}
+ debug ${PHYSICS_LIB_D_08}
+ debug ${PHYSICS_LIB_D_09}
+ debug ${PHYSICS_LIB_D_10}
+ debug ${PHYSICS_LIB_D_11}
+#  debug ${PHYSICS_LIB_D_12}
+#  debug ${PHYSICS_LIB_D_13}
+#  debug ${PHYSICS_LIB_D_14}
+ debug ${PHYSICS_LIB_D_15}
+ debug ${PHYSICS_LIB_D_16}
+#  debug ${PHYSICS_LIB_D_17}
+#  debug ${PHYSICS_LIB_D_18}
+
+optimized ${PHYSICS_LIB_R_00}
+optimized ${PHYSICS_LIB_R_01}
+optimized ${PHYSICS_LIB_R_02}
+optimized ${PHYSICS_LIB_R_03}
+optimized ${PHYSICS_LIB_R_04}
+optimized ${PHYSICS_LIB_R_05}
+optimized ${PHYSICS_LIB_R_06}
+optimized ${PHYSICS_LIB_R_07}
+optimized ${PHYSICS_LIB_R_08}
+optimized ${PHYSICS_LIB_R_09}
+optimized ${PHYSICS_LIB_R_10}
+optimized ${PHYSICS_LIB_R_11}
+#  optimized ${PHYSICS_LIB_R_12}
+#  optimized ${PHYSICS_LIB_R_13}
+#  optimized ${PHYSICS_LIB_R_14}
+optimized ${PHYSICS_LIB_R_15}
+optimized ${PHYSICS_LIB_R_16}
+#  optimized ${PHYSICS_LIB_R_17}
+#  optimized ${PHYSICS_LIB_R_18}
 )
