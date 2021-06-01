@@ -6,7 +6,7 @@ The purpose of this project is to learn Vulkan and modern rendering techniques.
 
 ## Features
 
- * PBR lighting form HDRI images, rendering all the necessary maps/LUTs at program startup
+ * PBR lighting from HDRI images, rendering all the necessary maps/LUTs at program startup
  * PBR lighting from point lights
  * Shadow mapping
  * Multisampling
