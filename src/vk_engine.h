@@ -12,6 +12,7 @@
 #include <string>
 #include <set>
 #include <chrono>
+#include <type_traits>
 
 #include "vk_types.h"
 #include "vk_mem_alloc.h"
@@ -487,6 +488,65 @@ private:
 	void init_bounding_sphere();
 
 	void camera_transformation();
+
+	// For use with vertex buffers or index buffers
+	template <typename T>
+	void upload_buffer(const std::vector<T>& vec, AllocatedBuffer& buffer)
+	{
+		const size_t bufferSize{ vec.size() * sizeof(T) };
+		// allocate staging buffer
+		VkBufferCreateInfo stagingBufferInfo{};
+		stagingBufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+		stagingBufferInfo.pNext = nullptr;
+		stagingBufferInfo.size = bufferSize;
+		stagingBufferInfo.usage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
+
+		// let the VMA library know that this data should be on CPU RAM
+		VmaAllocationCreateInfo vmaAllocInfo{};
+		vmaAllocInfo.usage = VMA_MEMORY_USAGE_CPU_ONLY;
+
+		AllocatedBuffer stagingBuffer{};
+		VK_CHECK(vmaCreateBuffer(_allocator, &stagingBufferInfo, &vmaAllocInfo,
+			&stagingBuffer._buffer,
+			&stagingBuffer._allocation,
+			nullptr));
+
+		// copy data
+		void* data;
+		vmaMapMemory(_allocator, stagingBuffer._allocation, &data);
+		std::memcpy(data, vec.data(), vec.size() * sizeof(T));
+		vmaUnmapMemory(_allocator, stagingBuffer._allocation);
+
+		VkBufferUsageFlags bufferUsage{ std::is_same_v<T, Vertex> ? VK_BUFFER_USAGE_VERTEX_BUFFER_BIT : VK_BUFFER_USAGE_INDEX_BUFFER_BIT };
+
+		// now we need the GPU-side buffer since we've populated the staging buffer
+		VkBufferCreateInfo bufferInfo{};
+		bufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+		bufferInfo.pNext = nullptr;
+		bufferInfo.size = bufferSize;
+		bufferInfo.usage = bufferUsage | VK_BUFFER_USAGE_TRANSFER_DST_BIT;
+
+		// let the VMA library know that this data should be GPU native
+		vmaAllocInfo.usage = VMA_MEMORY_USAGE_GPU_ONLY;
+
+		VK_CHECK(vmaCreateBuffer(_allocator, &bufferInfo, &vmaAllocInfo,
+			&buffer._buffer,
+			&buffer._allocation,
+			nullptr));
+
+		immediate_submit([=](VkCommandBuffer cmd) {
+			VkBufferCopy copy;
+			copy.dstOffset = 0;
+			copy.srcOffset = 0;
+			copy.size = bufferSize;
+			vkCmdCopyBuffer(cmd, stagingBuffer._buffer, buffer._buffer, 1, &copy);
+		});
+
+		_mainDeletionQueue.push_function([=]() {
+			vmaDestroyBuffer(_allocator, buffer._buffer, buffer._allocation);
+		});
+		vmaDestroyBuffer(_allocator, stagingBuffer._buffer, stagingBuffer._allocation);
+	}
 };
 
 class PipelineBuilder {

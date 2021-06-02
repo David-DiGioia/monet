@@ -481,57 +481,8 @@ void VulkanEngine::immediate_submit(std::function<void(VkCommandBuffer cmd)>&& f
 // upload to GPU
 void VulkanEngine::upload_mesh(Mesh& mesh)
 {
-	const size_t bufferSize{ mesh._vertices.size() * sizeof(Vertex) };
-	// allocate staging buffer
-	VkBufferCreateInfo stagingBufferInfo{};
-	stagingBufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
-	stagingBufferInfo.pNext = nullptr;
-	stagingBufferInfo.size = bufferSize;
-	stagingBufferInfo.usage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
-
-	// let the VMA library know that this data should be on CPU RAM
-	VmaAllocationCreateInfo vmaAllocInfo{};
-	vmaAllocInfo.usage = VMA_MEMORY_USAGE_CPU_ONLY;
-
-	AllocatedBuffer stagingBuffer{};
-	VK_CHECK(vmaCreateBuffer(_allocator, &stagingBufferInfo, &vmaAllocInfo,
-		&stagingBuffer._buffer,
-		&stagingBuffer._allocation,
-		nullptr));
-
-	// copy vertex data
-	void* data;
-	vmaMapMemory(_allocator, stagingBuffer._allocation, &data);
-	std::memcpy(data, mesh._vertices.data(), mesh._vertices.size() * sizeof(Vertex));
-	vmaUnmapMemory(_allocator, stagingBuffer._allocation);
-
-	// now we need the GPU-side buffer since we've populated the staging buffer
-	VkBufferCreateInfo vertexBufferInfo{};
-	vertexBufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
-	vertexBufferInfo.pNext = nullptr;
-	vertexBufferInfo.size = bufferSize;
-	vertexBufferInfo.usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT;
-
-	// let the VMA library know that this data should be GPU native
-	vmaAllocInfo.usage = VMA_MEMORY_USAGE_GPU_ONLY;
-
-	VK_CHECK(vmaCreateBuffer(_allocator, &vertexBufferInfo, &vmaAllocInfo,
-		&mesh._vertexBuffer._buffer,
-		&mesh._vertexBuffer._allocation,
-		nullptr));
-
-	immediate_submit([=](VkCommandBuffer cmd) {
-		VkBufferCopy copy;
-		copy.dstOffset = 0;
-		copy.srcOffset = 0;
-		copy.size = bufferSize;
-		vkCmdCopyBuffer(cmd, stagingBuffer._buffer, mesh._vertexBuffer._buffer, 1, &copy);
-	});
-
-	_mainDeletionQueue.push_function([=]() {
-		vmaDestroyBuffer(_allocator, mesh._vertexBuffer._buffer, mesh._vertexBuffer._allocation);
-	});
-	vmaDestroyBuffer(_allocator, stagingBuffer._buffer, stagingBuffer._allocation);
+	upload_buffer(mesh._vertices, mesh._vertexBuffer);
+	upload_buffer(mesh._indices, mesh._indexBuffer);
 }
 
 void VulkanEngine::load_meshes()
