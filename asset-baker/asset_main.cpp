@@ -1,38 +1,36 @@
 #include <iostream>
-#include <json.hpp>
 #include <fstream>
 #include <filesystem>
-
-#include <lz4.h>
 #include <chrono>
+
+#include "json.hpp"
+#include "lz4.h"
 
 #define STB_IMAGE_IMPLEMENTATION
 #include "stb_image.h"
 #include "tiny_obj_loader.h"
 
-#include <asset_loader.h>
-#include <texture_asset.h>
-#include <mesh_asset.h>
-#include <material_asset.h>
+#include "asset_loader.h"
+#include "texture_asset.h"
+#include "mesh_asset.h"
+#include "material_asset.h"
 
 #define TINYGLTF_IMPLEMENTATION
-#include <tiny_gltf.h>
+#include "tiny_gltf.h"
 #include "prefab_asset.h"
 
-#include <nvtt.h>
+#include "nvtt.h"
 
-#include <glm/glm.hpp>
-#include<glm/gtx/transform.hpp>
-#include <glm/gtx/quaternion.hpp>
+#include "glm/glm.hpp"
+#include "glm/gtx/transform.hpp"
+#include "glm/gtx/quaternion.hpp"
 
+#include "assimp/Importer.hpp"
+#include "assimp/scene.h"
+#include "assimp/postprocess.h"
 
-#include <assimp/Importer.hpp>
-#include <assimp/scene.h>
-#include <assimp/postprocess.h>
 namespace fs = std::filesystem;
-
 using namespace assets;
-
 
 struct ConverterState {
 	fs::path asset_path;
@@ -53,18 +51,18 @@ bool convert_image(const fs::path& input, const fs::path& output)
 
 	auto diff = pngend - pngstart;
 
-	std::cout << "png took " << std::chrono::duration_cast<std::chrono::nanoseconds>(diff).count() / 1000000.0 << "ms"  << std::endl;
+	std::cout << "png took " << std::chrono::duration_cast<std::chrono::nanoseconds>(diff).count() / 1000000.0 << "ms" << std::endl;
 
 	if (!pixels) {
 		std::cout << "Failed to load texture file " << input << std::endl;
 		return false;
 	}
-	
+
 	int texture_size = texWidth * texHeight * 4;
 
 	TextureInfo texinfo;
 	texinfo.textureSize = texture_size;
-	
+
 	texinfo.textureFormat = TextureFormat::RGBA8;
 	texinfo.originalFile = input.string();
 	auto start = std::chrono::high_resolution_clock::now();
@@ -87,7 +85,7 @@ bool convert_image(const fs::path& input, const fs::path& output)
 	};
 
 
-	
+
 	nvtt::Compressor compressor;
 
 	nvtt::CompressionOptions optiuns;
@@ -102,22 +100,22 @@ bool convert_image(const fs::path& input, const fs::path& output)
 
 	while (surface.canMakeNextMipmap(1))
 	{
-			surface.buildNextMipmap(nvtt::MipmapFilter_Box);
+		surface.buildNextMipmap(nvtt::MipmapFilter_Box);
 
-			optiuns.setFormat(nvtt::Format::Format_RGBA);
-			optiuns.setPixelType(nvtt::PixelType_UnsignedNorm);
+		optiuns.setFormat(nvtt::Format::Format_RGBA);
+		optiuns.setPixelType(nvtt::PixelType_UnsignedNorm);
 
-			compressor.compress(surface, 0, 0, optiuns, outputOptions);
+		compressor.compress(surface, 0, 0, optiuns, outputOptions);
 
-			texinfo.pages.push_back({});
-			texinfo.pages.back().width = surface.width();
-			texinfo.pages.back().height = surface.height();
-			texinfo.pages.back().originalSize = handler.buffer.size();
+		texinfo.pages.push_back({});
+		texinfo.pages.back().width = surface.width();
+		texinfo.pages.back().height = surface.height();
+		texinfo.pages.back().originalSize = handler.buffer.size();
 
-			all_buffer.insert(all_buffer.end(), handler.buffer.begin(), handler.buffer.end());
-			handler.buffer.clear();
+		all_buffer.insert(all_buffer.end(), handler.buffer.begin(), handler.buffer.end());
+		handler.buffer.clear();
 	}
-	
+
 
 	texinfo.textureSize = all_buffer.size();
 	assets::AssetFile newImage = assets::pack_texture(&texinfo, all_buffer.data());
@@ -127,7 +125,7 @@ bool convert_image(const fs::path& input, const fs::path& output)
 
 
 	std::cout << "compression took " << std::chrono::duration_cast<std::chrono::nanoseconds>(diff).count() / 1000000.0 << "ms" << std::endl;
-		
+
 
 	stbi_image_free(pixels);
 
@@ -156,9 +154,9 @@ void pack_vertex(assets::Vertex_P32N8C8V16& new_vert, tinyobj::real_t vx, tinyob
 	new_vert.position[1] = vy;
 	new_vert.position[2] = vz;
 
-	new_vert.normal[0] = uint8_t(  ((nx + 1.0) / 2.0) * 255);
-	new_vert.normal[1] = uint8_t(  ((ny + 1.0) / 2.0) * 255);
-	new_vert.normal[2] = uint8_t(  ((nz + 1.0) / 2.0) * 255);
+	new_vert.normal[0] = uint8_t(((nx + 1.0) / 2.0) * 255);
+	new_vert.normal[1] = uint8_t(((ny + 1.0) / 2.0) * 255);
+	new_vert.normal[2] = uint8_t(((nz + 1.0) / 2.0) * 255);
 
 	new_vert.uv[0] = ux;
 	new_vert.uv[1] = 1 - uy;
@@ -230,7 +228,7 @@ bool convert_mesh(const fs::path& input, const fs::path& output)
 	auto diff = pngend - pngstart;
 
 	std::cout << "obj took " << std::chrono::duration_cast<std::chrono::nanoseconds>(diff).count() / 1000000.0 << "ms" << std::endl;
-	
+
 	//make sure to output the warnings to the console, in case there are issues with the file
 	if (!warn.empty()) {
 		std::cout << "WARN: " << warn << std::endl;
@@ -253,17 +251,17 @@ bool convert_mesh(const fs::path& input, const fs::path& output)
 
 	MeshInfo meshinfo;
 	meshinfo.vertexFormat = VertexFormatEnum;
-	meshinfo.vertexBuferSize = _vertices.size() * sizeof(VertexFormat);
-	meshinfo.indexBuferSize = _indices.size() * sizeof(uint32_t);
+	meshinfo.vertexBufferSize = _vertices.size() * sizeof(VertexFormat);
+	meshinfo.indexBufferSize = _indices.size() * sizeof(uint32_t);
 	meshinfo.indexSize = sizeof(uint32_t);
-	meshinfo.originalFile = input.string();	
+	meshinfo.originalFile = input.string();
 
 	meshinfo.bounds = assets::calculateBounds(_vertices.data(), _vertices.size());
 	//pack mesh file
 	auto start = std::chrono::high_resolution_clock::now();
 
 	assets::AssetFile newFile = assets::pack_mesh(&meshinfo, (char*)_vertices.data(), (char*)_indices.data());
-	
+
 	auto  end = std::chrono::high_resolution_clock::now();
 
 	diff = end - start;
@@ -272,16 +270,16 @@ bool convert_mesh(const fs::path& input, const fs::path& output)
 
 	//save to disk
 	save_binaryfile(output.string().c_str(), newFile);
-	
+
 	return true;
 }
 
-void unpack_gltf_buffer(tinygltf::Model& model, tinygltf::Accessor& accesor, std::vector<uint8_t> &outputBuffer)
+void unpack_gltf_buffer(tinygltf::Model& model, tinygltf::Accessor& accesor, std::vector<uint8_t>& outputBuffer)
 {
 	int bufferID = accesor.bufferView;
 	size_t elementSize = tinygltf::GetComponentSizeInBytes(accesor.componentType);
 
-	tinygltf::BufferView& bufferView = model.bufferViews[bufferID];	
+	tinygltf::BufferView& bufferView = model.bufferViews[bufferID];
 
 	tinygltf::Buffer& bufferData = (model.buffers[bufferView.buffer]);
 
@@ -296,7 +294,7 @@ void unpack_gltf_buffer(tinygltf::Model& model, tinygltf::Accessor& accesor, std
 	if (stride == 0)
 	{
 		stride = elementSize;
-		
+
 	}
 
 	outputBuffer.resize(accesor.count * elementSize);
@@ -305,19 +303,20 @@ void unpack_gltf_buffer(tinygltf::Model& model, tinygltf::Accessor& accesor, std
 		uint8_t* dataindex = dataptr + stride * i;
 		uint8_t* targetptr = outputBuffer.data() + elementSize * i;
 
-		memcpy(targetptr, dataindex, elementSize);	
+		memcpy(targetptr, dataindex, elementSize);
 	}
 }
-void extract_gltf_vertices(tinygltf::Primitive& primitive, tinygltf::Model& model, std::vector<assets::Vertex_f32_PNCV>& _vertices)
+
+// Vertex with tangent attribute
+void extract_gltf_vertices(tinygltf::Primitive& primitive, tinygltf::Model& model, std::vector<assets::Vertex_f32_PNTV>& _vertices)
 {
-	
 	tinygltf::Accessor& pos_accesor = model.accessors[primitive.attributes["POSITION"]];
 
 	_vertices.resize(pos_accesor.count);
 
 	std::vector<uint8_t> pos_data;
 	unpack_gltf_buffer(model, pos_accesor, pos_data);
-	
+
 
 	for (int i = 0; i < _vertices.size(); i++) {
 		if (pos_accesor.type == TINYGLTF_TYPE_VEC3)
@@ -330,12 +329,126 @@ void extract_gltf_vertices(tinygltf::Primitive& primitive, tinygltf::Model& mode
 				_vertices[i].position[0] = *(dtf + (i * 3) + 0);
 				_vertices[i].position[1] = *(dtf + (i * 3) + 1);
 				_vertices[i].position[2] = *(dtf + (i * 3) + 2);
-			}
-			else {
+			} else {
 				assert(false);
 			}
+		} else {
+			assert(false);
 		}
-		else {
+	}
+
+	tinygltf::Accessor& normal_accesor = model.accessors[primitive.attributes["NORMAL"]];
+
+	std::vector<uint8_t> normal_data;
+	unpack_gltf_buffer(model, normal_accesor, normal_data);
+
+
+	for (int i = 0; i < _vertices.size(); i++) {
+		if (normal_accesor.type == TINYGLTF_TYPE_VEC3)
+		{
+			if (normal_accesor.componentType == TINYGLTF_COMPONENT_TYPE_FLOAT)
+			{
+				float* dtf = (float*)normal_data.data();
+
+				//vec3f 
+				_vertices[i].normal[0] = *(dtf + (i * 3) + 0);
+				_vertices[i].normal[1] = *(dtf + (i * 3) + 1);
+				_vertices[i].normal[2] = *(dtf + (i * 3) + 2);
+			} else {
+				assert(false);
+			}
+		} else {
+			assert(false);
+		}
+	}
+
+	tinygltf::Accessor& tangent_accesor = model.accessors[primitive.attributes["TANGENT"]];
+
+	std::vector<uint8_t> tangent_data;
+	unpack_gltf_buffer(model, tangent_accesor, tangent_data);
+
+
+	for (int i = 0; i < _vertices.size(); i++) {
+		if (tangent_accesor.type == TINYGLTF_TYPE_VEC3)
+		{
+			if (tangent_accesor.componentType == TINYGLTF_COMPONENT_TYPE_FLOAT)
+			{
+				float* dtf = (float*)tangent_data.data();
+
+				//vec3f 
+				_vertices[i].tangent[0] = *(dtf + (i * 3) + 0);
+				_vertices[i].tangent[1] = *(dtf + (i * 3) + 1);
+				_vertices[i].tangent[2] = *(dtf + (i * 3) + 2);
+			} else {
+				assert(false);
+			}
+		} else {
+			assert(false);
+		}
+	}
+
+	tinygltf::Accessor& uv_accesor = model.accessors[primitive.attributes["TEXCOORD_0"]];
+
+	std::vector<uint8_t> uv_data;
+	unpack_gltf_buffer(model, uv_accesor, uv_data);
+
+
+	for (int i = 0; i < _vertices.size(); i++) {
+		if (uv_accesor.type == TINYGLTF_TYPE_VEC2)
+		{
+			if (uv_accesor.componentType == TINYGLTF_COMPONENT_TYPE_FLOAT)
+			{
+				float* dtf = (float*)uv_data.data();
+
+				//vec3f 
+				_vertices[i].uv[0] = *(dtf + (i * 2) + 0);
+				_vertices[i].uv[1] = *(dtf + (i * 2) + 1);
+			} else {
+				assert(false);
+			}
+		} else {
+			assert(false);
+		}
+	}
+
+	//for (auto& v : _vertices)
+	//{
+	//	v.position[0] *= -1;
+	//
+	//	v.normal[0] *= -1;
+	//	v.normal[1] *= -1;
+	//	v.normal[2] *= -1;
+	//	//v.position = flip * glm::vec4(v.position, 1.f);
+	//}
+	return;
+}
+
+// Vertex with color attribute
+void extract_gltf_vertices(tinygltf::Primitive& primitive, tinygltf::Model& model, std::vector<assets::Vertex_f32_PNCV>& _vertices)
+{
+	tinygltf::Accessor& pos_accesor = model.accessors[primitive.attributes["POSITION"]];
+
+	_vertices.resize(pos_accesor.count);
+
+	std::vector<uint8_t> pos_data;
+	unpack_gltf_buffer(model, pos_accesor, pos_data);
+
+
+	for (int i = 0; i < _vertices.size(); i++) {
+		if (pos_accesor.type == TINYGLTF_TYPE_VEC3)
+		{
+			if (pos_accesor.componentType == TINYGLTF_COMPONENT_TYPE_FLOAT)
+			{
+				float* dtf = (float*)pos_data.data();
+
+				//vec3f 
+				_vertices[i].position[0] = *(dtf + (i * 3) + 0);
+				_vertices[i].position[1] = *(dtf + (i * 3) + 1);
+				_vertices[i].position[2] = *(dtf + (i * 3) + 2);
+			} else {
+				assert(false);
+			}
+		} else {
 			assert(false);
 		}
 	}
@@ -361,12 +474,10 @@ void extract_gltf_vertices(tinygltf::Primitive& primitive, tinygltf::Model& mode
 				_vertices[i].color[0] = *(dtf + (i * 3) + 0);
 				_vertices[i].color[1] = *(dtf + (i * 3) + 1);
 				_vertices[i].color[2] = *(dtf + (i * 3) + 2);
-			}
-			else {
+			} else {
 				assert(false);
 			}
-		}
-		else {
+		} else {
 			assert(false);
 		}
 	}
@@ -387,17 +498,13 @@ void extract_gltf_vertices(tinygltf::Primitive& primitive, tinygltf::Model& mode
 				//vec3f 
 				_vertices[i].uv[0] = *(dtf + (i * 2) + 0);
 				_vertices[i].uv[1] = *(dtf + (i * 2) + 1);
-			}
-			else {
+			} else {
 				assert(false);
 			}
-		}
-		else {
+		} else {
 			assert(false);
 		}
 	}
-
-	
 
 	//for (auto& v : _vertices)
 	//{
@@ -411,10 +518,9 @@ void extract_gltf_vertices(tinygltf::Primitive& primitive, tinygltf::Model& mode
 	return;
 }
 
-
 void extract_gltf_indices(tinygltf::Primitive& primitive, tinygltf::Model& model, std::vector<uint32_t>& _primindices)
 {
-	int indexaccesor = primitive.indices;	
+	int indexaccesor = primitive.indices;
 
 	int indexbuffer = model.accessors[indexaccesor].bufferView;
 	int componentType = model.accessors[indexaccesor].componentType;
@@ -471,30 +577,29 @@ std::string calculate_gltf_mesh_name(tinygltf::Model& model, int meshIndex, int 
 	std::string meshname = "MESH_" + std::string{ &buffer0[0] } + "_" + model.meshes[meshIndex].name;
 
 	bool multiprim = model.meshes[meshIndex].primitives.size() > 1;
-	if (multiprim)
-	{
-		meshname += "_PRIM_" + std::string{ &buffer1[0] };
 
-		
+	if (multiprim) {
+		meshname += "_PRIM_" + std::string{ &buffer1[0] };
 	}
-	
+
 	return meshname;
 }
+
 bool extract_gltf_meshes(tinygltf::Model& model, const fs::path& input, const fs::path& outputFolder, const ConverterState& convState)
 {
 	tinygltf::Model* glmod = &model;
-	for (auto meshindex = 0; meshindex < model.meshes.size(); meshindex++){
+	for (auto meshindex = 0; meshindex < model.meshes.size(); meshindex++) {
 
 		auto& glmesh = model.meshes[meshindex];
-		
 
-		using VertexFormat = assets::Vertex_f32_PNCV;
-		auto VertexFormatEnum = assets::VertexFormat::PNCV_F32;
+
+		using VertexFormat = assets::Vertex_f32_PNTV;
+		auto VertexFormatEnum = assets::VertexFormat::PNTV_F32;
 
 		std::vector<VertexFormat> _vertices;
 		std::vector<uint32_t> _indices;
 
-		for (auto primindex = 0; primindex < glmesh.primitives.size(); primindex++){
+		for (auto primindex = 0; primindex < glmesh.primitives.size(); primindex++) {
 
 			_vertices.clear();
 			_indices.clear();
@@ -502,15 +607,15 @@ bool extract_gltf_meshes(tinygltf::Model& model, const fs::path& input, const fs
 			std::string meshname = calculate_gltf_mesh_name(model, meshindex, primindex);
 
 			auto& primitive = glmesh.primitives[primindex];
-			
+
 			extract_gltf_indices(primitive, model, _indices);
 			extract_gltf_vertices(primitive, model, _vertices);
-			
+
 
 			MeshInfo meshinfo;
 			meshinfo.vertexFormat = VertexFormatEnum;
-			meshinfo.vertexBuferSize = _vertices.size() * sizeof(VertexFormat);
-			meshinfo.indexBuferSize = _indices.size() * sizeof(uint32_t);
+			meshinfo.vertexBufferSize = _vertices.size() * sizeof(VertexFormat);
+			meshinfo.indexBufferSize = _indices.size() * sizeof(uint32_t);
 			meshinfo.indexSize = sizeof(uint32_t);
 			meshinfo.originalFile = input.string();
 
@@ -568,7 +673,7 @@ void extract_gltf_materials(tinygltf::Model& model, const fs::path& input, const
 			newMaterial.textures["baseColor"] = baseColorPath.string();
 		}
 		if (pbr.metallicRoughnessTexture.index >= 0)
-		{			
+		{
 			auto image = model.textures[pbr.metallicRoughnessTexture.index];
 			auto baseImage = model.images[image.source];
 
@@ -629,8 +734,7 @@ void extract_gltf_materials(tinygltf::Model& model, const fs::path& input, const
 		if (glmat.alphaMode.compare("BLEND") == 0)
 		{
 			newMaterial.transparency = TransparencyMode::Transparent;
-		}
-		else {
+		} else {
 			newMaterial.transparency = TransparencyMode::Opaque;
 		}
 
@@ -688,8 +792,8 @@ void extract_gltf_nodes(tinygltf::Model& model, const fs::path& input, const fs:
 
 			if (node.rotation.size() > 0)
 			{
-				glm::quat rot( node.rotation[3],  node.rotation[0],node.rotation[1],node.rotation[2]);
-				rotation = glm::mat4{rot};
+				glm::quat rot(node.rotation[3], node.rotation[0], node.rotation[1], node.rotation[2]);
+				rotation = glm::mat4{ rot };
 			}
 
 			glm::mat4 scale{ 1.f };
@@ -712,13 +816,12 @@ void extract_gltf_nodes(tinygltf::Model& model, const fs::path& input, const fs:
 		{
 			auto mesh = model.meshes[node.mesh];
 
-			if (mesh.primitives.size() > 1) {			
+			if (mesh.primitives.size() > 1) {
 				meshnodes.push_back(i);
-			}
-			else {
+			} else {
 				auto primitive = mesh.primitives[0];
 				std::string meshname = calculate_gltf_mesh_name(model, node.mesh, 0);
-				
+
 				fs::path meshpath = outputFolder / (meshname + ".mesh");
 
 				int material = primitive.material;
@@ -745,7 +848,7 @@ void extract_gltf_nodes(tinygltf::Model& model, const fs::path& input, const fs:
 			prefab.node_parents[c] = i;
 		}
 	}
-	
+
 	//for every gltf node that is a root node (no parents), apply the coordinate fixup
 
 	glm::mat4 flip = glm::mat4{ 1.0 };
@@ -770,7 +873,7 @@ void extract_gltf_nodes(tinygltf::Model& model, const fs::path& input, const fs:
 
 			memcpy(&mat, &matrix, sizeof(glm::mat4));
 
-			mat =rotation*(flip* mat);
+			mat = rotation * (flip * mat);
 
 			memcpy(&matrix, &mat, sizeof(glm::mat4));
 
@@ -789,9 +892,9 @@ void extract_gltf_nodes(tinygltf::Model& model, const fs::path& input, const fs:
 		if (node.mesh < 0) break;
 
 		auto mesh = model.meshes[node.mesh];
-		
 
-		for (int primindex = 0 ; primindex < mesh.primitives.size(); primindex++)
+
+		for (int primindex = 0; primindex < mesh.primitives.size(); primindex++)
 		{
 			auto primitive = mesh.primitives[primindex];
 			int newnode = nodeindex++;
@@ -800,7 +903,7 @@ void extract_gltf_nodes(tinygltf::Model& model, const fs::path& input, const fs:
 
 			itoa(primindex, buffer, 10);
 
-			prefab.node_names[newnode] = prefab.node_names[i] +  "_PRIM_" + &buffer[0];
+			prefab.node_names[newnode] = prefab.node_names[i] + "_PRIM_" + &buffer[0];
 
 			int material = primitive.material;
 			auto mat = model.materials[material];
@@ -816,7 +919,7 @@ void extract_gltf_nodes(tinygltf::Model& model, const fs::path& input, const fs:
 
 			prefab.node_meshes[newnode] = nmesh;
 		}
-		
+
 	}
 
 
@@ -834,7 +937,7 @@ std::string calculate_assimp_mesh_name(const aiScene* scene, int meshIndex)
 	char buffer[50];
 
 	itoa(meshIndex, buffer, 10);
-	std::string matname = "MESH_" + std::string{ buffer } + "_"+ std::string{ scene->mMeshes[meshIndex]->mName.C_Str()};
+	std::string matname = "MESH_" + std::string{ buffer } + "_" + std::string{ scene->mMeshes[meshIndex]->mName.C_Str() };
 	return matname;
 }
 std::string calculate_assimp_material_name(const aiScene* scene, int materialIndex)
@@ -858,7 +961,7 @@ void extract_assimp_materials(const aiScene* scene, const fs::path& input, const
 		for (int p = 0; p < material->mNumProperties; p++)
 		{
 			aiMaterialProperty* pt = material->mProperties[p];
-			switch (pt->mType )
+			switch (pt->mType)
 			{
 			case aiPTI_String:
 			{
@@ -867,7 +970,7 @@ void extract_assimp_materials(const aiScene* scene, const fs::path& input, const
 			}
 			break;
 			case aiPTI_Float:
-			{		
+			{
 				std::stringstream ss;
 				ss << *(float*)pt->mData;
 				newMaterial.customProperties[pt->mKey.C_Str()] = ss.str();
@@ -881,12 +984,12 @@ void extract_assimp_materials(const aiScene* scene, const fs::path& input, const
 					}
 				}
 			}
-				break;
+			break;
 			}
 		}
 
 		//check opacity
-	
+
 
 		std::string texPath = "";
 		if (material->GetTextureCount(aiTextureType_DIFFUSE))
@@ -896,10 +999,9 @@ void extract_assimp_materials(const aiScene* scene, const fs::path& input, const
 
 			fs::path texturePath = &assimppath.data[0];
 			//unreal compat
-			texturePath =  texturePath.filename();
+			texturePath = texturePath.filename();
 			texPath = "T_" + texturePath.string();
-		}
-		else if (material->GetTextureCount(aiTextureType_BASE_COLOR))
+		} else if (material->GetTextureCount(aiTextureType_BASE_COLOR))
 		{
 			aiString assimppath;
 			material->GetTexture(aiTextureType_BASE_COLOR, 0, &assimppath);
@@ -942,7 +1044,7 @@ void extract_assimp_meshes(const aiScene* scene, const fs::path& input, const fs
 
 		std::vector<VertexFormat> _vertices;
 		std::vector<uint32_t> _indices;
-		
+
 		std::string meshname = calculate_assimp_mesh_name(scene, meshindex);
 
 		_vertices.resize(mesh->mNumVertices);
@@ -953,22 +1055,21 @@ void extract_assimp_meshes(const aiScene* scene, const fs::path& input, const fs
 			vert.position[1] = mesh->mVertices[v].y;
 			vert.position[2] = mesh->mVertices[v].z;
 
-			
 
-				vert.normal[0] = mesh->mNormals[v].x;
-				vert.normal[1] = mesh->mNormals[v].y;
-				vert.normal[2] = mesh->mNormals[v].z;
-			
 
-			
+			vert.normal[0] = mesh->mNormals[v].x;
+			vert.normal[1] = mesh->mNormals[v].y;
+			vert.normal[2] = mesh->mNormals[v].z;
+
+
+
 
 			if (mesh->GetNumUVChannels() >= 1)
 			{
 				vert.uv[0] = mesh->mTextureCoords[0][v].x;
 				vert.uv[1] = mesh->mTextureCoords[0][v].y;
-			}
-			else {
-				vert.uv[0] =0;
+			} else {
+				vert.uv[0] = 0;
 				vert.uv[1] = 0;
 			}
 			if (mesh->HasVertexColors(0))
@@ -976,17 +1077,16 @@ void extract_assimp_meshes(const aiScene* scene, const fs::path& input, const fs
 				vert.color[0] = mesh->mColors[0][v].r;
 				vert.color[1] = mesh->mColors[0][v].g;
 				vert.color[2] = mesh->mColors[0][v].b;
-			}
-			else {
-				vert.color[0] =1;
-				vert.color[1] =1;
-				vert.color[2] =1;
+			} else {
+				vert.color[0] = 1;
+				vert.color[1] = 1;
+				vert.color[2] = 1;
 			}
 
 			_vertices[v] = vert;
 		}
 		_indices.resize(mesh->mNumFaces * 3);
-		for (int f= 0; f < mesh->mNumFaces; f++)
+		for (int f = 0; f < mesh->mNumFaces; f++)
 		{
 			_indices[f * 3 + 0] = mesh->mFaces[f].mIndices[0];
 			_indices[f * 3 + 1] = mesh->mFaces[f].mIndices[1];
@@ -1011,8 +1111,8 @@ void extract_assimp_meshes(const aiScene* scene, const fs::path& input, const fs
 					 _vertices[v2].position[2]
 				};
 
-				glm::vec3 normal =  glm::normalize(glm::cross(p2 - p0, p1 - p0));
-				
+				glm::vec3 normal = glm::normalize(glm::cross(p2 - p0, p1 - p0));
+
 				memcpy(_vertices[v0].normal, &normal, sizeof(float) * 3);
 				memcpy(_vertices[v1].normal, &normal, sizeof(float) * 3);
 				memcpy(_vertices[v2].normal, &normal, sizeof(float) * 3);
@@ -1021,8 +1121,8 @@ void extract_assimp_meshes(const aiScene* scene, const fs::path& input, const fs
 
 		MeshInfo meshinfo;
 		meshinfo.vertexFormat = VertexFormatEnum;
-		meshinfo.vertexBuferSize = _vertices.size() * sizeof(VertexFormat);
-		meshinfo.indexBuferSize = _indices.size() * sizeof(uint32_t);
+		meshinfo.vertexBufferSize = _vertices.size() * sizeof(VertexFormat);
+		meshinfo.indexBufferSize = _indices.size() * sizeof(uint32_t);
 		meshinfo.indexSize = sizeof(uint32_t);
 		meshinfo.originalFile = input.string();
 
@@ -1033,15 +1133,15 @@ void extract_assimp_meshes(const aiScene* scene, const fs::path& input, const fs
 		fs::path meshpath = outputFolder / (meshname + ".mesh");
 
 		//save to disk
-		save_binaryfile(meshpath.string().c_str(), newFile);		
-	}	
+		save_binaryfile(meshpath.string().c_str(), newFile);
+	}
 }
 void extract_assimp_nodes(const aiScene* scene, const fs::path& input, const fs::path& outputFolder, const ConverterState& convState)
 {
-	
+
 	assets::PrefabInfo prefab;
 
-	glm::mat4 ident{1.f};
+	glm::mat4 ident{ 1.f };
 
 	std::array<float, 16> identityMatrix;
 	memcpy(&identityMatrix, &ident, sizeof(glm::mat4));
@@ -1063,18 +1163,18 @@ void extract_assimp_nodes(const aiScene* scene, const fs::path& input, const fs:
 
 		uint64_t nodeindex = lastNode;
 		lastNode++;
-		
-			std::array<float, 16> matrix;
-			memcpy(&matrix, &modelmat, sizeof(glm::mat4));
 
-			if (parentID != nodeindex)
-			{
-				prefab.node_parents[nodeindex] = parentID;
-			}
+		std::array<float, 16> matrix;
+		memcpy(&matrix, &modelmat, sizeof(glm::mat4));
 
-			prefab.node_matrices[nodeindex] = prefab.matrices.size();
-			prefab.matrices.push_back(matrix);		
-		
+		if (parentID != nodeindex)
+		{
+			prefab.node_parents[nodeindex] = parentID;
+		}
+
+		prefab.node_matrices[nodeindex] = prefab.matrices.size();
+		prefab.matrices.push_back(matrix);
+
 
 		std::string nodename = node->mName.C_Str();
 		//std::cout << nodename << std::endl;
@@ -1091,7 +1191,7 @@ void extract_assimp_nodes(const aiScene* scene, const fs::path& input, const fs:
 			//std::cout << meshname << std::endl;
 
 			std::string matname = calculate_assimp_material_name(scene, scene->mMeshes[mesh_index]->mMaterialIndex);
-			meshname = calculate_assimp_mesh_name(scene ,mesh_index);
+			meshname = calculate_assimp_mesh_name(scene, mesh_index);
 
 			fs::path materialpath = outputFolder / (matname + ".mat");
 			fs::path meshpath = outputFolder / (meshname + ".mesh");
@@ -1110,13 +1210,13 @@ void extract_assimp_nodes(const aiScene* scene, const fs::path& input, const fs:
 
 		for (int ch = 0; ch < node->mNumChildren; ch++)
 		{
-			process_node(node->mChildren[ch], node_mat,nodeindex);
+			process_node(node->mChildren[ch], node_mat, nodeindex);
 		}
 	};
 
 	aiMatrix4x4 mat{};
-	glm::mat4 rootmat{1};// (, rootMatrix.v);
-	
+	glm::mat4 rootmat{ 1 };// (, rootMatrix.v);
+
 	for (int y = 0; y < 4; y++)
 	{
 		for (int x = 0; x < 4; x++)
@@ -1125,7 +1225,7 @@ void extract_assimp_nodes(const aiScene* scene, const fs::path& input, const fs:
 		}
 	}
 
-	process_node(scene->mRootNode, mat,0);
+	process_node(scene->mRootNode, mat, 0);
 
 	assets::AssetFile newFile = assets::pack_prefab(prefab);
 
@@ -1143,13 +1243,12 @@ int main(int argc, char* argv[])
 	{
 		std::cout << "You need to put the path to the info file";
 		return -1;
-	}
-	else {
-		
+	} else {
+
 		fs::path path{ argv[1] };
-	
+
 		fs::path directory = path;
-		
+
 		fs::path exported_dir = path.parent_path() / "assets_export";
 
 		std::cout << "loaded asset directory at " << directory << std::endl;
@@ -1164,7 +1263,7 @@ int main(int argc, char* argv[])
 
 			auto relative = p.path().lexically_proximate(directory);
 
-			auto export_path = exported_dir / relative;			
+			auto export_path = exported_dir / relative;
 
 			if (!fs::is_directory(export_path.parent_path()))
 			{
@@ -1174,101 +1273,57 @@ int main(int argc, char* argv[])
 			if (p.path().extension() == ".png" || p.path().extension() == ".jpg" || p.path().extension() == ".TGA")
 			{
 				std::cout << "found a texture" << std::endl;
-			
+
 				auto newpath = p.path();
-			
-			
+
 				export_path.replace_extension(".tx");
-			
+
 				convert_image(p.path(), export_path);
 			}
 			if (p.path().extension() == ".obj") {
-				std::cout << "found a mesh" << std::endl;
-			
+				std::cout << "found a mesh (obj)\n";
+
 				export_path.replace_extension(".mesh");
 				convert_mesh(p.path(), export_path);
 			}
 
 			if (p.path().extension() == ".gltf")
 			{
+				std::cout << "found a mesh (gltf)\n";
+
 				using namespace tinygltf;
 				Model model;
 				TinyGLTF loader;
 				std::string err;
 				std::string warn;
-			
+
 				bool ret = loader.LoadASCIIFromFile(&model, &err, &warn, p.path().string().c_str());
-			
+
 				if (!warn.empty()) {
 					printf("Warn: %s\n", warn.c_str());
 				}
-			
+
 				if (!err.empty()) {
 					printf("Err: %s\n", err.c_str());
 				}
-			
+
 				if (!ret) {
 					printf("Failed to parse glTF\n");
 					return -1;
-				}
-				else {
+				} else {
 					auto folder = export_path.parent_path() / (p.path().stem().string() + "_GLTF");
 					fs::create_directory(folder);
-			
+
 					extract_gltf_meshes(model, p.path(), folder, convstate);
-			
-					extract_gltf_materials(model, p.path(), folder, convstate);
-			
-					extract_gltf_nodes(model, p.path(), folder, convstate);
+
+					//extract_gltf_materials(model, p.path(), folder, convstate);
+
+					//extract_gltf_nodes(model, p.path(), folder, convstate);
 				}
 			}
-			if (false){//p.path().extension() == ".fbx") {
-				const aiScene* scene;
-				{
-					Assimp::Importer importer;
-					//ZoneScopedNC("Assimp load", tracy::Color::Magenta);
-					//const char* path = p.path().string().c_str();
-					auto start1 = std::chrono::system_clock::now();
-					scene = importer.ReadFile(p.path().string(), aiProcess_OptimizeMeshes | aiProcess_GenNormals | aiProcess_FlipUVs); //aiProcess_Triangulate | aiProcess_OptimizeMeshes | aiProcess_FlipUVs | aiProcess_GenNormals | aiProcess_GenBoundingBoxes);
-					auto end = std::chrono::system_clock::now();
-					auto elapsed = end - start1;
-					std::cout << "Assimp load time " << elapsed.count() << '\n';
-					auto folder = export_path.parent_path() / (p.path().stem().string() + "_GLTF");
-					fs::create_directory(folder);
-					extract_assimp_materials(scene, p.path(), folder, convstate);
-					extract_assimp_meshes(scene, p.path(), folder, convstate);
-					extract_assimp_nodes(scene, p.path(), folder, convstate);
-
-					std::vector<aiMaterial*> materials;
-					std::vector<std::string> materialNames;
-					materials.reserve(scene->mNumMaterials);
-					for (int m = 0; m < scene->mNumMaterials; m++) {
-						materials.push_back(scene->mMaterials[m]);
-						materialNames.push_back(scene->mMaterials[m]->GetName().C_Str());
-					}
-					
-					std::cout << importer.GetErrorString();
-					
-					//std::cout << "Assimp Meshes: " << scene->mMeshes;
-				
-				}
-			}
-		}
-
-		//else 
-		{
-			std::cout << "Invalid path: " << argv[1];
-			return -1;
 		}
 	}
-	//VulkanEngine engine;
-	//
-	//engine.init();
-	//
-	//engine.run();
-	//
-	//engine.cleanup();
-	//
+
 	return 0;
 }
 

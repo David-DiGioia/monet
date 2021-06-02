@@ -1,9 +1,10 @@
-
-#include <asset_loader.h>
+#include "asset_loader.h"
 
 #include <fstream>
 #include <iostream>
+
 using namespace assets;
+
 bool assets::save_binaryfile(const  char* path, const AssetFile& file)
 {
 	std::ofstream outfile;
@@ -17,16 +18,16 @@ bool assets::save_binaryfile(const  char* path, const AssetFile& file)
 	//version
 	outfile.write((const char*)&version, sizeof(uint32_t));
 
-	//json lenght
-	uint32_t lenght = static_cast<uint32_t>(file.json.size());
-	outfile.write((const char*)&lenght, sizeof(uint32_t));
+	//json length
+	uint32_t length = static_cast<uint32_t>(file.json.size());
+	outfile.write((const char*)&length, sizeof(uint32_t));
 
-	//blob lenght
-	uint32_t bloblenght = static_cast<uint32_t>(file.binaryBlob.size());
-	outfile.write((const char*)&bloblenght, sizeof(uint32_t));
+	//blob length
+	uint32_t blobLength = static_cast<uint32_t>(file.binaryBlob.size());
+	outfile.write((const char*)&blobLength, sizeof(uint32_t));
 
 	//json stream
-	outfile.write(file.json.data(), lenght);
+	outfile.write(file.json.data(), length);
 	//pixel data
 	outfile.write(file.binaryBlob.data(), file.binaryBlob.size());
 
@@ -67,8 +68,7 @@ bool assets::load_binaryfile(const  char* path, AssetFile& outputFile)
 
 assets::CompressionMode assets::parse_compression(const char* f)
 {
-	if (strcmp(f, "LZ4") == 0)
-	{
+	if (strcmp(f, "LZ4") == 0) {
 		return assets::CompressionMode::LZ4;
 	}
 	else {

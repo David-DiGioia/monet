@@ -1,15 +1,16 @@
-#include <texture_asset.h>
-#include <json.hpp>
-#include <lz4.h>
+#include "texture_asset.h"
+
 #include <iostream>
+
+#include "json.hpp"
+#include "lz4.h"
 
 assets::TextureFormat parse_format(const char* f) {
 
 	if (strcmp(f, "RGBA8") == 0)
 	{
 		return assets::TextureFormat::RGBA8;
-	}
-	else {
+	} else {
 		return assets::TextureFormat::Unknown;
 	}
 }
@@ -40,7 +41,6 @@ assets::TextureInfo assets::read_texture_info(AssetFile* file)
 
 		info.pages.push_back(page);
 	}
-		
 
 	return info;
 }

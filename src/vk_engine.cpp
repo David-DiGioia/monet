@@ -29,6 +29,9 @@
 #include "../tracy/TracyVulkan.hpp"	// GPU profiling
 #include "SDL_mixer.h"
 #include "util.h"
+#include "texture_asset.h"
+#include "mesh_asset.h"
+#include "asset_loader.h"
 
 #define VMA_IMPLEMENTATION
 #include "vk_mem_alloc.h"
@@ -534,7 +537,7 @@ void VulkanEngine::upload_mesh(Mesh& mesh)
 void VulkanEngine::load_meshes()
 {
 	namespace fs = std::filesystem;
-	std::string modelsPath{ "../../assets/models/" };
+	std::string modelsPath{ "../../assets_export/models/" };
 
 	for (const auto& modelDir : fs::directory_iterator(modelsPath)) {
 		if (modelDir.is_directory()) {
@@ -542,29 +545,49 @@ void VulkanEngine::load_meshes()
 			for (const auto& file : fs::directory_iterator(modelDir)) {
 				std::string filepath{ file.path().generic_string() };
 
-				if (filepath.size() >= 4 && filepath.substr(filepath.size() - 4) == ".obj") {
-					std::string name{ modelDir.path().filename().generic_string() };
+				if (file.is_directory() && filepath.size() >= 4 && filepath.substr(filepath.size() - 5) == "_GLTF") {
+					std::string filename{ file.path().filename().generic_string() };
+					std::string name{ filename.substr(0, filename.size() - 5) };
 					std::cout << "Loading mesh '" << name << "'\n";
-					load_mesh(name, filepath);
+
+					for (const auto& meshFile : fs::directory_iterator(file)) {
+						load_mesh(name, meshFile.path().generic_string());
+					}
 				}
 			}
 		}
 	}
 }
 
-
 // load mesh onto CPU then upload it to the GPU
 void VulkanEngine::load_mesh(const std::string& name, const std::string& path)
 {
 	Mesh mesh{};
-	mesh.load_from_obj(path);
 
-	// make sure mesh is sent to GPU
+	assets::AssetFile assetFile;
+	assets::load_binaryfile(path.c_str(), assetFile);
+	
+	assets::MeshInfo info{ assets::read_mesh_info(&assetFile) };
+	mesh._vertices.resize(info.vertexBufferSize / sizeof(Vertex));
+	mesh._indices.resize(info.indexBufferSize / sizeof(uint16_t));
+	assets::unpack_mesh(&info, assetFile.binaryBlob.data(), assetFile.binaryBlob.size(), (char*)mesh._vertices.data(), (char*)mesh._indices.data());
+
+	// send mesh to GPU
 	upload_mesh(mesh);
-
-	// note that we are copying them. Eventually we'll delete the
-	// hardcoded monkey and triangle so it's no problem for now
+	
 	_meshes[name] = mesh;
+
+
+
+	//Mesh mesh{};
+	//mesh.load_from_obj(path);
+
+	//// make sure mesh is sent to GPU
+	//upload_mesh(mesh);
+
+	//// note that we are copying them. Eventually we'll delete the
+	//// hardcoded monkey and triangle so it's no problem for now
+	//_meshes[name] = mesh;
 }
 
 void VulkanEngine::load_texture(const std::string& path, VkFormat format)
@@ -1458,7 +1481,7 @@ Mesh* VulkanEngine::get_mesh(const std::string& name)
 {
 	auto it{ _meshes.find(name) };
 	if (it == _meshes.end()) {
-		std::cout << " Could not find mesh '" << name << "' Did you remember to export the .obj file?\n";
+		std::cout << " Could not find mesh '" << name << "' Did you remember to export the .gltf file and bake?\n";
 		return nullptr;
 	} else {
 		return &(it->second);

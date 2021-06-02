@@ -26,8 +26,10 @@ struct Vertex {
 struct Mesh {
 	// vertex data on CPU
 	std::vector<Vertex> _vertices;
+	std::vector<uint16_t> _indices;
 	// vertex data on GPU
 	AllocatedBuffer _vertexBuffer;
+	AllocatedBuffer _indexBuffer;
 
 	bool load_from_obj(const std::string& filename);
 };
