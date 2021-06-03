@@ -1804,7 +1804,7 @@ void VulkanEngine::draw_objects(VkCommandBuffer cmd, const std::multiset<RenderO
 		}
 
 		//vkCmdDraw(cmd, object.mesh->_vertices.size(), 1, 0, idx);
-		vkCmdDrawIndexed(cmd, object.mesh->_indices.size(), 1, 0, 0, 0);
+		vkCmdDrawIndexed(cmd, object.mesh->_indices.size(), 1, 0, 0, idx);
 		++idx;
 	}
 
