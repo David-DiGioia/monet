@@ -1570,10 +1570,14 @@ void VulkanEngine::shadow_pass(VkCommandBuffer& cmd)
 				// bind the mesh vertex buffer with offset 0
 				VkDeviceSize offset{ 0 };
 				vkCmdBindVertexBuffers(cmd, 0, 1, &object.mesh->_vertexBuffer._buffer, &offset);
+				vkCmdBindIndexBuffer(cmd, object.mesh->_indexBuffer._buffer, 0, VK_INDEX_TYPE_UINT16);
+
 				lastMesh = object.mesh;
 			}
 
-			vkCmdDraw(cmd, object.mesh->_vertices.size(), 1, 0, idx);
+			//vkCmdDraw(cmd, object.mesh->_vertices.size(), 1, 0, idx);
+			vkCmdDrawIndexed(cmd, object.mesh->_indices.size(), 1, 0, 0, idx);
+
 		}
 		++idx;
 	}
