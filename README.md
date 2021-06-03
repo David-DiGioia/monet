@@ -1,8 +1,6 @@
-# vulkan-renderer
+# Monet
 
 A C++ game engine made using the Vulkan graphics API.
-
-The purpose of this project is to learn Vulkan and modern rendering techniques.
 
 ## Features
 
