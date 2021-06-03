@@ -520,7 +520,7 @@ void VulkanEngine::load_mesh(const std::string& name, const std::string& path)
 	
 	assets::MeshInfo info{ assets::read_mesh_info(&assetFile) };
 	mesh._vertices.resize(info.vertexBufferSize / sizeof(Vertex));
-	mesh._indices.resize(info.indexBufferSize / sizeof(uint16_t));
+	mesh._indices.resize(info.indexBufferSize / info.indexSize);
 	assets::unpack_mesh(&info, assetFile.binaryBlob.data(), assetFile.binaryBlob.size(), (char*)mesh._vertices.data(), (char*)mesh._indices.data());
 
 	// send mesh to GPU
@@ -1797,11 +1797,14 @@ void VulkanEngine::draw_objects(VkCommandBuffer cmd, const std::multiset<RenderO
 			// bind the mesh vertex buffer with offset 0
 			VkDeviceSize offset{ 0 };
 			vkCmdBindVertexBuffers(cmd, 0, 1, &object.mesh->_vertexBuffer._buffer, &offset);
+			vkCmdBindIndexBuffer(cmd, object.mesh->_indexBuffer._buffer, 0, VK_INDEX_TYPE_UINT16);
+
 			lastMesh = object.mesh;
 			++vertexBufferBinds;
 		}
 
-		vkCmdDraw(cmd, object.mesh->_vertices.size(), 1, 0, idx);
+		//vkCmdDraw(cmd, object.mesh->_vertices.size(), 1, 0, idx);
+		vkCmdDrawIndexed(cmd, object.mesh->_indices.size(), 1, 0, 0, 0);
 		++idx;
 	}
 

@@ -518,7 +518,7 @@ void extract_gltf_vertices(tinygltf::Primitive& primitive, tinygltf::Model& mode
 	return;
 }
 
-void extract_gltf_indices(tinygltf::Primitive& primitive, tinygltf::Model& model, std::vector<uint32_t>& _primindices)
+void extract_gltf_indices(tinygltf::Primitive& primitive, tinygltf::Model& model, std::vector<uint16_t>& _primindices)
 {
 	int indexaccesor = primitive.indices;
 
@@ -597,7 +597,7 @@ bool extract_gltf_meshes(tinygltf::Model& model, const fs::path& input, const fs
 		auto VertexFormatEnum = assets::VertexFormat::PNTV_F32;
 
 		std::vector<VertexFormat> _vertices;
-		std::vector<uint32_t> _indices;
+		std::vector<uint16_t> _indices;
 
 		for (auto primindex = 0; primindex < glmesh.primitives.size(); primindex++) {
 
@@ -615,8 +615,8 @@ bool extract_gltf_meshes(tinygltf::Model& model, const fs::path& input, const fs
 			MeshInfo meshinfo;
 			meshinfo.vertexFormat = VertexFormatEnum;
 			meshinfo.vertexBufferSize = _vertices.size() * sizeof(VertexFormat);
-			meshinfo.indexBufferSize = _indices.size() * sizeof(uint32_t);
-			meshinfo.indexSize = sizeof(uint32_t);
+			meshinfo.indexBufferSize = _indices.size() * sizeof(uint16_t);
+			meshinfo.indexSize = sizeof(uint16_t);
 			meshinfo.originalFile = input.string();
 
 			meshinfo.bounds = assets::calculateBounds(_vertices.data(), _vertices.size());
