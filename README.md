@@ -1,5 +1,7 @@
 # Monet
 
+![Monet_Logo](logo.png?raw=true "logo")
+
 A C++ game engine made using the Vulkan graphics API.
 
 ## Features
