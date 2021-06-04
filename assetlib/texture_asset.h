@@ -6,7 +6,8 @@ namespace assets {
 	enum class TextureFormat : uint32_t
 	{
 		Unknown = 0,
-		RGBA8
+		RGBA8,
+		SRGBA8
 	};
 	
 	struct PageInfo {

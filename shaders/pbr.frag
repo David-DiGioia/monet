@@ -150,7 +150,6 @@ float shadowCalculation(vec4 fragPosLightSpace) {
 void main()
 {
     vec3 diffuse = texture(diffuseTex, texCoord).rgb;
-    vec3 diff = diffuse;
 
     // obtain normal from normal map in range [0,1]
     vec3 normal = texture(normalTex, texCoord).rgb;
@@ -199,6 +198,5 @@ void main()
     // tonemap using Reinhard operator (this should really be done in post probably)
     // color = color / (color + 1.0);
 
-    color = diff;
     outFragColor = vec4(color, 1.0);
 }

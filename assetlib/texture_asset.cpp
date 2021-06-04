@@ -48,14 +48,24 @@ assets::TextureInfo assets::read_texture_info(AssetFile* file)
 void assets::unpack_texture(TextureInfo* info, const char* sourcebuffer, size_t sourceSize, char* destination)
 {
 	if (info->compressionMode == CompressionMode::LZ4) {
-		
+
 		for (auto& page : info->pages)
 		{
-			LZ4_decompress_safe(sourcebuffer, destination, page.compressedSize, page.originalSize);
+			// We get an error when compressed and original sizes are equal... Couldn't find documentation, so just doing a memcpy in this case
+			if (page.compressedSize == page.originalSize) {
+				memcpy(destination, sourcebuffer, page.originalSize);
+			} else {
+				int status{ LZ4_decompress_safe(sourcebuffer, destination, page.compressedSize, page.originalSize) };
+
+				if (status < 0) {
+					std::cout << "Error decompressing texture (return code " << status << ")\n";
+				}
+			}
+
 			sourcebuffer += page.compressedSize;
 			destination += page.originalSize;
 		}
-		
+
 	} else {
 		memcpy(destination, sourcebuffer, sourceSize);
 	}
@@ -69,9 +79,9 @@ void assets::unpack_texture_page(TextureInfo* info, int pageIndex, char* sourceb
 	}
 
 	if (info->compressionMode == CompressionMode::LZ4) {
-		
+
 		// size doesn't fully match, it's compressed
-		if(info->pages[pageIndex].compressedSize != info->pages[pageIndex].originalSize)
+		if (info->pages[pageIndex].compressedSize != info->pages[pageIndex].originalSize)
 		{
 			LZ4_decompress_safe(source, destination, info->pages[pageIndex].compressedSize, info->pages[pageIndex].originalSize);
 		} else {
@@ -87,7 +97,7 @@ void assets::unpack_texture_page(TextureInfo* info, int pageIndex, char* sourceb
 assets::AssetFile assets::pack_texture(TextureInfo* info, void* pixelData)
 {
 	//core file header
-	AssetFile file;	
+	AssetFile file;
 	file.type[0] = 'T';
 	file.type[1] = 'E';
 	file.type[2] = 'X';
@@ -108,7 +118,7 @@ assets::AssetFile assets::pack_texture(TextureInfo* info, void* pixelData)
 		page_buffer.resize(compressStaging);
 
 		int compressedSize = LZ4_compress_default(pixels, page_buffer.data(), p.originalSize, compressStaging);
-		
+
 
 		float compression_rate = float(compressedSize) / float(info->textureSize);
 
@@ -117,10 +127,9 @@ assets::AssetFile assets::pack_texture(TextureInfo* info, void* pixelData)
 		{
 			compressedSize = p.originalSize;
 			page_buffer.resize(compressedSize);
-		
+
 			memcpy(page_buffer.data(), pixels, compressedSize);
-		}
-		else {
+		} 		else {
 			page_buffer.resize(compressedSize);
 		}
 		p.compressedSize = compressedSize;

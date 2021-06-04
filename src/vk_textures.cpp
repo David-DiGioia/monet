@@ -143,7 +143,7 @@ void upload_image(VulkanEngine& engine, assets::TextureInfo info, VkFormat forma
 
 		for (int i{ 0 }; i < mipLevels; ++i) {
 			VkBufferImageCopy copyRegion{};
-			copyRegion.bufferOffset = offset;
+			copyRegion.bufferOffset = offset * 4; // multiply by 4 since texel is 4 bytes
 			copyRegion.bufferRowLength = 0;
 			copyRegion.bufferImageHeight = 0;
 			copyRegion.imageSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
@@ -186,8 +186,6 @@ void upload_image(VulkanEngine& engine, assets::TextureInfo info, VkFormat forma
 
 	// caller responsible for destroying staging buffer
 
-	std::cout << "Texture loaded successfully " << info.originalFile << '\n';
-
 	outImage = newImage;
 }
 
@@ -208,8 +206,12 @@ bool vkutil::load_image_from_asset(VulkanEngine& engine, const char* path, VkFor
 	VkDeviceSize imageSize{ textureInfo.textureSize };
 	VkFormat image_format;
 	switch (textureInfo.textureFormat) {
+
 	case assets::TextureFormat::RGBA8:
 		image_format = VK_FORMAT_R8G8B8A8_UNORM;
+		break;
+	case assets::TextureFormat::SRGBA8:
+		image_format = VK_FORMAT_R8G8B8A8_SRGB;
 		break;
 	default:
 		return false;
@@ -228,6 +230,8 @@ bool vkutil::load_image_from_asset(VulkanEngine& engine, const char* path, VkFor
 	upload_image(engine, textureInfo, format, stagingBuffer, outImage);
 
 	vmaDestroyBuffer(engine._allocator, stagingBuffer._buffer, stagingBuffer._allocation);
+
+	std::cout << "Texture loaded successfully " << path << '\n';
 
 	return true;
 }

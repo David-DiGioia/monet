@@ -63,7 +63,11 @@ bool convert_image(const fs::path& input, const fs::path& output)
 	TextureInfo texinfo;
 	texinfo.textureSize = texture_size;
 
-	texinfo.textureFormat = TextureFormat::RGBA8;
+
+	std::string s{ input.filename().generic_string() };
+	bool colorTexture{ s.size() >= 9 && (s.substr(s.size() - 9, 5) == "_diff") };
+
+	texinfo.textureFormat = colorTexture ? TextureFormat::SRGBA8 : TextureFormat::RGBA8;
 	texinfo.originalFile = input.string();
 	auto start = std::chrono::high_resolution_clock::now();
 
