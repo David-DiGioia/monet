@@ -1,6 +1,6 @@
 # Monet
 
-![Monet_Logo](logo.png?raw=true "logo")
+![](logo.png?raw=true "logo")
 
 A C++ game engine made using the Vulkan graphics API.
 
@@ -15,6 +15,7 @@ A C++ game engine made using the Vulkan graphics API.
  * Create materials with arbitrary descriptors by only modifying \_load_materials.txt.
  * PhysX physics implemented
  * Simple audio playback
+ * Cache assets for faster startup
 
 ## Screenshots
 
@@ -25,5 +26,6 @@ Furniture and ground lit by an HDRI
 ## Plans
 
  * SSAO
- * Cache assets for faster startup
  * Skeletal animation
+ * Frustum culling
+ * Occlusion culling
