@@ -1912,6 +1912,7 @@ bool VulkanEngine::advance_physics(float delta)
 
 void VulkanEngine::update_physics()
 {
+	ZoneScoped
 	// Advance forward simulation
 	advance_physics(_delta);
 

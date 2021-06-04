@@ -92,6 +92,7 @@ void vkutil::generateMipmaps(VkCommandBuffer cmd, VkImage image, int32_t texWidt
 }
 
 void upload_image(VulkanEngine& engine, assets::TextureInfo info, VkFormat format, const AllocatedBuffer& stagingBuffer, AllocatedImage& outImage) {
+	ZoneScoped
 	VkExtent3D imageExtent{};
 	imageExtent.width = static_cast<uint32_t>(info.pages[0].width);
 	imageExtent.height = static_cast<uint32_t>(info.pages[0].height);
@@ -191,15 +192,25 @@ void upload_image(VulkanEngine& engine, assets::TextureInfo info, VkFormat forma
 
 bool vkutil::load_image_from_asset(VulkanEngine& engine, const char* path, VkFormat format, uint32_t* outMipLevels, AllocatedImage& outImage)
 {
+	ZoneScoped
 	assets::AssetFile file;
-	bool loaded{ assets::load_binaryfile(path, file) };
 
-	if (!loaded) {
-		std::cout << "Error when loading image\n";
-		return false;
+	{
+		ZoneScopedN("load_binaryfile")
+		bool loaded{ assets::load_binaryfile(path, file) };
+
+		if (!loaded) {
+			std::cout << "Error when loading image\n";
+			return false;
+		}
 	}
 
-	assets::TextureInfo textureInfo{ assets::read_texture_info(&file) };
+	assets::TextureInfo textureInfo;
+
+	{
+		ZoneScopedN("read_texture_info")
+		textureInfo = assets::read_texture_info(&file);
+	}
 
 	*outMipLevels = (uint32_t)textureInfo.pages.size();
 
@@ -222,7 +233,10 @@ bool vkutil::load_image_from_asset(VulkanEngine& engine, const char* path, VkFor
 	void* data;
 	vmaMapMemory(engine._allocator, stagingBuffer._allocation, &data);
 
-	assets::unpack_texture(&textureInfo, file.binaryBlob.data(), file.binaryBlob.size(), (char*)data);
+	{
+		ZoneScopedN("unpack_texture")
+		assets::unpack_texture(&textureInfo, file.binaryBlob.data(), file.binaryBlob.size(), (char*)data);
+	}
 
 	vmaUnmapMemory(engine._allocator, stagingBuffer._allocation);
 
