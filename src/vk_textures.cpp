@@ -4,6 +4,8 @@
 #include <cmath>
 
 #include "vk_initializers.h"
+#include "asset_loader.h"
+#include "texture_asset.h"
 
 #define STB_IMAGE_IMPLEMENTATION
 #include "stb_image.h"
@@ -87,6 +89,147 @@ void vkutil::generateMipmaps(VkCommandBuffer cmd, VkImage image, int32_t texWidt
 		0, nullptr,
 		0, nullptr,
 		1, &barrier);
+}
+
+void upload_image(VulkanEngine& engine, assets::TextureInfo info, VkFormat format, const AllocatedBuffer& stagingBuffer, AllocatedImage& outImage) {
+	VkExtent3D imageExtent{};
+	imageExtent.width = static_cast<uint32_t>(info.pages[0].width);
+	imageExtent.height = static_cast<uint32_t>(info.pages[0].height);
+	imageExtent.depth = 1;
+	uint32_t mipLevels{ (uint32_t)info.pages.size() };
+
+	VkImageCreateInfo dimg_info{ vkinit::image_create_info(format, VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_TRANSFER_SRC_BIT, imageExtent, mipLevels) };
+
+	AllocatedImage newImage;
+
+	VmaAllocationCreateInfo dimg_allocInfo{};
+	dimg_allocInfo.usage = VMA_MEMORY_USAGE_GPU_ONLY;
+
+	// allocate and create the image
+	vmaCreateImage(engine._allocator, &dimg_info, &dimg_allocInfo,
+		&newImage._image,
+		&newImage._allocation,
+		nullptr);
+
+	// we must transfer the image to transfer dst layout before copying the buffer to the image
+	engine.immediate_submit([=](VkCommandBuffer cmd) {
+		VkImageSubresourceRange range{};
+		range.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+		range.baseMipLevel = 0;
+		range.levelCount = mipLevels;
+		range.baseArrayLayer = 0;
+		range.layerCount = 1;
+
+		VkImageMemoryBarrier imageBarrierToTransfer{};
+		imageBarrierToTransfer.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+		imageBarrierToTransfer.pNext = nullptr;
+		imageBarrierToTransfer.oldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+		imageBarrierToTransfer.newLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+		imageBarrierToTransfer.image = newImage._image;
+		imageBarrierToTransfer.subresourceRange = range;
+		imageBarrierToTransfer.srcAccessMask = 0;
+		imageBarrierToTransfer.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+
+		vkCmdPipelineBarrier(cmd,
+			VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT,
+			0,
+			0, nullptr,
+			0, nullptr,
+			1, &imageBarrierToTransfer);
+
+		VkExtent3D extent{ imageExtent };
+		VkDeviceSize offset{ 0 };
+		std::vector<VkBufferImageCopy> copyRegions;
+
+		for (int i{ 0 }; i < mipLevels; ++i) {
+			VkBufferImageCopy copyRegion{};
+			copyRegion.bufferOffset = offset;
+			copyRegion.bufferRowLength = 0;
+			copyRegion.bufferImageHeight = 0;
+			copyRegion.imageSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+			copyRegion.imageSubresource.mipLevel = i;
+			copyRegion.imageSubresource.baseArrayLayer = 0;
+			copyRegion.imageSubresource.layerCount = 1;
+			copyRegion.imageExtent = extent;
+
+			copyRegions.push_back(copyRegion);
+
+			// halve dimensions of image for each mipmap level
+			offset += (VkDeviceSize)extent.width * extent.height;
+			extent.width >>= 1;
+			extent.height >>= 1;
+		}
+
+		// copy the buffer into the image
+		vkCmdCopyBufferToImage(cmd, stagingBuffer._buffer, newImage._image,
+			VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, copyRegions.size(), copyRegions.data());
+
+		// now that we've copied the buffer into the image, we change the
+		// image layout once more to make it readable from shaders
+		VkImageMemoryBarrier imageBarrierToReadable{ imageBarrierToTransfer };
+		imageBarrierToReadable.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+		imageBarrierToReadable.newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+		imageBarrierToReadable.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+		imageBarrierToReadable.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
+
+		vkCmdPipelineBarrier(cmd,
+			VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
+			0,
+			0, nullptr,
+			0, nullptr,
+			1, &imageBarrierToReadable);
+	});
+
+	engine._mainDeletionQueue.push_function([=, &engine]() {
+		vmaDestroyImage(engine._allocator, newImage._image, newImage._allocation);
+	});
+
+	// caller responsible for destroying staging buffer
+
+	std::cout << "Texture loaded successfully " << info.originalFile << '\n';
+
+	outImage = newImage;
+}
+
+bool vkutil::load_image_from_asset(VulkanEngine& engine, const char* path, VkFormat format, uint32_t* outMipLevels, AllocatedImage& outImage)
+{
+	assets::AssetFile file;
+	bool loaded{ assets::load_binaryfile(path, file) };
+
+	if (!loaded) {
+		std::cout << "Error when loading image\n";
+		return false;
+	}
+
+	assets::TextureInfo textureInfo{ assets::read_texture_info(&file) };
+
+	*outMipLevels = (uint32_t)textureInfo.pages.size();
+
+	VkDeviceSize imageSize{ textureInfo.textureSize };
+	VkFormat image_format;
+	switch (textureInfo.textureFormat) {
+	case assets::TextureFormat::RGBA8:
+		image_format = VK_FORMAT_R8G8B8A8_UNORM;
+		break;
+	default:
+		return false;
+	}
+
+	AllocatedBuffer stagingBuffer{ engine.create_buffer(imageSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VMA_MEMORY_USAGE_CPU_ONLY) };
+
+	void* data;
+	vmaMapMemory(engine._allocator, stagingBuffer._allocation, &data);
+
+	assets::unpack_texture(&textureInfo, file.binaryBlob.data(), file.binaryBlob.size(), (char*)data);
+
+	vmaUnmapMemory(engine._allocator, stagingBuffer._allocation);
+
+	//outImage = upload_image(textureInfo.pixelsize[0], textureInfo.pixelsize[1], image_format, engine, stagingBuffer);
+	upload_image(engine, textureInfo, format, stagingBuffer, outImage);
+
+	vmaDestroyBuffer(engine._allocator, stagingBuffer._buffer, stagingBuffer._allocation);
+
+	return true;
 }
 
 bool vkutil::load_image_from_file(VulkanEngine& engine, const char* file, AllocatedImage& outImage, uint32_t* outMipLevels, VkFormat format)

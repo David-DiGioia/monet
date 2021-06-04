@@ -54,7 +54,7 @@ bool convert_image(const fs::path& input, const fs::path& output)
 	std::cout << "png took " << std::chrono::duration_cast<std::chrono::nanoseconds>(diff).count() / 1000000.0 << "ms" << std::endl;
 
 	if (!pixels) {
-		std::cout << "Failed to load texture file " << input << std::endl;
+		std::cout << "Failed to load texture file " << input << "\n";
 		return false;
 	}
 
@@ -72,7 +72,7 @@ bool convert_image(const fs::path& input, const fs::path& output)
 	struct DumbHandler : nvtt::OutputHandler {
 		// Output data. Compressed data is output as soon as it's generated to minimize memory allocations.
 		virtual bool writeData(const void* data, int size) {
-			for (int i = 0; i < size; i++) {
+			for (int i = 0; i < size; ++i) {
 				buffer.push_back(((char*)data)[i]);
 			}
 			return true;
@@ -84,11 +84,8 @@ bool convert_image(const fs::path& input, const fs::path& output)
 		std::vector<char> buffer;
 	};
 
-
-
 	nvtt::Compressor compressor;
-
-	nvtt::CompressionOptions optiuns;
+	nvtt::CompressionOptions options;
 	nvtt::OutputOptions outputOptions;
 	nvtt::Surface surface;
 
@@ -97,15 +94,16 @@ bool convert_image(const fs::path& input, const fs::path& output)
 
 	surface.setImage(nvtt::InputFormat::InputFormat_BGRA_8UB, texWidth, texHeight, 1, pixels);
 
+	// Use do while loop for edge case when there's only one miplevel (eg texture size is 1)
+	do {
+		if (surface.canMakeNextMipmap(1)) {
+			surface.buildNextMipmap(nvtt::MipmapFilter_Box);
+		}
 
-	while (surface.canMakeNextMipmap(1))
-	{
-		surface.buildNextMipmap(nvtt::MipmapFilter_Box);
+		options.setFormat(nvtt::Format::Format_RGBA);
+		options.setPixelType(nvtt::PixelType_UnsignedNorm);
 
-		optiuns.setFormat(nvtt::Format::Format_RGBA);
-		optiuns.setPixelType(nvtt::PixelType_UnsignedNorm);
-
-		compressor.compress(surface, 0, 0, optiuns, outputOptions);
+		compressor.compress(surface, 0, 0, options, outputOptions);
 
 		texinfo.pages.push_back({});
 		texinfo.pages.back().width = surface.width();
@@ -114,10 +112,11 @@ bool convert_image(const fs::path& input, const fs::path& output)
 
 		all_buffer.insert(all_buffer.end(), handler.buffer.begin(), handler.buffer.end());
 		handler.buffer.clear();
-	}
+	} while (surface.canMakeNextMipmap(1));
 
 
 	texinfo.textureSize = all_buffer.size();
+
 	assets::AssetFile newImage = assets::pack_texture(&texinfo, all_buffer.data());
 
 	auto  end = std::chrono::high_resolution_clock::now();

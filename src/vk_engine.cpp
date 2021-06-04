@@ -545,10 +545,19 @@ void VulkanEngine::load_texture(const std::string& path, VkFormat format)
 {
 	Texture texture;
 	uint32_t mipLevels;
-	std::string prefix{ "../../assets/models/" };
+	bool hdri{ format == VK_FORMAT_R32G32B32A32_SFLOAT };
+	std::string prefix{ hdri ? "../../assets/models/" : "../../assets_export/models/" };
 
-	if (!vkutil::load_image_from_file(*this, (prefix + path).c_str(), texture.image, &mipLevels, format)) {
-		std::cout << "Failed to load texture: " << path << "\n";
+	if (hdri) {
+		std::string prefix{ "../../assets/models/" };
+		if (!vkutil::load_image_from_file(*this, (prefix + path).c_str(), texture.image, &mipLevels, format)) {
+			std::cout << "Failed to load texture: " << path << "\n";
+		}
+	} else {
+		std::string prefix{ "../../assets_export/models/" };
+		if (!vkutil::load_image_from_asset(*this, (prefix + path).c_str(), format, &mipLevels, texture.image)) {
+			std::cout << "Failed to load texture: " << path << "\n";
+		}
 	}
 
 	VkImageViewCreateInfo imageInfo{ vkinit::imageview_create_info(format, texture.image._image, VK_IMAGE_ASPECT_COLOR_BIT, mipLevels) };
@@ -578,7 +587,7 @@ void VulkanEngine::load_materials()
 	std::unordered_map<std::string, VkFormat> stringToFormat;
 	stringToFormat["R8G8B8A8_SRGB"] = VK_FORMAT_R8G8B8A8_SRGB;
 	stringToFormat["R8G8B8A8_UNORM"] = VK_FORMAT_R8G8B8A8_UNORM;
-	stringToFormat["R32G32B32A32_SFLOAT"] = VK_FORMAT_R32G32B32A32_SFLOAT;
+	stringToFormat["R32G32B32A32_SFLOAT"] = VK_FORMAT_R32G32B32A32_SFLOAT; // hdri
 
 
 	while (file) {

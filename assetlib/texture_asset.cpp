@@ -48,7 +48,6 @@ assets::TextureInfo assets::read_texture_info(AssetFile* file)
 void assets::unpack_texture(TextureInfo* info, const char* sourcebuffer, size_t sourceSize, char* destination)
 {
 	if (info->compressionMode == CompressionMode::LZ4) {
-	
 		
 		for (auto& page : info->pages)
 		{
@@ -57,8 +56,7 @@ void assets::unpack_texture(TextureInfo* info, const char* sourcebuffer, size_t 
 			destination += page.originalSize;
 		}
 		
-	}
-	else {
+	} else {
 		memcpy(destination, sourcebuffer, sourceSize);
 	}
 }
@@ -72,17 +70,15 @@ void assets::unpack_texture_page(TextureInfo* info, int pageIndex, char* sourceb
 
 	if (info->compressionMode == CompressionMode::LZ4) {
 		
-		//size doesnt fully match, its compressed
+		// size doesn't fully match, it's compressed
 		if(info->pages[pageIndex].compressedSize != info->pages[pageIndex].originalSize)
 		{
 			LZ4_decompress_safe(source, destination, info->pages[pageIndex].compressedSize, info->pages[pageIndex].originalSize);
-		}
-		else {
-			//size matched, uncompressed page
+		} else {
+			// size matched, uncompressed page
 			memcpy(destination, source, info->pages[pageIndex].originalSize);
 		}
-	}
-	else {
+	} else {
 		memcpy(destination, source, info->pages[pageIndex].originalSize);
 	}
 }
