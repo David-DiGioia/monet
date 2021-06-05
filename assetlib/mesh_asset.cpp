@@ -1,6 +1,5 @@
 #include "mesh_asset.h"
 #include "json.hpp"
-#include "lz4.h"
 
 
 assets::VertexFormat parse_format(const char* f) {
@@ -31,9 +30,6 @@ assets::MeshInfo assets::read_mesh_info(AssetFile* file)
 	info.indexSize = (uint8_t) metadata["index_size"];
 	info.originalFile = metadata["original_file"];
 
-	std::string compressionString = metadata["compression"];
-	info.compressionMode = parse_compression(compressionString.c_str());
-
 	std::vector<float> boundsData;
 	boundsData.reserve(7);
 	boundsData = metadata["bounds"].get<std::vector<float>>();
@@ -53,19 +49,13 @@ assets::MeshInfo assets::read_mesh_info(AssetFile* file)
     return info;
 }
 
-void assets::unpack_mesh(MeshInfo* info, const char* sourcebuffer, size_t sourceSize, char* vertexBuffer, char* indexBuffer)
+void assets::unpack_mesh(MeshInfo* info, const char* sourcebuffer, char* vertexBuffer, char* indexBuffer)
 {
-	//decompressing into temporal vector. TODO: streaming decompress directly on the buffers
-	std::vector<char> decompressedBuffer;
-	decompressedBuffer.resize(info->vertexBufferSize + info->indexBufferSize);
-
-	LZ4_decompress_safe(sourcebuffer, decompressedBuffer.data(), static_cast<int>(sourceSize), static_cast<int>(decompressedBuffer.size()));
-
 	//copy vertex buffer
-	memcpy(vertexBuffer, decompressedBuffer.data(), info->vertexBufferSize);
+	memcpy(vertexBuffer,sourcebuffer, info->vertexBufferSize);
 
 	//copy index buffer
-	memcpy(indexBuffer, decompressedBuffer.data() + info->vertexBufferSize, info->indexBufferSize);
+	memcpy(indexBuffer, sourcebuffer + info->vertexBufferSize, info->indexBufferSize);
 }
 
 assets::AssetFile assets::pack_mesh(MeshInfo* info, char* vertexData, char* indexData)
@@ -111,25 +101,13 @@ assets::AssetFile assets::pack_mesh(MeshInfo* info, char* vertexData, char* inde
 
 	size_t fullsize = info->vertexBufferSize + info->indexBufferSize;
 
-	std::vector<char> merged_buffer;
-	merged_buffer.resize(fullsize);
+	file.binaryBlob.resize(fullsize);
 
 	//copy vertex buffer
-	memcpy(merged_buffer.data(), vertexData, info->vertexBufferSize);
+	memcpy(file.binaryBlob.data(), vertexData, info->vertexBufferSize);
 
 	//copy index buffer
-	memcpy(merged_buffer.data() + info->vertexBufferSize, indexData, info->indexBufferSize);
-
-
-	//compress buffer and copy it into the file struct
-	size_t compressStaging = LZ4_compressBound(static_cast<int>(fullsize));
-
-	file.binaryBlob.resize(compressStaging);
-
-	int compressedSize = LZ4_compress_default(merged_buffer.data(), file.binaryBlob.data(), static_cast<int>(merged_buffer.size()), static_cast<int>(compressStaging));
-	file.binaryBlob.resize(compressedSize);
-
-	metadata["compression"] = "LZ4";
+	memcpy(file.binaryBlob.data() + info->vertexBufferSize, indexData, info->indexBufferSize);
 
 	file.json = metadata.dump();
 

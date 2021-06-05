@@ -65,14 +65,3 @@ bool assets::load_binaryfile(const  char* path, AssetFile& outputFile)
 
 	return true;
 }
-
-assets::CompressionMode assets::parse_compression(const char* f)
-{
-	if (strcmp(f, "LZ4") == 0) {
-		return assets::CompressionMode::LZ4;
-	}
-	else {
-		return assets::CompressionMode::None;
-	}
-}
-

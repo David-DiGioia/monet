@@ -521,7 +521,7 @@ void VulkanEngine::load_mesh(const std::string& name, const std::string& path)
 	assets::MeshInfo info{ assets::read_mesh_info(&assetFile) };
 	mesh._vertices.resize(info.vertexBufferSize / sizeof(Vertex));
 	mesh._indices.resize(info.indexBufferSize / info.indexSize);
-	assets::unpack_mesh(&info, assetFile.binaryBlob.data(), assetFile.binaryBlob.size(), (char*)mesh._vertices.data(), (char*)mesh._indices.data());
+	assets::unpack_mesh(&info, assetFile.binaryBlob.data(), (char*)mesh._vertices.data(), (char*)mesh._indices.data());
 
 	// send mesh to GPU
 	upload_mesh(mesh);

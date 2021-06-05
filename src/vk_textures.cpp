@@ -94,12 +94,11 @@ void vkutil::generateMipmaps(VkCommandBuffer cmd, VkImage image, int32_t texWidt
 void upload_image(VulkanEngine& engine, assets::TextureInfo info, VkFormat format, const AllocatedBuffer& stagingBuffer, AllocatedImage& outImage) {
 	ZoneScoped
 	VkExtent3D imageExtent{};
-	imageExtent.width = static_cast<uint32_t>(info.pages[0].width);
-	imageExtent.height = static_cast<uint32_t>(info.pages[0].height);
+	imageExtent.width = static_cast<uint32_t>(info.width);
+	imageExtent.height = static_cast<uint32_t>(info.height);
 	imageExtent.depth = 1;
-	uint32_t mipLevels{ (uint32_t)info.pages.size() };
 
-	VkImageCreateInfo dimg_info{ vkinit::image_create_info(format, VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_TRANSFER_SRC_BIT, imageExtent, mipLevels) };
+	VkImageCreateInfo dimg_info{ vkinit::image_create_info(format, VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_TRANSFER_SRC_BIT, imageExtent, info.miplevels) };
 
 	AllocatedImage newImage;
 
@@ -117,7 +116,7 @@ void upload_image(VulkanEngine& engine, assets::TextureInfo info, VkFormat forma
 		VkImageSubresourceRange range{};
 		range.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
 		range.baseMipLevel = 0;
-		range.levelCount = mipLevels;
+		range.levelCount = info.miplevels;
 		range.baseArrayLayer = 0;
 		range.layerCount = 1;
 
@@ -142,7 +141,7 @@ void upload_image(VulkanEngine& engine, assets::TextureInfo info, VkFormat forma
 		VkDeviceSize offset{ 0 };
 		std::vector<VkBufferImageCopy> copyRegions;
 
-		for (int i{ 0 }; i < mipLevels; ++i) {
+		for (int i{ 0 }; i < info.miplevels; ++i) {
 			VkBufferImageCopy copyRegion{};
 			copyRegion.bufferOffset = offset * 4; // multiply by 4 since texel is 4 bytes
 			copyRegion.bufferRowLength = 0;
@@ -212,7 +211,7 @@ bool vkutil::load_image_from_asset(VulkanEngine& engine, const char* path, VkFor
 		textureInfo = assets::read_texture_info(&file);
 	}
 
-	*outMipLevels = (uint32_t)textureInfo.pages.size();
+	*outMipLevels = (uint32_t)textureInfo.miplevels;
 
 	VkDeviceSize imageSize{ textureInfo.textureSize };
 	VkFormat image_format;
@@ -235,7 +234,7 @@ bool vkutil::load_image_from_asset(VulkanEngine& engine, const char* path, VkFor
 
 	{
 		ZoneScopedN("unpack_texture")
-		assets::unpack_texture(&textureInfo, file.binaryBlob.data(), file.binaryBlob.size(), (char*)data);
+		assets::unpack_texture(file.binaryBlob.data(), file.binaryBlob.size(), (char*)data);
 	}
 
 	vmaUnmapMemory(engine._allocator, stagingBuffer._allocation);

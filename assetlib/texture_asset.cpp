@@ -7,9 +7,10 @@
 
 assets::TextureFormat parse_format(const char* f) {
 
-	if (strcmp(f, "RGBA8") == 0)
-	{
+	if (strcmp(f, "RGBA8") == 0) {
 		return assets::TextureFormat::RGBA8;
+	} else if (strcmp(f, "SRGBA8") == 0) {
+		return assets::TextureFormat::SRGBA8;
 	} else {
 		return assets::TextureFormat::Unknown;
 	}
@@ -23,74 +24,18 @@ assets::TextureInfo assets::read_texture_info(AssetFile* file)
 
 	std::string formatString = texture_metadata["format"];
 	info.textureFormat = parse_format(formatString.c_str());
-
-	std::string compressionString = texture_metadata["compression"];
-	info.compressionMode = parse_compression(compressionString.c_str());
-
 	info.textureSize = texture_metadata["buffer_size"];
 	info.originalFile = texture_metadata["original_file"];
-
-	for (auto& [key, value] : texture_metadata["pages"].items())
-	{
-		PageInfo page;
-
-		page.compressedSize = value["compressed_size"];
-		page.originalSize = value["original_size"];
-		page.width = value["width"];
-		page.height = value["height"];
-
-		info.pages.push_back(page);
-	}
+	info.miplevels = texture_metadata["miplevels"];
+	info.width = texture_metadata["width"];
+	info.height = texture_metadata["height"];
 
 	return info;
 }
 
-void assets::unpack_texture(TextureInfo* info, const char* sourcebuffer, size_t sourceSize, char* destination)
+void assets::unpack_texture(const char* sourcebuffer, size_t sourceSize, char* destination)
 {
-	if (info->compressionMode == CompressionMode::LZ4) {
-
-		for (auto& page : info->pages)
-		{
-			// We get an error when compressed and original sizes are equal... Couldn't find documentation, so just doing a memcpy in this case
-			if (page.compressedSize == page.originalSize) {
-				memcpy(destination, sourcebuffer, page.originalSize);
-			} else {
-				int status{ LZ4_decompress_safe(sourcebuffer, destination, page.compressedSize, page.originalSize) };
-
-				if (status < 0) {
-					std::cout << "Error decompressing texture (return code " << status << ")\n";
-				}
-			}
-
-			sourcebuffer += page.compressedSize;
-			destination += page.originalSize;
-		}
-
-	} else {
-		memcpy(destination, sourcebuffer, sourceSize);
-	}
-}
-
-void assets::unpack_texture_page(TextureInfo* info, int pageIndex, char* sourcebuffer, char* destination)
-{
-	char* source = sourcebuffer;
-	for (int i = 0; i < pageIndex; i++) {
-		source += info->pages[i].compressedSize;
-	}
-
-	if (info->compressionMode == CompressionMode::LZ4) {
-
-		// size doesn't fully match, it's compressed
-		if (info->pages[pageIndex].compressedSize != info->pages[pageIndex].originalSize)
-		{
-			LZ4_decompress_safe(source, destination, info->pages[pageIndex].compressedSize, info->pages[pageIndex].originalSize);
-		} else {
-			// size matched, uncompressed page
-			memcpy(destination, source, info->pages[pageIndex].originalSize);
-		}
-	} else {
-		memcpy(destination, source, info->pages[pageIndex].originalSize);
-	}
+	memcpy(destination, sourcebuffer, sourceSize);
 }
 
 
@@ -106,56 +51,17 @@ assets::AssetFile assets::pack_texture(TextureInfo* info, void* pixelData)
 
 
 	char* pixels = (char*)pixelData;
-	std::vector<char> page_buffer;
-	for (auto& p : info->pages)
-	{
-		page_buffer.resize(p.originalSize);
 
+	file.binaryBlob.resize(info->textureSize);
+	memcpy(file.binaryBlob.data(), pixels, info->textureSize);
 
-		//compress buffer into blob
-		int compressStaging = LZ4_compressBound(p.originalSize);
-
-		page_buffer.resize(compressStaging);
-
-		int compressedSize = LZ4_compress_default(pixels, page_buffer.data(), p.originalSize, compressStaging);
-
-
-		float compression_rate = float(compressedSize) / float(info->textureSize);
-
-		//if the compression is more than 80% of the original size, its not worth to use it
-		if (compression_rate > 0.8)
-		{
-			compressedSize = p.originalSize;
-			page_buffer.resize(compressedSize);
-
-			memcpy(page_buffer.data(), pixels, compressedSize);
-		} 		else {
-			page_buffer.resize(compressedSize);
-		}
-		p.compressedSize = compressedSize;
-
-		file.binaryBlob.insert(file.binaryBlob.end(), page_buffer.begin(), page_buffer.end());
-
-		//advance pixel pointer to next page
-		pixels += p.originalSize;
-	}
 	nlohmann::json texture_metadata;
 	texture_metadata["format"] = "RGBA8";
-
 	texture_metadata["buffer_size"] = info->textureSize;
 	texture_metadata["original_file"] = info->originalFile;
-	texture_metadata["compression"] = "LZ4";
-
-	std::vector<nlohmann::json> page_json;
-	for (auto& p : info->pages) {
-		nlohmann::json page;
-		page["compressed_size"] = p.compressedSize;
-		page["original_size"] = p.originalSize;
-		page["width"] = p.width;
-		page["height"] = p.height;
-		page_json.push_back(page);
-	}
-	texture_metadata["pages"] = page_json;
+	texture_metadata["miplevels"] = info->miplevels;
+	texture_metadata["width"] = info->width;
+	texture_metadata["height"] = info->height;
 
 	std::string stringified = texture_metadata.dump();
 	file.json = stringified;

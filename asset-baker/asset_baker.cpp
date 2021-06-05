@@ -7,7 +7,9 @@
 #include "lz4.h"
 
 #define STB_IMAGE_IMPLEMENTATION
+#define STB_IMAGE_RESIZE_IMPLEMENTATION
 #include "stb_image.h"
+#include "stb_image_resize.h"
 #include "tiny_obj_loader.h"
 
 #include "asset_loader.h"
@@ -71,64 +73,48 @@ bool convert_image(const fs::path& input, const fs::path& output)
 	texinfo.originalFile = input.string();
 	auto start = std::chrono::high_resolution_clock::now();
 
-	std::vector<char> all_buffer;
+	texinfo.width = texWidth;
+	texinfo.height = texHeight;
 
-	struct DumbHandler : nvtt::OutputHandler {
-		// Output data. Compressed data is output as soon as it's generated to minimize memory allocations.
-		virtual bool writeData(const void* data, int size) {
-			for (int i = 0; i < size; ++i) {
-				buffer.push_back(((char*)data)[i]);
-			}
-			return true;
-		}
-		virtual void beginImage(int size, int width, int height, int depth, int face, int miplevel) { };
+	std::vector<unsigned char> all_buffer;
 
-		// Indicate the end of the compressed image. (New in NVTT 2.1)
-		virtual void endImage() {};
-		std::vector<char> buffer;
-	};
+	size_t all_buffer_size{ (size_t)texture_size };
+	uint32_t width{ texinfo.width };
+	uint32_t height{ texinfo.height };
+	uint32_t miplevels{ 1 };
 
-	nvtt::Compressor compressor;
-	nvtt::CompressionOptions options;
-	nvtt::OutputOptions outputOptions;
-	nvtt::Surface surface;
+	// make mipmaps
+	while (width > 1 || height > 1) {
+		width >>= 1;
+		height >>= 1;
+		all_buffer_size += (size_t)width * height * 4;
+		++miplevels;
+	}
 
-	DumbHandler handler;
-	outputOptions.setOutputHandler(&handler);
+	texinfo.miplevels = miplevels;
+	all_buffer.resize(all_buffer_size);
+	width = texinfo.width;
+	height = texinfo.height;
+	size_t mipSize{ (size_t)width * height * 4 };
+	unsigned char* ptr{ all_buffer.data() };
 
-	surface.setImage(nvtt::InputFormat::InputFormat_BGRA_8UB, texWidth, texHeight, 1, pixels);
+	memcpy(ptr, pixels, mipSize);
 
-	// Use do while loop for edge case when there's only one miplevel (eg texture size is 1)
-	do {
-		if (surface.canMakeNextMipmap(1)) {
-			surface.buildNextMipmap(nvtt::MipmapFilter_Box);
-		}
+	while (mipSize > 0) {
+		stbir_resize_uint8(ptr, width, height, 0, ptr + mipSize, width / 2, height / 2, 0, 4);
+		ptr += mipSize;
+		width >>= 1;
+		height >>= 1;
+		mipSize = (size_t)width * height * 4;
+	}
 
-		options.setFormat(nvtt::Format::Format_RGBA);
-		options.setPixelType(nvtt::PixelType_UnsignedNorm);
-
-		compressor.compress(surface, 0, 0, options, outputOptions);
-
-		texinfo.pages.push_back({});
-		texinfo.pages.back().width = surface.width();
-		texinfo.pages.back().height = surface.height();
-		texinfo.pages.back().originalSize = handler.buffer.size();
-
-		all_buffer.insert(all_buffer.end(), handler.buffer.begin(), handler.buffer.end());
-		handler.buffer.clear();
-	} while (surface.canMakeNextMipmap(1));
-
-
-	texinfo.textureSize = all_buffer.size();
+	texinfo.textureSize = all_buffer_size;
 
 	assets::AssetFile newImage = assets::pack_texture(&texinfo, all_buffer.data());
 
 	auto  end = std::chrono::high_resolution_clock::now();
 
-
-
-	std::cout << "compression took " << std::chrono::duration_cast<std::chrono::nanoseconds>(diff).count() / 1000000.0 << "ms" << std::endl;
-
+	std::cout << "creating mipmaps took " << std::chrono::duration_cast<std::chrono::nanoseconds>(diff).count() / 1000000.0 << "ms" << std::endl;
 
 	stbi_image_free(pixels);
 

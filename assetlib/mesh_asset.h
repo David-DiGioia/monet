@@ -51,13 +51,12 @@ namespace assets {
 		MeshBounds bounds;
 		VertexFormat vertexFormat;
 		char indexSize;
-		CompressionMode compressionMode;
 		std::string originalFile;
 	};
 
 	MeshInfo read_mesh_info(AssetFile* file);
 
-	void unpack_mesh(MeshInfo* info, const char* sourcebuffer, size_t sourceSize, char* vertexBuffer, char* indexBuffer);
+	void unpack_mesh(MeshInfo* info, const char* sourcebuffer, char* vertexBuffer, char* indexBuffer);
 
 	AssetFile pack_mesh(MeshInfo* info, char* vertexData, char* indexData);
 

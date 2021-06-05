@@ -9,28 +9,21 @@ namespace assets {
 		RGBA8,
 		SRGBA8
 	};
-	
-	struct PageInfo {
-		uint32_t width;
-		uint32_t height;
-		uint32_t compressedSize;
-		uint32_t originalSize;
-	};
 
 	struct TextureInfo {
+		// size in bytes
 		uint64_t textureSize;
+		// width and height are in texels
+		uint32_t width;
+		uint32_t height;
 		TextureFormat textureFormat;
-		CompressionMode compressionMode;
-
 		std::string originalFile;
-		std::vector<PageInfo> pages;
+		uint32_t miplevels;
 	};
 
 	TextureInfo read_texture_info(AssetFile* file);
 
-	void unpack_texture(TextureInfo* info, const char* sourcebuffer, size_t sourceSize, char* destination);
-
-	void unpack_texture_page(TextureInfo* info, int pageIndex ,char* sourcebuffer, char* destination);
+	void unpack_texture(const char* sourcebuffer, size_t sourceSize, char* destination);
 
 	AssetFile pack_texture(TextureInfo* info, void* pixelData);
 }
