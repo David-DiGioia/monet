@@ -1,6 +1,5 @@
 
 #include "json.hpp"
-#include "lz4.h"
 #include <material_asset.h>
 assets::MaterialInfo assets::read_material_info(AssetFile* file)
 {

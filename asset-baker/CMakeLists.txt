@@ -7,4 +7,4 @@ set_property(TARGET baker PROPERTY VS_DEBUGGER_WORKING_DIRECTORY "$<TARGET_FILE_
 
 target_include_directories(baker PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}")
 
-target_link_libraries(baker PUBLIC tinyobjloader stb_image json lz4 assetlib tinyGLTF nvtt glm assimp)
+target_link_libraries(baker PUBLIC stb_image json assetlib tinyGLTF glm)

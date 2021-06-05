@@ -3,7 +3,6 @@
 #include <iostream>
 
 #include "json.hpp"
-#include "lz4.h"
 
 assets::TextureFormat parse_format(const char* f) {
 

@@ -17,7 +17,7 @@ target_compile_definitions(monet PUBLIC GLM_FORCE_DEPTH_ZERO_TO_ONE)
 
 target_precompile_headers(monet PUBLIC "vk_types.h" "<unordered_map>" "<vector>" "<iostream>" "<fstream>" "<string>" )
 
-target_link_libraries(monet vkbootstrap vma glm tinyobjloader imgui stb_image spirv_reflect)
+target_link_libraries(monet vkbootstrap vma glm imgui stb_image spirv_reflect)
 target_link_libraries(monet Vulkan::Vulkan sdl2 assetlib tracy fmt_lib)
 
 # Custom code below -----------------------------------------------------------------------------

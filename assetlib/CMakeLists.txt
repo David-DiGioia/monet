@@ -5,15 +5,11 @@ add_library (assetlib STATIC
 "mesh_asset.cpp"
 "texture_asset.h"
 "texture_asset.cpp"
-"material_asset.h"
-"material_asset.cpp"
-"prefab_asset.h"
-"prefab_asset.cpp"
 "asset_loader.h"
 "asset_loader.cpp"
 )
 
 target_include_directories(assetlib PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}")
 
-target_link_libraries(assetlib PRIVATE json lz4)
+target_link_libraries(assetlib PRIVATE json)
 

@@ -10,11 +10,6 @@ namespace assets {
 		std::vector<char> binaryBlob;
 	};
 
-	enum class CompressionMode : uint32_t {
-		None,
-		LZ4
-	};
-
 	bool save_binaryfile(const char* path, const AssetFile& file);
 
 	bool load_binaryfile(const char* path, AssetFile& outputFile);	
