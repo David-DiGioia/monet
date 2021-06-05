@@ -54,11 +54,11 @@ namespace assets {
 		std::string originalFile;
 	};
 
-	MeshInfo read_mesh_info(AssetFile* file);
+	MeshInfo readMeshInfo(AssetFile* file);
 
-	void unpack_mesh(MeshInfo* info, const char* sourcebuffer, char* vertexBuffer, char* indexBuffer);
+	void unpackMesh(MeshInfo* info, const char* sourcebuffer, char* vertexBuffer, char* indexBuffer);
 
-	AssetFile pack_mesh(MeshInfo* info, char* vertexData, char* indexData);
+	AssetFile packMesh(MeshInfo* info, char* vertexData, char* indexData);
 
 	// Works for any vertex struct with position attribute
 	template <typename T>

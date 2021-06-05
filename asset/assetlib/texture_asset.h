@@ -21,9 +21,9 @@ namespace assets {
 		uint32_t miplevels;
 	};
 
-	TextureInfo read_texture_info(AssetFile* file);
+	TextureInfo readTextureInfo(AssetFile* file);
 
-	void unpack_texture(const char* sourcebuffer, size_t sourceSize, char* destination);
+	void unpackTexture(const char* sourcebuffer, size_t sourceSize, char* destination);
 
-	AssetFile pack_texture(TextureInfo* info, void* pixelData);
+	AssetFile packTexture(TextureInfo* info, void* pixelData);
 }

@@ -10,12 +10,12 @@
 #define STB_IMAGE_IMPLEMENTATION
 #include "stb_image.h"
 
-uint32_t vkutil::get_mip_levels(uint32_t width, uint32_t height)
+uint32_t vkutil::getMipLevels(uint32_t width, uint32_t height)
 {
 	return static_cast<uint32_t>(std::floor(std::log2((std::max(width, height))))) + 1;
 }
 
-VkExtent2D vkutil::next_mip_level_extent(VkExtent2D extent)
+VkExtent2D vkutil::nextMipLevelExtent(VkExtent2D extent)
 {
 	extent.width = extent.width > 1 ? extent.width / 2 : 1;
 	extent.height = extent.height > 1 ? extent.height / 2 : 1;
@@ -98,7 +98,7 @@ void upload_image(VulkanEngine& engine, assets::TextureInfo info, VkFormat forma
 	imageExtent.height = static_cast<uint32_t>(info.height);
 	imageExtent.depth = 1;
 
-	VkImageCreateInfo dimg_info{ vkinit::image_create_info(format, VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_TRANSFER_SRC_BIT, imageExtent, info.miplevels) };
+	VkImageCreateInfo dimg_info{ vkinit::imageCreateInfo(format, VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_TRANSFER_SRC_BIT, imageExtent, info.miplevels) };
 
 	AllocatedImage newImage;
 
@@ -112,7 +112,7 @@ void upload_image(VulkanEngine& engine, assets::TextureInfo info, VkFormat forma
 		nullptr);
 
 	// we must transfer the image to transfer dst layout before copying the buffer to the image
-	engine.immediate_submit([=](VkCommandBuffer cmd) {
+	engine.immediateSubmit([=](VkCommandBuffer cmd) {
 		VkImageSubresourceRange range{};
 		range.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
 		range.baseMipLevel = 0;
@@ -180,7 +180,7 @@ void upload_image(VulkanEngine& engine, assets::TextureInfo info, VkFormat forma
 			1, &imageBarrierToReadable);
 	});
 
-	engine._mainDeletionQueue.push_function([=, &engine]() {
+	engine._mainDeletionQueue.pushFunction([=, &engine]() {
 		vmaDestroyImage(engine._allocator, newImage._image, newImage._allocation);
 	});
 
@@ -189,14 +189,14 @@ void upload_image(VulkanEngine& engine, assets::TextureInfo info, VkFormat forma
 	outImage = newImage;
 }
 
-bool vkutil::load_image_from_asset(VulkanEngine& engine, const char* path, VkFormat format, uint32_t* outMipLevels, AllocatedImage& outImage)
+bool vkutil::loadImageFromAsset(VulkanEngine& engine, const char* path, VkFormat format, uint32_t* outMipLevels, AllocatedImage& outImage)
 {
 	ZoneScoped
 	assets::AssetFile file;
 
 	{
 		ZoneScopedN("load_binaryfile")
-		bool loaded{ assets::load_binaryfile(path, file) };
+		bool loaded{ assets::loadBinaryFile(path, file) };
 
 		if (!loaded) {
 			std::cout << "Error when loading image\n";
@@ -208,7 +208,7 @@ bool vkutil::load_image_from_asset(VulkanEngine& engine, const char* path, VkFor
 
 	{
 		ZoneScopedN("read_texture_info")
-		textureInfo = assets::read_texture_info(&file);
+		textureInfo = assets::readTextureInfo(&file);
 	}
 
 	*outMipLevels = (uint32_t)textureInfo.miplevels;
@@ -227,14 +227,14 @@ bool vkutil::load_image_from_asset(VulkanEngine& engine, const char* path, VkFor
 		return false;
 	}
 
-	AllocatedBuffer stagingBuffer{ engine.create_buffer(imageSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VMA_MEMORY_USAGE_CPU_ONLY) };
+	AllocatedBuffer stagingBuffer{ engine.createBuffer(imageSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VMA_MEMORY_USAGE_CPU_ONLY) };
 
 	void* data;
 	vmaMapMemory(engine._allocator, stagingBuffer._allocation, &data);
 
 	{
 		ZoneScopedN("unpack_texture")
-		assets::unpack_texture(file.binaryBlob.data(), file.binaryBlob.size(), (char*)data);
+		assets::unpackTexture(file.binaryBlob.data(), file.binaryBlob.size(), (char*)data);
 	}
 
 	vmaUnmapMemory(engine._allocator, stagingBuffer._allocation);
@@ -249,7 +249,7 @@ bool vkutil::load_image_from_asset(VulkanEngine& engine, const char* path, VkFor
 	return true;
 }
 
-bool vkutil::load_image_from_file(VulkanEngine& engine, const char* file, AllocatedImage& outImage, uint32_t* outMipLevels, VkFormat format)
+bool vkutil::loadImageFromFile(VulkanEngine& engine, const char* file, AllocatedImage& outImage, uint32_t* outMipLevels, VkFormat format)
 {
 	int texWidth, texHeight, texChannels;
 	uint32_t pixelBytes{ 4 };
@@ -277,7 +277,7 @@ bool vkutil::load_image_from_file(VulkanEngine& engine, const char* file, Alloca
 	VkDeviceSize imageSize{ static_cast<VkDeviceSize>(texWidth * texHeight * pixelBytes) };
 
 	// allocate temporary buffer for holding texture data to upload
-	AllocatedBuffer stagingBuffer{ engine.create_buffer(imageSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VMA_MEMORY_USAGE_CPU_ONLY) };
+	AllocatedBuffer stagingBuffer{ engine.createBuffer(imageSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VMA_MEMORY_USAGE_CPU_ONLY) };
 
 	void* data;
 	vmaMapMemory(engine._allocator, stagingBuffer._allocation, &data);
@@ -291,10 +291,10 @@ bool vkutil::load_image_from_file(VulkanEngine& engine, const char* file, Alloca
 	imageExtent.height = static_cast<uint32_t>(texHeight);
 	imageExtent.depth = 1;
 	// HDRIs should not be mipmapped
-	uint32_t mipLevels{ hdri ? 1 : get_mip_levels(texWidth, texHeight) };
+	uint32_t mipLevels{ hdri ? 1 : getMipLevels(texWidth, texHeight) };
 	*outMipLevels = mipLevels;
 
-	VkImageCreateInfo dimg_info{ vkinit::image_create_info(format, VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_TRANSFER_SRC_BIT, imageExtent, mipLevels) };
+	VkImageCreateInfo dimg_info{ vkinit::imageCreateInfo(format, VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_TRANSFER_SRC_BIT, imageExtent, mipLevels) };
 
 	AllocatedImage newImage;
 
@@ -308,7 +308,7 @@ bool vkutil::load_image_from_file(VulkanEngine& engine, const char* file, Alloca
 		nullptr);
 
 	// we must transfer the image to transfer dst layout before copying the buffer to the image
-	engine.immediate_submit([=](VkCommandBuffer cmd) {
+	engine.immediateSubmit([=](VkCommandBuffer cmd) {
 		VkImageSubresourceRange range{};
 		range.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
 		range.baseMipLevel = 0;
@@ -365,7 +365,7 @@ bool vkutil::load_image_from_file(VulkanEngine& engine, const char* file, Alloca
 			1, &imageBarrierToReadable);
 	});
 
-	engine._mainDeletionQueue.push_function([=, &engine]() {
+	engine._mainDeletionQueue.pushFunction([=, &engine]() {
 		vmaDestroyImage(engine._allocator, newImage._image, newImage._allocation);
 	});
 

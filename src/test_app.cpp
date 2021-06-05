@@ -11,23 +11,23 @@ void TestApp::init(VulkanEngine& engine)
 {
 	SDL_SetRelativeMouseMode((SDL_bool)_camMouseControls);
 
-	engine.set_gravity(-9.81);
+	engine.setGravity(-9.81);
 
 	_camera.pos = glm::vec3{ 0.0, 2.0, 2.0 };
 
-	_bed.setRenderObject(engine.create_render_object("bed"));
+	_bed.setRenderObject(engine.createRenderObject("bed"));
 
-	_sofa.setRenderObject(engine.create_render_object("sofa"));
+	_sofa.setRenderObject(engine.createRenderObject("sofa"));
 	_sofa.setPos(glm::vec3(-2.5, 0.0, 0.4));
 	_sofa.setRot(glm::rotate(glm::radians(110.0f), glm::vec3{ 0.0, 1.0, 0.0 }));
 	_sofa.parent = &_bed;
 
-	_chair.setRenderObject(engine.create_render_object("chair"));
+	_chair.setRenderObject(engine.createRenderObject("chair"));
 	_chair.setPos(glm::vec3(-2.1, 0.0, -2.0));
 	_chair.setRot(glm::rotate(glm::radians(80.0f), glm::vec3{ 0.0, 1.0, 0.0 }));
 
 	for (int i{ 0 }; i < 10; ++i) {
-		GameObject chair{ engine.create_render_object("chair") };
+		GameObject chair{ engine.createRenderObject("chair") };
 		chair.setPos(glm::vec3(-2.1, 0.0, -2.0 * (i + 2)));
 	}
 
@@ -40,7 +40,7 @@ void TestApp::init(VulkanEngine& engine)
 	//engine.add_to_physics_engine_dynamic(&_cube, shape);
 
 
-	GameObject plane{ engine.create_render_object("plane", "default") };
+	GameObject plane{ engine.createRenderObject("plane", "default") };
 	plane.setScale(glm::vec3(5.0f));
 
 	Light light{};
@@ -55,7 +55,7 @@ void TestApp::updateCamera(VulkanEngine& engine)
 	glm::mat4 rotTheta{ glm::rotate(_camRotTheta, glm::vec3{ 1.0f, 0.0f, 0.0f }) };
 	glm::mat4 rotPhi{ glm::rotate(_camRotPhi, glm::vec3{ 0.0f, 1.0f, 0.0f }) };
 	_camera.rot = rotPhi * rotTheta;
-	engine.set_camera_transform(_camera);
+	engine.setCameraTransform(_camera);
 }
 
 void TestApp::update(VulkanEngine& engine, float delta)
@@ -66,7 +66,7 @@ void TestApp::update(VulkanEngine& engine, float delta)
 	_chair.setPos(_chairPos);
 
 	updateCamera(engine);
-	engine.set_scene_lights(_lights);
+	engine.setSceneLights(_lights);
 	_time += delta;
 }
 

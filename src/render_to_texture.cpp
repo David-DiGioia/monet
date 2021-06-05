@@ -143,20 +143,20 @@ void create_rt_pipeline(VulkanEngine& engine, VkRenderPass renderpass, VkExtent2
 	std::string prefix{ "../../shaders/" };
 
 	VkShaderModule vertShader;
-	if (!engine.load_shader_module(prefix + vertPath, &vertShader)) {
+	if (!engine.loadShaderModule(prefix + vertPath, &vertShader)) {
 		std::cout << "Error when building vertex shader module: " << (prefix + vertPath) << "\n";
 	}
 
 	VkShaderModule fragShader;
-	if (!engine.load_shader_module(prefix + fragPath, &fragShader)) {
+	if (!engine.loadShaderModule(prefix + fragPath, &fragShader)) {
 		std::cout << "Error when building fragment shader module: " << (prefix + fragPath) << "\n";
 	}
 
 	PipelineBuilder pipelineBuilder;
 	// vertex input controls how to read vertices from vertex buffers
-	pipelineBuilder._vertexInputInfo = vkinit::vertex_input_state_create_info();
+	pipelineBuilder._vertexInputInfo = vkinit::vertexInputStateCreateInfo();
 	// input assembly is the configuration for drawing triangle lists, strips, or individual points
-	pipelineBuilder._inputAssembly = vkinit::input_assembly_create_info(VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST);
+	pipelineBuilder._inputAssembly = vkinit::inputAssemblyCreateInfo(VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST);
 	// build viewport and scissor from the swapchain extents
 	pipelineBuilder._viewport.x = 0.0f;
 	pipelineBuilder._viewport.y = 0.0f;
@@ -166,10 +166,10 @@ void create_rt_pipeline(VulkanEngine& engine, VkRenderPass renderpass, VkExtent2
 	pipelineBuilder._viewport.maxDepth = 1.0f;
 	pipelineBuilder._scissor.offset = { 0, 0 };
 	pipelineBuilder._scissor.extent = extent;
-	pipelineBuilder._rasterizer = vkinit::rasterization_state_create_info(VK_POLYGON_MODE_FILL);
-	pipelineBuilder._multisampling = vkinit::multisampling_state_create_info(VK_SAMPLE_COUNT_1_BIT, 0.0f);
-	pipelineBuilder._colorBlendAttachment = vkinit::color_blend_attachment_state();
-	pipelineBuilder._depthStencil = vkinit::depth_stencil_create_info(false, false, VK_COMPARE_OP_LESS_OR_EQUAL);
+	pipelineBuilder._rasterizer = vkinit::rasterizationStateCreateInfo(VK_POLYGON_MODE_FILL);
+	pipelineBuilder._multisampling = vkinit::multisamplingStateCreateInfo(VK_SAMPLE_COUNT_1_BIT, 0.0f);
+	pipelineBuilder._colorBlendAttachment = vkinit::colorBlendAttachmentState();
+	pipelineBuilder._depthStencil = vkinit::depthStencilCreateInfo(false, false, VK_COMPARE_OP_LESS_OR_EQUAL);
 
 	VkVertexInputAttributeDescription attribute{};
 	attribute.binding = 0;
@@ -189,14 +189,14 @@ void create_rt_pipeline(VulkanEngine& engine, VkRenderPass renderpass, VkExtent2
 	pipelineBuilder._pipelineLayout = layout;
 
 	pipelineBuilder._shaderStages.push_back(
-		vkinit::pipeline_shader_stage_create_info(VK_SHADER_STAGE_VERTEX_BIT, vertShader)
+		vkinit::pipelineShaderStageCreateInfo(VK_SHADER_STAGE_VERTEX_BIT, vertShader)
 	);
 
 	pipelineBuilder._shaderStages.push_back(
-		vkinit::pipeline_shader_stage_create_info(VK_SHADER_STAGE_FRAGMENT_BIT, fragShader)
+		vkinit::pipelineShaderStageCreateInfo(VK_SHADER_STAGE_FRAGMENT_BIT, fragShader)
 	);
 
-	*outPipeline = pipelineBuilder.build_pipeline(engine._device, renderpass, false);
+	*outPipeline = pipelineBuilder.buildPipeline(engine._device, renderpass, false);
 
 	vkDestroyShaderModule(engine._device, vertShader, nullptr);
 	vkDestroyShaderModule(engine._device, fragShader, nullptr);
@@ -204,7 +204,7 @@ void create_rt_pipeline(VulkanEngine& engine, VkRenderPass renderpass, VkExtent2
 
 AllocatedBuffer create_rt_vertex_buffer(VulkanEngine& engine, size_t bufferSize, void* cpuArray)
 {
-	AllocatedBuffer vertexBuffer{ engine.create_buffer(bufferSize, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, VMA_MEMORY_USAGE_CPU_TO_GPU) };
+	AllocatedBuffer vertexBuffer{ engine.createBuffer(bufferSize, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, VMA_MEMORY_USAGE_CPU_TO_GPU) };
 
 	void* data;
 	vmaMapMemory(engine._allocator, vertexBuffer._allocation, &data);
@@ -247,11 +247,11 @@ void create_rt_image(VulkanEngine& engine, VkExtent2D extent, VkFormat format, u
 	vmaCreateImage(engine._allocator, &cubemapInfo, &allocInfo, &outCubemap->_image, &outCubemap->_allocation, nullptr);
 }
 
-Texture render_to_texture(VulkanEngine& engine, VkDescriptorSet equirectangularSet, VkExtent2D extent, bool useMipmap, bool isCubemap, const std::string& vertPath, const std::string& fragPath)
+Texture renderToTexture(VulkanEngine& engine, VkDescriptorSet equirectangularSet, VkExtent2D extent, bool useMipmap, bool isCubemap, const std::string& vertPath, const std::string& fragPath)
 {
 	VkFormat hdriFormat{ VK_FORMAT_R32G32B32A32_SFLOAT };
 
-	uint32_t mipLevels{ useMipmap ? vkutil::get_mip_levels(extent.width, extent.height) : 1 };
+	uint32_t mipLevels{ useMipmap ? vkutil::getMipLevels(extent.width, extent.height) : 1 };
 
 	VkDescriptorSetLayoutBinding binding{};
 	binding.binding = 0;
@@ -267,39 +267,39 @@ Texture render_to_texture(VulkanEngine& engine, VkDescriptorSet equirectangularS
 
 	VkDescriptorSetLayout setLayout;
 	VK_CHECK(vkCreateDescriptorSetLayout(engine._device, &descriptorSetLayoutInfo, nullptr, &setLayout));
-	engine._mainDeletionQueue.push_function([=, &engine]() {
+	engine._mainDeletionQueue.pushFunction([=, &engine]() {
 		vkDestroyDescriptorSetLayout(engine._device, setLayout, nullptr);
 	});
 
 	VkPipelineLayout pipelineLayout;
 	create_rt_pipeline_layout(engine, setLayout, &pipelineLayout);
-	engine._mainDeletionQueue.push_function([=, &engine]() {
+	engine._mainDeletionQueue.pushFunction([=, &engine]() {
 		vkDestroyPipelineLayout(engine._device, pipelineLayout, nullptr);
 	});
 
 	VkRenderPass renderpass;
 	create_rt_renderpass(engine, hdriFormat, &renderpass);
-	engine._mainDeletionQueue.push_function([=, &engine]() {
+	engine._mainDeletionQueue.pushFunction([=, &engine]() {
 		vkDestroyRenderPass(engine._device, renderpass, nullptr);
 	});
 
 	AllocatedImage allocatedImage;
 	create_rt_image(engine, extent, hdriFormat, mipLevels, isCubemap, &allocatedImage);
-	engine._mainDeletionQueue.push_function([=, &engine]() {
+	engine._mainDeletionQueue.pushFunction([=, &engine]() {
 		vmaDestroyImage(engine._allocator, allocatedImage._image, allocatedImage._allocation);
 	});
 
 	uint32_t numVertices{ isCubemap ? NUM_VERTICES_CUBE : NUM_VERTICES_PLANE };
 	glm::vec3* vertexData{ isCubemap ? vertexDataCube : vertexDataPlane };
 	AllocatedBuffer vertexBuffer{ create_rt_vertex_buffer(engine, numVertices * sizeof(glm::vec3), vertexData) };
-	engine._mainDeletionQueue.push_function([=, &engine]() {
+	engine._mainDeletionQueue.pushFunction([=, &engine]() {
 		vmaDestroyBuffer(engine._allocator, vertexBuffer._buffer, vertexBuffer._allocation);
 	});
 
 	for (auto mipLevel{ 0 }; mipLevel < mipLevels; ++mipLevel) {
 		VkPipeline pipeline;
 		create_rt_pipeline(engine, renderpass, extent, pipelineLayout, &pipeline, vertPath, fragPath);
-		engine._mainDeletionQueue.push_function([=, &engine]() {
+		engine._mainDeletionQueue.pushFunction([=, &engine]() {
 			vkDestroyPipeline(engine._device, pipeline, nullptr);
 		});
 
@@ -327,17 +327,17 @@ Texture render_to_texture(VulkanEngine& engine, VkDescriptorSet equirectangularS
 
 			VkImageView attachmentView;
 			VK_CHECK(vkCreateImageView(engine._device, &attachmentViewInfo, nullptr, &attachmentView));
-			engine._mainDeletionQueue.push_function([=, &engine]() {
+			engine._mainDeletionQueue.pushFunction([=, &engine]() {
 				vkDestroyImageView(engine._device, attachmentView, nullptr);
 			});
 
 			VkFramebuffer framebuffer;
 			create_rt_framebuffer(engine, renderpass, extent, attachmentView, &framebuffer);
-			engine._mainDeletionQueue.push_function([=, &engine]() {
+			engine._mainDeletionQueue.pushFunction([=, &engine]() {
 				vkDestroyFramebuffer(engine._device, framebuffer, nullptr);
 			});
 
-			engine.immediate_submit([=](VkCommandBuffer cmd) {
+			engine.immediateSubmit([=](VkCommandBuffer cmd) {
 				VkClearValue clearValue{};
 				clearValue.color = { {0.01, 0.01, 0.02, 1.0} };
 				VkClearValue depthClear{};
@@ -382,7 +382,7 @@ Texture render_to_texture(VulkanEngine& engine, VkDescriptorSet equirectangularS
 			});
 		}
 
-		extent = vkutil::next_mip_level_extent(extent);
+		extent = vkutil::nextMipLevelExtent(extent);
 	}
 
 	// This is the final image view, viewing all 6 layers of the image as a cube
@@ -406,7 +406,7 @@ Texture render_to_texture(VulkanEngine& engine, VkDescriptorSet equirectangularS
 
 	VkImageView textureView;
 	VK_CHECK(vkCreateImageView(engine._device, &textureViewInfo, nullptr, &textureView));
-	engine._mainDeletionQueue.push_function([=, &engine]() {
+	engine._mainDeletionQueue.pushFunction([=, &engine]() {
 		vkDestroyImageView(engine._device, textureView, nullptr);
 	});
 
@@ -472,7 +472,7 @@ void prepareShadowMapRenderpass(VulkanEngine& engine, VkRenderPass* renderpass)
 	renderPassCreateInfo.pDependencies = dependencies.data();
 
 	VK_CHECK(vkCreateRenderPass(engine._device, &renderPassCreateInfo, nullptr, renderpass));
-	engine._mainDeletionQueue.push_function([=, &engine]() {
+	engine._mainDeletionQueue.pushFunction([=, &engine]() {
 		vkDestroyRenderPass(engine._device, *renderpass, nullptr);
 	});
 }
@@ -487,8 +487,8 @@ void prepareShadowMapFramebuffer(VulkanEngine& engine, const ShadowGlobalResourc
 	imageInfo.pNext = nullptr;
 	imageInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
 	imageInfo.imageType = VK_IMAGE_TYPE_2D;
-	imageInfo.extent.width = shadowGlobal._width;
-	imageInfo.extent.height = shadowGlobal._height;
+	imageInfo.extent.width = shadowGlobal.width;
+	imageInfo.extent.height = shadowGlobal.height;
 	imageInfo.extent.depth = 1;
 	imageInfo.mipLevels = 1;
 	imageInfo.arrayLayers = 1;
@@ -504,7 +504,7 @@ void prepareShadowMapFramebuffer(VulkanEngine& engine, const ShadowGlobalResourc
 	allocInfo.requiredFlags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
 
 	VK_CHECK(vmaCreateImage(engine._allocator, &imageInfo, &allocInfo, &shadowFrame->depth.image._image, &shadowFrame->depth.image._allocation, nullptr));
-	engine._mainDeletionQueue.push_function([=, &engine]() {
+	engine._mainDeletionQueue.pushFunction([=, &engine]() {
 		vmaDestroyImage(engine._allocator, shadowFrame->depth.image._image, shadowFrame->depth.image._allocation);
 	});
 
@@ -521,7 +521,7 @@ void prepareShadowMapFramebuffer(VulkanEngine& engine, const ShadowGlobalResourc
 	depthStencilView.subresourceRange.layerCount = 1;
 	depthStencilView.image = shadowFrame->depth.image._image;
 	VK_CHECK(vkCreateImageView(engine._device, &depthStencilView, nullptr, &shadowFrame->depth.imageView));
-	engine._mainDeletionQueue.push_function([=, &engine]() {
+	engine._mainDeletionQueue.pushFunction([=, &engine]() {
 		vkDestroyImageView(engine._device, shadowFrame->depth.imageView, nullptr);
 	});
 
@@ -543,7 +543,7 @@ void prepareShadowMapFramebuffer(VulkanEngine& engine, const ShadowGlobalResourc
 	sampler.maxLod = 1.0f;
 	sampler.borderColor = VK_BORDER_COLOR_FLOAT_OPAQUE_WHITE;
 	VK_CHECK(vkCreateSampler(engine._device, &sampler, nullptr, &shadowFrame->depthSampler));
-	engine._mainDeletionQueue.push_function([=, &engine]() {
+	engine._mainDeletionQueue.pushFunction([=, &engine]() {
 		vkDestroySampler(engine._device, shadowFrame->depthSampler, nullptr);
 	});
 
@@ -551,15 +551,15 @@ void prepareShadowMapFramebuffer(VulkanEngine& engine, const ShadowGlobalResourc
 	VkFramebufferCreateInfo fbufCreateInfo{};
 	fbufCreateInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
 	fbufCreateInfo.pNext = nullptr;
-	fbufCreateInfo.renderPass = shadowGlobal._renderPass;
+	fbufCreateInfo.renderPass = shadowGlobal.renderPass;
 	fbufCreateInfo.attachmentCount = 1;
 	fbufCreateInfo.pAttachments = &shadowFrame->depth.imageView;
-	fbufCreateInfo.width = shadowGlobal._width;
-	fbufCreateInfo.height = shadowGlobal._height;
+	fbufCreateInfo.width = shadowGlobal.width;
+	fbufCreateInfo.height = shadowGlobal.height;
 	fbufCreateInfo.layers = 1;
 
 	VK_CHECK(vkCreateFramebuffer(engine._device, &fbufCreateInfo, nullptr, &shadowFrame->frameBuffer));
-	engine._mainDeletionQueue.push_function([=, &engine]() {
+	engine._mainDeletionQueue.pushFunction([=, &engine]() {
 		vkDestroyFramebuffer(engine._device, shadowFrame->frameBuffer, nullptr);
 	});
 }
@@ -570,7 +570,7 @@ void setupDescriptorSetLayouts(VulkanEngine& engine, std::array<VkDescriptorSetL
 	//layout(set = 0, binding = 0) uniform LightBuffer {
 	//	mat4 lightSpaceMatrix;
 	//} lightData;
-	VkDescriptorSetLayoutBinding lightBinding{ vkinit::descriptorset_layout_binding(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_VERTEX_BIT, 0) };
+	VkDescriptorSetLayoutBinding lightBinding{ vkinit::descriptorsetLayoutBinding(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_VERTEX_BIT, 0) };
 
 	VkDescriptorSetLayoutCreateInfo lightSetInfo{};
 	lightSetInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
@@ -583,7 +583,7 @@ void setupDescriptorSetLayouts(VulkanEngine& engine, std::array<VkDescriptorSetL
 	//layout(std140, set = 1, binding = 0) readonly buffer ObjectBuffer {
 	//	ObjectData objects[]; // SSBOs can only have unsized arrays
 	//} objectBuffer;
-	VkDescriptorSetLayoutBinding objectBinding{ vkinit::descriptorset_layout_binding(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_VERTEX_BIT, 0) };
+	VkDescriptorSetLayoutBinding objectBinding{ vkinit::descriptorsetLayoutBinding(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_VERTEX_BIT, 0) };
 
 	VkDescriptorSetLayoutCreateInfo objectSetInfo{};
 	objectSetInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
@@ -594,7 +594,7 @@ void setupDescriptorSetLayouts(VulkanEngine& engine, std::array<VkDescriptorSetL
 
 	vkCreateDescriptorSetLayout(engine._device, &lightSetInfo, nullptr, &setLayoutsOut[0]);
 	vkCreateDescriptorSetLayout(engine._device, &objectSetInfo, nullptr, &setLayoutsOut[1]);
-	engine._mainDeletionQueue.push_function([=, &engine]() {
+	engine._mainDeletionQueue.pushFunction([=, &engine]() {
 		vkDestroyDescriptorSetLayout(engine._device, setLayoutsOut[1], nullptr);
 		vkDestroyDescriptorSetLayout(engine._device, setLayoutsOut[0], nullptr);
 	});
@@ -608,7 +608,7 @@ void setupDescriptorSetLayouts(VulkanEngine& engine, std::array<VkDescriptorSetL
 	pipelineLayoutCreateInfo.pPushConstantRanges = nullptr;
 
 	VK_CHECK(vkCreatePipelineLayout(engine._device, &pipelineLayoutCreateInfo, nullptr, pipelineLayout));
-	engine._mainDeletionQueue.push_function([=, &engine]() {
+	engine._mainDeletionQueue.pushFunction([=, &engine]() {
 		vkDestroyPipelineLayout(engine._device, *pipelineLayout, nullptr);
 	});
 }
@@ -635,13 +635,13 @@ void setupDescriptorSets(VulkanEngine& engine, ShadowFrameResources& shadowFrame
 	allocInfoObjects.descriptorSetCount = 1;
 	allocInfoObjects.pSetLayouts = &setLayouts[1];
 
-	VK_CHECK(vkAllocateDescriptorSets(engine._device, &allocInfoLight, &shadowFrame._shadowDescriptorSetLight));
-	VK_CHECK(vkAllocateDescriptorSets(engine._device, &allocInfoObjects, &shadowFrame._shadowDescriptorSetObjects));
+	VK_CHECK(vkAllocateDescriptorSets(engine._device, &allocInfoLight, &shadowFrame.shadowDescriptorSetLight));
+	VK_CHECK(vkAllocateDescriptorSets(engine._device, &allocInfoObjects, &shadowFrame.shadowDescriptorSetObjects));
 
 	VkDescriptorBufferInfo lightInfo{};
 	lightInfo.offset = 0;
 	lightInfo.range = VK_WHOLE_SIZE;
-	lightInfo.buffer = shadowFrame._shadowLightBuffer._buffer;
+	lightInfo.buffer = shadowFrame.shadowLightBuffer._buffer;
 
 	VkDescriptorBufferInfo objectInfo{};
 	objectInfo.offset = 0;
@@ -650,9 +650,9 @@ void setupDescriptorSets(VulkanEngine& engine, ShadowFrameResources& shadowFrame
 
 	std::vector<VkWriteDescriptorSet> writeDescriptorSets{
 		// Set 0, Binding 0 : Vertex shader uniform buffer (LightBuffer)
-		vkinit::write_descriptor_buffer(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, shadowFrame._shadowDescriptorSetLight, &lightInfo, 0),
+		vkinit::writeDescriptorBuffer(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, shadowFrame.shadowDescriptorSetLight, &lightInfo, 0),
 		// Set 1, Binding 0 : Object SSBO
-		vkinit::write_descriptor_buffer(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, shadowFrame._shadowDescriptorSetObjects, &objectInfo, 0),
+		vkinit::writeDescriptorBuffer(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, shadowFrame.shadowDescriptorSetObjects, &objectInfo, 0),
 	};
 
 	vkUpdateDescriptorSets(engine._device, writeDescriptorSets.size(), writeDescriptorSets.data(), 0, nullptr);
@@ -660,11 +660,11 @@ void setupDescriptorSets(VulkanEngine& engine, ShadowFrameResources& shadowFrame
 
 void initShadowPipeline(VulkanEngine& engine, VkRenderPass& renderpass, VkPipelineLayout pipelineLayout, VkPipeline* pipeline)
 {
-	VkPipelineInputAssemblyStateCreateInfo inputAssemblyStateCI{ vkinit::input_assembly_create_info(VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST) };
+	VkPipelineInputAssemblyStateCreateInfo inputAssemblyStateCI{ vkinit::inputAssemblyCreateInfo(VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST) };
 
-	VkPipelineRasterizationStateCreateInfo rasterizationStateCI{ vkinit::rasterization_state_create_info(VK_POLYGON_MODE_FILL) };
+	VkPipelineRasterizationStateCreateInfo rasterizationStateCI{ vkinit::rasterizationStateCreateInfo(VK_POLYGON_MODE_FILL) };
 
-	VkPipelineColorBlendAttachmentState blendAttachmentState{ vkinit::color_blend_attachment_state() };
+	VkPipelineColorBlendAttachmentState blendAttachmentState{ vkinit::colorBlendAttachmentState() };
 
 	VkPipelineColorBlendStateCreateInfo colorBlendStateCI{};
 	colorBlendStateCI.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
@@ -674,7 +674,7 @@ void initShadowPipeline(VulkanEngine& engine, VkRenderPass& renderpass, VkPipeli
 	colorBlendStateCI.attachmentCount = 1;
 	colorBlendStateCI.pAttachments = &blendAttachmentState;
 
-	VkPipelineDepthStencilStateCreateInfo depthStencilStateCI{ vkinit::depth_stencil_create_info(true, true, VK_COMPARE_OP_LESS_OR_EQUAL) };
+	VkPipelineDepthStencilStateCreateInfo depthStencilStateCI{ vkinit::depthStencilCreateInfo(true, true, VK_COMPARE_OP_LESS_OR_EQUAL) };
 
 
 	// Note that we don't have any scissors or viewports since we set VK_DYNAMIC_STATE_VIEWPORT flag in VkPipelineDynamicStateCreateInfo, which means we set it
@@ -695,15 +695,15 @@ void initShadowPipeline(VulkanEngine& engine, VkRenderPass& renderpass, VkPipeli
 	std::string prefix{ "../../shaders/" };
 	std::string vertPath{ prefix + "depth.vert.spv" };
 	VkShaderModule vertShader;
-	if (!engine.load_shader_module(vertPath, &vertShader)) {
+	if (!engine.loadShaderModule(vertPath, &vertShader)) {
 		std::cout << "Error when building vertex shader module: " << vertPath << "\n";
 	}
-	VkPipelineShaderStageCreateInfo vertStage{ vkinit::pipeline_shader_stage_create_info(VK_SHADER_STAGE_VERTEX_BIT, vertShader) };
+	VkPipelineShaderStageCreateInfo vertStage{ vkinit::pipelineShaderStageCreateInfo(VK_SHADER_STAGE_VERTEX_BIT, vertShader) };
 
 	// vertex input controls how to read vertices from vertex buffers
-	VkPipelineVertexInputStateCreateInfo vertexInputInfo{ vkinit::vertex_input_state_create_info() };
+	VkPipelineVertexInputStateCreateInfo vertexInputInfo{ vkinit::vertexInputStateCreateInfo() };
 	// input assembly is the configuration for drawing triangle lists, strips, or individual points
-	VertexInputDescription vertexDescription{ Vertex::get_vertex_description() };
+	VertexInputDescription vertexDescription{ Vertex::getVertexDescription() };
 	vertexInputInfo.vertexAttributeDescriptionCount = vertexDescription.attributes.size();
 	vertexInputInfo.pVertexAttributeDescriptions = vertexDescription.attributes.data();
 	vertexInputInfo.vertexBindingDescriptionCount = vertexDescription.bindings.size();
@@ -740,7 +740,7 @@ void initShadowPipeline(VulkanEngine& engine, VkRenderPass& renderpass, VkPipeli
 	pipelineCI.renderPass = renderpass;
 
 	VK_CHECK(vkCreateGraphicsPipelines(engine._device, VK_NULL_HANDLE, 1, &pipelineCI, nullptr, pipeline));
-	engine._mainDeletionQueue.push_function([=, &engine]() {
+	engine._mainDeletionQueue.pushFunction([=, &engine]() {
 		vkDestroyPipeline(engine._device, *pipeline, nullptr);
 	});
 

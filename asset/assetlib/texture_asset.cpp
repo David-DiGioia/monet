@@ -15,7 +15,7 @@ assets::TextureFormat parse_format(const char* f) {
 	}
 }
 
-assets::TextureInfo assets::read_texture_info(AssetFile* file)
+assets::TextureInfo assets::readTextureInfo(AssetFile* file)
 {
 	TextureInfo info;
 
@@ -32,13 +32,13 @@ assets::TextureInfo assets::read_texture_info(AssetFile* file)
 	return info;
 }
 
-void assets::unpack_texture(const char* sourcebuffer, size_t sourceSize, char* destination)
+void assets::unpackTexture(const char* sourcebuffer, size_t sourceSize, char* destination)
 {
 	memcpy(destination, sourcebuffer, sourceSize);
 }
 
 
-assets::AssetFile assets::pack_texture(TextureInfo* info, void* pixelData)
+assets::AssetFile assets::packTexture(TextureInfo* info, void* pixelData)
 {
 	//core file header
 	AssetFile file;

@@ -28,10 +28,10 @@ struct ConverterState {
 	fs::path asset_path;
 	fs::path export_path;
 
-	fs::path convert_to_export_relative(fs::path path) const;
+	fs::path convertToExportRelative(fs::path path) const;
 };
 
-bool convert_image(const fs::path& input, const fs::path& output)
+bool convertImage(const fs::path& input, const fs::path& output)
 {
 	int texWidth, texHeight, texChannels;
 
@@ -100,7 +100,7 @@ bool convert_image(const fs::path& input, const fs::path& output)
 
 	texinfo.textureSize = all_buffer_size;
 
-	assets::AssetFile newImage = assets::pack_texture(&texinfo, all_buffer.data());
+	assets::AssetFile newImage = assets::packTexture(&texinfo, all_buffer.data());
 
 	auto  end = std::chrono::high_resolution_clock::now();
 
@@ -108,12 +108,12 @@ bool convert_image(const fs::path& input, const fs::path& output)
 
 	stbi_image_free(pixels);
 
-	save_binaryfile(output.string().c_str(), newImage);
+	saveBinaryFile(output.string().c_str(), newImage);
 
 	return true;
 }
 
-void unpack_gltf_buffer(tinygltf::Model& model, tinygltf::Accessor& accesor, std::vector<uint8_t>& outputBuffer)
+void unpackBufferGLTF(tinygltf::Model& model, tinygltf::Accessor& accesor, std::vector<uint8_t>& outputBuffer)
 {
 	int bufferID = accesor.bufferView;
 	size_t elementSize = tinygltf::GetComponentSizeInBytes(accesor.componentType);
@@ -147,14 +147,14 @@ void unpack_gltf_buffer(tinygltf::Model& model, tinygltf::Accessor& accesor, std
 }
 
 // Vertex with tangent attribute
-void extract_gltf_vertices(tinygltf::Primitive& primitive, tinygltf::Model& model, std::vector<assets::Vertex_f32_PNTV>& _vertices)
+void extractVerticesGLTF(tinygltf::Primitive& primitive, tinygltf::Model& model, std::vector<assets::Vertex_f32_PNTV>& _vertices)
 {
 	tinygltf::Accessor& pos_accesor = model.accessors[primitive.attributes["POSITION"]];
 
 	_vertices.resize(pos_accesor.count);
 
 	std::vector<uint8_t> pos_data;
-	unpack_gltf_buffer(model, pos_accesor, pos_data);
+	unpackBufferGLTF(model, pos_accesor, pos_data);
 
 
 	for (int i = 0; i < _vertices.size(); i++) {
@@ -179,7 +179,7 @@ void extract_gltf_vertices(tinygltf::Primitive& primitive, tinygltf::Model& mode
 	tinygltf::Accessor& normal_accesor = model.accessors[primitive.attributes["NORMAL"]];
 
 	std::vector<uint8_t> normal_data;
-	unpack_gltf_buffer(model, normal_accesor, normal_data);
+	unpackBufferGLTF(model, normal_accesor, normal_data);
 
 
 	for (int i = 0; i < _vertices.size(); i++) {
@@ -204,7 +204,7 @@ void extract_gltf_vertices(tinygltf::Primitive& primitive, tinygltf::Model& mode
 	tinygltf::Accessor& tangent_accesor = model.accessors[primitive.attributes["TANGENT"]];
 
 	std::vector<uint8_t> tangent_data;
-	unpack_gltf_buffer(model, tangent_accesor, tangent_data);
+	unpackBufferGLTF(model, tangent_accesor, tangent_data);
 
 
 	for (int i = 0; i < _vertices.size(); i++) {
@@ -229,7 +229,7 @@ void extract_gltf_vertices(tinygltf::Primitive& primitive, tinygltf::Model& mode
 	tinygltf::Accessor& uv_accesor = model.accessors[primitive.attributes["TEXCOORD_0"]];
 
 	std::vector<uint8_t> uv_data;
-	unpack_gltf_buffer(model, uv_accesor, uv_data);
+	unpackBufferGLTF(model, uv_accesor, uv_data);
 
 
 	for (int i = 0; i < _vertices.size(); i++) {
@@ -254,14 +254,14 @@ void extract_gltf_vertices(tinygltf::Primitive& primitive, tinygltf::Model& mode
 }
 
 // Vertex with color attribute
-void extract_gltf_vertices(tinygltf::Primitive& primitive, tinygltf::Model& model, std::vector<assets::Vertex_f32_PNCV>& _vertices)
+void extractVerticesGLTF(tinygltf::Primitive& primitive, tinygltf::Model& model, std::vector<assets::Vertex_f32_PNCV>& _vertices)
 {
 	tinygltf::Accessor& pos_accesor = model.accessors[primitive.attributes["POSITION"]];
 
 	_vertices.resize(pos_accesor.count);
 
 	std::vector<uint8_t> pos_data;
-	unpack_gltf_buffer(model, pos_accesor, pos_data);
+	unpackBufferGLTF(model, pos_accesor, pos_data);
 
 
 	for (int i = 0; i < _vertices.size(); i++) {
@@ -286,7 +286,7 @@ void extract_gltf_vertices(tinygltf::Primitive& primitive, tinygltf::Model& mode
 	tinygltf::Accessor& normal_accesor = model.accessors[primitive.attributes["NORMAL"]];
 
 	std::vector<uint8_t> normal_data;
-	unpack_gltf_buffer(model, normal_accesor, normal_data);
+	unpackBufferGLTF(model, normal_accesor, normal_data);
 
 
 	for (int i = 0; i < _vertices.size(); i++) {
@@ -315,7 +315,7 @@ void extract_gltf_vertices(tinygltf::Primitive& primitive, tinygltf::Model& mode
 	tinygltf::Accessor& uv_accesor = model.accessors[primitive.attributes["TEXCOORD_0"]];
 
 	std::vector<uint8_t> uv_data;
-	unpack_gltf_buffer(model, uv_accesor, uv_data);
+	unpackBufferGLTF(model, uv_accesor, uv_data);
 
 
 	for (int i = 0; i < _vertices.size(); i++) {
@@ -355,7 +355,7 @@ void extract_gltf_indices(tinygltf::Primitive& primitive, tinygltf::Model& model
 	uint8_t* dataptr = buffindex.data.data() + indexview.byteOffset;
 
 	std::vector<uint8_t> unpackedIndices;
-	unpack_gltf_buffer(model, model.accessors[indexaccesor], unpackedIndices);
+	unpackBufferGLTF(model, model.accessors[indexaccesor], unpackedIndices);
 
 	for (int i = 0; i < model.accessors[indexaccesor].count; i++) {
 
@@ -388,7 +388,7 @@ void extract_gltf_indices(tinygltf::Primitive& primitive, tinygltf::Model& model
 	}
 }
 
-std::string calculate_gltf_mesh_name(tinygltf::Model& model, int meshIndex, int primitiveIndex)
+std::string calculateMeshNameGLTF(tinygltf::Model& model, int meshIndex, int primitiveIndex)
 {
 	char buffer0[50];
 	char buffer1[50];
@@ -406,7 +406,7 @@ std::string calculate_gltf_mesh_name(tinygltf::Model& model, int meshIndex, int 
 	return meshname;
 }
 
-bool extract_gltf_meshes(tinygltf::Model& model, const fs::path& input, const fs::path& outputFolder, const ConverterState& convState)
+bool extractMeshesGLTF(tinygltf::Model& model, const fs::path& input, const fs::path& outputFolder, const ConverterState& convState)
 {
 	tinygltf::Model* glmod = &model;
 	for (auto meshindex = 0; meshindex < model.meshes.size(); meshindex++) {
@@ -425,12 +425,12 @@ bool extract_gltf_meshes(tinygltf::Model& model, const fs::path& input, const fs
 			_vertices.clear();
 			_indices.clear();
 
-			std::string meshname = calculate_gltf_mesh_name(model, meshindex, primindex);
+			std::string meshname = calculateMeshNameGLTF(model, meshindex, primindex);
 
 			auto& primitive = glmesh.primitives[primindex];
 
 			extract_gltf_indices(primitive, model, _indices);
-			extract_gltf_vertices(primitive, model, _vertices);
+			extractVerticesGLTF(primitive, model, _vertices);
 
 
 			MeshInfo meshinfo;
@@ -442,12 +442,12 @@ bool extract_gltf_meshes(tinygltf::Model& model, const fs::path& input, const fs
 
 			meshinfo.bounds = assets::calculateBounds(_vertices.data(), _vertices.size());
 
-			assets::AssetFile newFile = assets::pack_mesh(&meshinfo, (char*)_vertices.data(), (char*)_indices.data());
+			assets::AssetFile newFile = assets::packMesh(&meshinfo, (char*)_vertices.data(), (char*)_indices.data());
 
 			fs::path meshpath = outputFolder / (meshname + ".mesh");
 
 			//save to disk
-			save_binaryfile(meshpath.string().c_str(), newFile);
+			saveBinaryFile(meshpath.string().c_str(), newFile);
 		}
 	}
 	return true;
@@ -795,7 +795,7 @@ int main(int argc, char* argv[])
 
 				export_path.replace_extension(".tx");
 
-				convert_image(p.path(), export_path);
+				convertImage(p.path(), export_path);
 			}
 
 			if (p.path().extension() == ".gltf")
@@ -825,7 +825,7 @@ int main(int argc, char* argv[])
 					auto folder = export_path.parent_path() / (p.path().stem().string() + "_GLTF");
 					fs::create_directory(folder);
 
-					extract_gltf_meshes(model, p.path(), folder, convstate);
+					extractMeshesGLTF(model, p.path(), folder, convstate);
 
 					//extract_gltf_materials(model, p.path(), folder, convstate);
 
@@ -838,7 +838,7 @@ int main(int argc, char* argv[])
 	return 0;
 }
 
-fs::path ConverterState::convert_to_export_relative(fs::path path) const
+fs::path ConverterState::convertToExportRelative(fs::path path) const
 {
 	return path.lexically_proximate(export_path);
 }

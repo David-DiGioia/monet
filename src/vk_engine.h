@@ -77,26 +77,18 @@ struct GPUObjectData {
 	glm::mat4 modelMatrix;
 };
 
-//struct OffscreenPass {
-//	uint32_t width, height;
-//	VkRenderPass renderPass;
-//	std::array<VkFramebuffer, FRAME_OVERLAP> frameBuffers;
-//	std::array <Texture, FRAME_OVERLAP> depths;
-//	std::array <VkSampler, FRAME_OVERLAP> depthSamplers;
-//	std::array <VkDescriptorImageInfo, FRAME_OVERLAP> descriptors;
-//};
-
 struct ShadowGlobalResources {
-	uint32_t _width, _height;
-	VkRenderPass _renderPass;
+	uint32_t width;
+	uint32_t height;
+	VkRenderPass renderPass;
 	// Depth bias (and slope) are used to avoid shadowing artifacts
 	// Constant depth bias factor (always applied)
-	float _depthBiasConstant{ 1.25f };
+	float depthBiasConstant{ 1.25f };
 	// Slope depth bias factor, applied depending on polygon's slope
-	float _depthBiasSlope{ 1.75f };
-	VkPipeline _shadowPipeline;
-	VkPipelineLayout _shadowPipelineLayout;
-	glm::mat4 _lightSpaceMatrix;
+	float depthBiasSlope{ 1.75f };
+	VkPipeline shadowPipeline;
+	VkPipelineLayout shadowPipelineLayout;
+	glm::mat4 lightSpaceMatrix;
 };
 
 struct ShadowFrameResources {
@@ -104,23 +96,23 @@ struct ShadowFrameResources {
 	Texture depth;
 	VkSampler depthSampler;
 	VkDescriptorImageInfo descriptor;
-	VkPipelineLayout _shadowPipelineLayout;
-	VkDescriptorSet _shadowDescriptorSetLight;
-	VkDescriptorSet _shadowDescriptorSetObjects;
-	AllocatedBuffer _shadowLightBuffer;
+	VkPipelineLayout shadowPipelineLayout;
+	VkDescriptorSet shadowDescriptorSetLight;
+	VkDescriptorSet shadowDescriptorSetObjects;
+	AllocatedBuffer shadowLightBuffer;
 };
 
 struct FrameData {
-	VkSemaphore _presentSemaphore;
-	VkFence _renderFence;
+	VkSemaphore presentSemaphore;
+	VkFence renderFence;
 
 	// This belongs to a frame because it's fast to reset a whole
 	// command pool, and we reset this for the whole frame
 	// (aka lifetime of this command pool is lifetime of this frame)
-	VkCommandPool _commandPool;
+	VkCommandPool commandPool;
 	// command buffer belongs to frame since we for the next frame
 	// while the other frame's command buffer is submitted
-	VkCommandBuffer _mainCommandBuffer;
+	VkCommandBuffer mainCommandBuffer;
 
 	// buffer that holds a single GPUCameraData to use when rendering
 	AllocatedBuffer cameraBuffer;
@@ -132,9 +124,9 @@ struct FrameData {
 	AllocatedBuffer objectBuffer;
 	VkDescriptorSet objectDescriptor;
 
-	TracyVkCtx _tracyContext;
+	TracyVkCtx tracyContext;
 
-	ShadowFrameResources _shadow;
+	ShadowFrameResources shadow;
 };
 
 // note that we store the VkPipeline and layout by value, not pointer.
@@ -172,7 +164,7 @@ struct Transform {
 	Transform();
 	Transform(const PxTransform& pxt);
 	glm::mat4 mat4();
-	physx::PxTransform to_physx();
+	physx::PxTransform toPhysx();
 };
 
 class GameObject {
@@ -246,15 +238,15 @@ struct GuiData {
 };
 
 struct MeshPushConstants {
-	glm::vec4 roughness_multiplier; // only x component is used
-	glm::mat4 render_matrix;
+	glm::vec4 roughnessMultiplier; // only x component is used
+	glm::mat4 renderMatrix;
 };
 
 struct DeletionQueue
 {
 	std::deque<std::function<void()>> deletors;
 
-	void push_function(std::function<void()>&& function) {
+	void pushFunction(std::function<void()>&& function) {
 		deletors.push_back(function);
 	}
 
@@ -380,118 +372,118 @@ public:
 	// run main loop
 	void run();
 
-	AllocatedBuffer create_buffer(size_t allocSize, VkBufferUsageFlags usage, VmaMemoryUsage memoryUsage);
+	AllocatedBuffer createBuffer(size_t allocSize, VkBufferUsageFlags usage, VmaMemoryUsage memoryUsage);
 
-	void immediate_submit(std::function<void(VkCommandBuffer cmd)>&& function);
+	void immediateSubmit(std::function<void(VkCommandBuffer cmd)>&& function);
 
-	void load_texture(const std::string& path, VkFormat format);
+	void loadTexture(const std::string& path, VkFormat format);
 
-	bool load_shader_module(const std::string& filePath, VkShaderModule* outShaderModule);
+	bool loadShaderModule(const std::string& filePath, VkShaderModule* outShaderModule);
 
 	// create material and add it to the map
-	Material* create_material(const MaterialCreateInfo& info, VkPipeline pipeline, VkPipelineLayout layout, VkDescriptorSetLayout materialSetLayout);
+	Material* createMaterial(const MaterialCreateInfo& info, VkPipeline pipeline, VkPipelineLayout layout, VkDescriptorSetLayout materialSetLayout);
 
 	// returns nullptr if it can't be found
-	Mesh* get_mesh(const std::string& name);
+	Mesh* getMesh(const std::string& name);
 
-	const RenderObject* create_render_object(const std::string& meshName, const std::string& matName, bool castShadow=true);
+	const RenderObject* createRenderObject(const std::string& meshName, const std::string& matName, bool castShadow=true);
 
-	const RenderObject* create_render_object(const std::string& name);
+	const RenderObject* createRenderObject(const std::string& name);
 
-	void set_camera_transform(Transform transform);
+	void setCameraTransform(Transform transform);
 
-	void set_scene_lights(const std::vector<Light>& lights);
+	void setSceneLights(const std::vector<Light>& lights);
 
-	void add_to_physics_engine_dynamic(GameObject* go, PxShape* shape, float density = 10.0f);
+	void addToPhysicsEngineDynamic(GameObject* go, PxShape* shape, float density = 10.0f);
 
-	void add_to_physics_engine_dynamic_mass(GameObject* go, PxShape* shape, float mass);
+	void addToPhysicsEngineDynamicMass(GameObject* go, PxShape* shape, float mass);
 
-	void add_to_physics_engine_static(GameObject* go, PxShape* shape);
+	void addToPhysicsEngineStatic(GameObject* go, PxShape* shape);
 
-	void update_physics();
+	void updatePhysics();
 
-	bool advance_physics(float delta);
+	bool advancePhysics(float delta);
 
-	PxMaterial* create_physics_material(float staticFriciton, float dynamicFriction, float restitution);
+	PxMaterial* createPhysicsMaterial(float staticFriciton, float dynamicFriction, float restitution);
 
-	PxShape* create_physics_shape(const PxGeometry& geometry,
+	PxShape* createPhysicsShape(const PxGeometry& geometry,
 		const PxMaterial& material,
 		bool isExclusive = false,
 		PxShapeFlags shapeFlags = PxShapeFlag::eVISUALIZATION | PxShapeFlag::eSCENE_QUERY_SHAPE | PxShapeFlag::eSIMULATION_SHAPE);
 
-	void set_gravity(float gravity);
+	void setGravity(float gravity);
 
-	void resize_window(int32_t width, int32_t height);
+	void resizeWindow(int32_t width, int32_t height);
 
 private:
 
-	void init_vulkan();
+	void initVulkan();
 
-	void init_swapchain(VkSwapchainKHR oldSwapChain);
+	void initSwapchain(VkSwapchainKHR oldSwapChain);
 
-	void init_commands();
+	void initCommands();
 
-	void init_default_renderpass();
+	void initDefaultRenderpass();
 
-	void init_framebuffers(bool windowResize);
+	void initFramebuffers(bool windowResize);
 
-	void init_sync_structures();
+	void initSyncStructures();
 
-	void init_pipeline(const MaterialCreateInfo& info, const std::string& prefix);
+	void initPipeline(const MaterialCreateInfo& info, const std::string& prefix);
 
-	void load_meshes();
+	void loadMeshes();
 
-	void load_mesh(const std::string& name, const std::string& path);
+	void loadMesh(const std::string& name, const std::string& path);
 
-	void load_materials();
+	void loadMaterials();
 
-	void upload_mesh(Mesh& mesh);
+	void uploadMesh(Mesh& mesh);
 
 	void showFPS();
 
-	void init_scene();
+	void initScene();
 
 	// getter for the frame we are rendering to right now
-	FrameData& get_current_frame();
+	FrameData& getCurrentFrame();
 
 	// returns nullptr if it can't be found
-	Material* get_material(const std::string& name);
+	Material* getMaterial(const std::string& name);
 
-	void draw_objects(VkCommandBuffer cmd, const std::multiset<RenderObject>& renderables);
+	void drawObjects(VkCommandBuffer cmd, const std::multiset<RenderObject>& renderables);
 
-	void init_descriptors();
+	void initDescriptors();
 
-	void init_object_buffers();
+	void initObjectBuffers();
 
-	void init_descriptor_pool();
+	void initDescriptorPool();
 
-	size_t pad_uniform_buffer_size(size_t originalSize);
+	size_t padUniformBufferSize(size_t originalSize);
 
-	void init_imgui();
+	void initImgui();
 
 	void gui();
 
-	void init_gui_data();
+	void initGuiData();
 
-	std::vector<Texture> textures_from_binding_paths(const std::vector<std::string>& bindingPaths);
+	std::vector<Texture> texturesFromBindingPaths(const std::vector<std::string>& bindingPaths);
 
-	void init_tracy();
+	void initTracy();
 
-	void shadow_pass(VkCommandBuffer& cmd);
+	void shadowPass(VkCommandBuffer& cmd);
 
-	void init_shadow_pass();
+	void initShadowPass();
 
-	VkSampleCountFlagBits get_max_usable_sample_count(VkPhysicalDevice physicalDevice);
+	VkSampleCountFlagBits getMaxUsableSampleCount(VkPhysicalDevice physicalDevice);
 
 	bool input();
 
-	void init_bounding_sphere();
+	void initBoundingSphere();
 
-	void camera_transformation();
+	void cameraTransformation();
 
 	// For use with vertex buffers or index buffers
 	template <typename T>
-	void upload_buffer(const std::vector<T>& vec, AllocatedBuffer& buffer)
+	void uploadBuffer(const std::vector<T>& vec, AllocatedBuffer& buffer)
 	{
 		const size_t bufferSize{ vec.size() * sizeof(T) };
 		// allocate staging buffer
@@ -534,7 +526,7 @@ private:
 			&buffer._allocation,
 			nullptr));
 
-		immediate_submit([=](VkCommandBuffer cmd) {
+		immediateSubmit([=](VkCommandBuffer cmd) {
 			VkBufferCopy copy;
 			copy.dstOffset = 0;
 			copy.srcOffset = 0;
@@ -542,7 +534,7 @@ private:
 			vkCmdCopyBuffer(cmd, stagingBuffer._buffer, buffer._buffer, 1, &copy);
 		});
 
-		_mainDeletionQueue.push_function([=]() {
+		_mainDeletionQueue.pushFunction([=]() {
 			vmaDestroyBuffer(_allocator, buffer._buffer, buffer._allocation);
 		});
 		vmaDestroyBuffer(_allocator, stagingBuffer._buffer, stagingBuffer._allocation);
@@ -563,5 +555,5 @@ public:
 	VkPipelineLayout _pipelineLayout;
 	VkPipelineDepthStencilStateCreateInfo _depthStencil;
 
-	VkPipeline build_pipeline(VkDevice device, VkRenderPass pass, bool dynamicState);
+	VkPipeline buildPipeline(VkDevice device, VkRenderPass pass, bool dynamicState);
 };

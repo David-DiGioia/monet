@@ -3,7 +3,7 @@
 #include <cstddef> // offsetof
 #include <iostream>
 
-VertexInputDescription Vertex::get_vertex_description()
+VertexInputDescription Vertex::getVertexDescription()
 {
 	VertexInputDescription description;
 

@@ -5,13 +5,13 @@
 
 namespace vkutil {
 
-	bool load_image_from_asset(VulkanEngine& engine, const char* filename, VkFormat format, uint32_t* outMipLevels, AllocatedImage& outImage);
+	bool loadImageFromAsset(VulkanEngine& engine, const char* filename, VkFormat format, uint32_t* outMipLevels, AllocatedImage& outImage);
 
-	bool load_image_from_file(VulkanEngine& engine, const char* file, AllocatedImage& outImage, uint32_t* outMipLevels, VkFormat format);
+	bool loadImageFromFile(VulkanEngine& engine, const char* file, AllocatedImage& outImage, uint32_t* outMipLevels, VkFormat format);
 
 	void generateMipmaps(VkCommandBuffer cmd, VkImage image, int32_t texWidth, int32_t texHeight, uint32_t mipLevels);
 
-	uint32_t get_mip_levels(uint32_t width, uint32_t height);
+	uint32_t getMipLevels(uint32_t width, uint32_t height);
 
-	VkExtent2D next_mip_level_extent(VkExtent2D extent);
+	VkExtent2D nextMipLevelExtent(VkExtent2D extent);
 }

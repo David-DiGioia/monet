@@ -10,7 +10,7 @@ namespace assets {
 		std::vector<char> binaryBlob;
 	};
 
-	bool save_binaryfile(const char* path, const AssetFile& file);
+	bool saveBinaryFile(const char* path, const AssetFile& file);
 
-	bool load_binaryfile(const char* path, AssetFile& outputFile);	
+	bool loadBinaryFile(const char* path, AssetFile& outputFile);	
 }

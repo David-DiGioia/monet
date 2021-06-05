@@ -5,7 +5,7 @@
 
 using namespace assets;
 
-bool assets::save_binaryfile(const  char* path, const AssetFile& file)
+bool assets::saveBinaryFile(const  char* path, const AssetFile& file)
 {
 	std::ofstream outfile;
 	outfile.open(path, std::ios::binary | std::ios::out);
@@ -36,7 +36,7 @@ bool assets::save_binaryfile(const  char* path, const AssetFile& file)
 	return true;
 }
 
-bool assets::load_binaryfile(const  char* path, AssetFile& outputFile)
+bool assets::loadBinaryFile(const  char* path, AssetFile& outputFile)
 {
 	std::ifstream infile;
 	infile.open(path, std::ios::binary);

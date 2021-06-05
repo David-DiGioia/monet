@@ -18,7 +18,7 @@ assets::VertexFormat parse_format(const char* f) {
 	}
 }
 
-assets::MeshInfo assets::read_mesh_info(AssetFile* file)
+assets::MeshInfo assets::readMeshInfo(AssetFile* file)
 {
 	MeshInfo info;
 
@@ -49,7 +49,7 @@ assets::MeshInfo assets::read_mesh_info(AssetFile* file)
     return info;
 }
 
-void assets::unpack_mesh(MeshInfo* info, const char* sourcebuffer, char* vertexBuffer, char* indexBuffer)
+void assets::unpackMesh(MeshInfo* info, const char* sourcebuffer, char* vertexBuffer, char* indexBuffer)
 {
 	//copy vertex buffer
 	memcpy(vertexBuffer,sourcebuffer, info->vertexBufferSize);
@@ -58,7 +58,7 @@ void assets::unpack_mesh(MeshInfo* info, const char* sourcebuffer, char* vertexB
 	memcpy(indexBuffer, sourcebuffer + info->vertexBufferSize, info->indexBufferSize);
 }
 
-assets::AssetFile assets::pack_mesh(MeshInfo* info, char* vertexData, char* indexData)
+assets::AssetFile assets::packMesh(MeshInfo* info, char* vertexData, char* indexData)
 {
     AssetFile file;
 	file.type[0] = 'M';

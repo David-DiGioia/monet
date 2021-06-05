@@ -20,7 +20,7 @@ struct Vertex {
 	glm::vec3 tangent;
 	glm::vec2 uv;
 
-	static VertexInputDescription get_vertex_description();
+	static VertexInputDescription getVertexDescription();
 };
 
 struct Mesh {
@@ -30,6 +30,4 @@ struct Mesh {
 	// vertex data on GPU
 	AllocatedBuffer _vertexBuffer;
 	AllocatedBuffer _indexBuffer;
-
-	bool load_from_obj(const std::string& filename);
 };
