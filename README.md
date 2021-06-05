@@ -1,6 +1,6 @@
 # Monet
 
-![](logo.png?raw=true "logo")
+![](extra/logo.png?raw=true "logo")
 
 A C++ game engine made using the Vulkan graphics API.
 
@@ -20,8 +20,8 @@ A C++ game engine made using the Vulkan graphics API.
 ## Screenshots
 
 Furniture and ground lit by an HDRI
-![](showcase/furniture_hdri_00.png?raw=true "fence_synchronization")
-![](showcase/furniture_hdri_01.png?raw=true "fence_synchronization")
+![](extra/showcase/furniture_hdri_00.png?raw=true "fence_synchronization")
+![](extra/showcase/furniture_hdri_01.png?raw=true "fence_synchronization")
 
 ## Plans
 

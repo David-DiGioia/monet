@@ -1,1 +1,0 @@
-place .hdr files in this folder

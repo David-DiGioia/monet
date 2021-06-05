@@ -233,8 +233,8 @@ void VulkanEngine::init(Application* app)
 	}
 
 	//// general rule is > 10 sec is music, otherwise chunk
-	//Mix_Music* bgm{ Mix_LoadMUS("../../assets/audio/charlie.mp3") };
-	//Mix_Chunk* soundEffect{ Mix_LoadWAV("../../assets/audio/rode_mic.wav") };
+	//Mix_Music* bgm{ Mix_LoadMUS("../../asset/assets/audio/charlie.mp3") };
+	//Mix_Chunk* soundEffect{ Mix_LoadWAV("../../asset/assets/audio/rode_mic.wav") };
 
 	//Mix_PlayMusic(bgm, -1);
 
@@ -488,7 +488,7 @@ void VulkanEngine::upload_mesh(Mesh& mesh)
 void VulkanEngine::load_meshes()
 {
 	namespace fs = std::filesystem;
-	std::string modelsPath{ "../../assets_export/models/" };
+	std::string modelsPath{ "../../asset/assets_export/models/" };
 
 	for (const auto& modelDir : fs::directory_iterator(modelsPath)) {
 		if (modelDir.is_directory()) {
@@ -546,15 +546,14 @@ void VulkanEngine::load_texture(const std::string& path, VkFormat format)
 	Texture texture;
 	uint32_t mipLevels;
 	bool hdri{ format == VK_FORMAT_R32G32B32A32_SFLOAT };
-	std::string prefix{ hdri ? "../../assets/models/" : "../../assets_export/models/" };
 
 	if (hdri) {
-		std::string prefix{ "../../assets/models/" };
+		std::string prefix{ "../../asset/assets/models/" };
 		if (!vkutil::load_image_from_file(*this, (prefix + path).c_str(), texture.image, &mipLevels, format)) {
 			std::cout << "Failed to load texture: " << path << "\n";
 		}
 	} else {
-		std::string prefix{ "../../assets_export/models/" };
+		std::string prefix{ "../../asset/assets_export/models/" };
 		if (!vkutil::load_image_from_asset(*this, (prefix + path).c_str(), format, &mipLevels, texture.image)) {
 			std::cout << "Failed to load texture: " << path << "\n";
 		}

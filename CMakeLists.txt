@@ -11,8 +11,8 @@ add_subdirectory(third_party)
 
 set (CMAKE_RUNTIME_OUTPUT_DIRECTORY "${PROJECT_SOURCE_DIR}/bin")
  
-add_subdirectory(assetlib)
-add_subdirectory(asset-baker)
+add_subdirectory(asset/assetlib)
+add_subdirectory(asset/asset-baker)
 add_subdirectory(src)
 if (${CMAKE_HOST_SYSTEM_PROCESSOR} STREQUAL "AMD64")
   set(GLSL_VALIDATOR "$ENV{VULKAN_SDK}/Bin/glslangValidator.exe")

@@ -1,14 +1,11 @@
 /build
 /bin
-/assets_export
+/asset/assets_export
+/asset/assets
 extra/traces
 
-# Ignore all HDRIs (files are too big)
-/assets/hdri/*.hdr
-
 # Ignore all model files except the default folder
-/assets/models/*
-!/assets/models/_default
+!/asset/assets/models/_default
 
 
 
