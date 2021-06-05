@@ -1,7 +1,7 @@
 /build
 /bin
 /assets_export
-/traces
+extra/traces
 
 # Ignore all HDRIs (files are too big)
 /assets/hdri/*.hdr
