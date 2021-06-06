@@ -11,5 +11,7 @@ add_library (assetlib STATIC
 
 target_include_directories(assetlib PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}")
 
-target_link_libraries(assetlib PRIVATE json lz4)
+target_link_libraries(assetlib PRIVATE json)
 
+target_include_directories(assetlib PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/../../third_party/lz4/include")
+target_link_libraries(assetlib PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/../../third_party/lz4/static/liblz4_static.lib")

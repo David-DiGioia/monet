@@ -11,8 +11,6 @@ add_library(spirv_reflect STATIC)
 
 add_library(fmt_lib STATIC)
 
-add_library(lz4 STATIC)
-
 #set(CMAKE_LIBRARY_OUTPUT_DIRECTORY "${PROJECT_SOURCE_DIR}/libs")
 #set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY "${PROJECT_SOURCE_DIR}/libs")
 
@@ -32,13 +30,6 @@ target_sources(spirv_reflect PRIVATE
     "${CMAKE_CURRENT_SOURCE_DIR}/spv_reflect/spirv_reflect.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/spv_reflect/spirv_reflect.c"
 )
-
-target_sources(lz4 PRIVATE 
-    "${CMAKE_CURRENT_SOURCE_DIR}/lz4/lz4.h"
-    "${CMAKE_CURRENT_SOURCE_DIR}/lz4/lz4.c"
-)
-
-target_include_directories(lz4 PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/lz4" )
 
 target_include_directories(spirv_reflect PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/spv_reflect" )
 target_include_directories(spirv_reflect PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/spv_reflect/include" )
@@ -92,17 +83,6 @@ target_sources(fmt_lib PRIVATE ${FMT_FILES})
 
 
 # Custom code below -----------------------------------------------------------------------------
-
-
-# *** SDL2_mixer ***
-# this call will succeed if it finds a SDL2_mixer.lib file
-find_library(AUDIO_LIB SDL2_mixer HINTS ${CMAKE_CURRENT_SOURCE_DIR}/SDL2_mixer-2.0.4/lib/x64)
-if(NOT AUDIO_LIB)
-    message(FATAL_ERROR "Library SDL2_mixer was not found!")
-endif()
-set (SDL2_MIXER_INCLUDE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/SDL2_mixer-2.0.4/include)
-include_directories(${SDL2_MIXER_INCLUDE_DIR})
-
 
 # *** physx ***
 set (BIN_DIR_DEBUG ${CMAKE_CURRENT_SOURCE_DIR}/physx/lib/win.x86_64.vc142.md/bin/debug)

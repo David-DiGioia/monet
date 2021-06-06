@@ -26,11 +26,12 @@ target_include_directories(monet PUBLIC
  "${CMAKE_CURRENT_SOURCE_DIR}"
  "${CMAKE_CURRENT_SOURCE_DIR}/../third_party/physx/include"
  "${CMAKE_CURRENT_SOURCE_DIR}/../third_party/physx/include_shared"
-
- "${CMAKE_CURRENT_SOURCE_DIR}/../third_party/SDL2_mixer-2.0.4/include"
 )
 
-target_link_libraries(monet ${AUDIO_LIB})
+target_include_directories(monet PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/../third_party/SDL2_mixer-2.0.4/include")
+target_link_libraries(monet "${CMAKE_CURRENT_SOURCE_DIR}/../third_party/SDL2_mixer-2.0.4/lib/x64/SDL2_mixer.lib")
+
+#target_link_libraries(monet ${AUDIO_LIB})
 
 target_link_libraries(monet
  debug ${PHYSICS_LIB_D_00}
