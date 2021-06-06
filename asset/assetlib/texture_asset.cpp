@@ -3,7 +3,8 @@
 #include <iostream>
 
 #include "json.hpp"
-#include "lz4.h"
+#include "lz4hc.h"
+#include "lz4frame.h"
 
 assets::TextureFormat parse_format(const char* f) {
 
@@ -36,10 +37,15 @@ assets::TextureInfo assets::readTextureInfo(AssetFile* file)
 
 void assets::unpackTexture(const char* compressedBuffer, char* destination, size_t compressedSize, size_t dstCapacity)
 {
-	const int decompressedSize{ LZ4_decompress_safe(compressedBuffer, destination, compressedSize, dstCapacity) };
-	if (decompressedSize < 0) {
+	LZ4F_dctx* context;
+	LZ4F_createDecompressionContext(&context, LZ4F_VERSION);
+
+	size_t bufHint{ LZ4F_decompress(context, destination, &dstCapacity, compressedBuffer, &compressedSize, nullptr) };
+	if (LZ4F_isError(bufHint)) {
 		std::cout << "Decompression failed\n";
 	}
+
+	LZ4F_freeDecompressionContext(context);
 }
 
 
@@ -56,14 +62,21 @@ assets::AssetFile assets::packTexture(TextureInfo* info, void* pixelData)
 
 	char* pixels = (char*)pixelData;
 
+	LZ4F_preferences_t preferences{};
+	preferences.frameInfo.contentSize = info->originalSize;
+	// TODO(marceline-cramer) Custom compression level from bundle manifest
+	preferences.compressionLevel = LZ4HC_CLEVEL_DEFAULT;
+	preferences.autoFlush = 1;
+	preferences.favorDecSpeed = 1;
+
 	// maximum size of compressed output
-	const int maxDstSize{ LZ4_compressBound(info->originalSize) };
+	size_t maxDstSize{ LZ4F_compressFrameBound(info->originalSize, &preferences) };
 
 	// we will use that size for our destination boundary when allocating space
 	file.binaryBlob.resize(maxDstSize);
 
-	const int compressedDataSize{ LZ4_compress_default((char*)pixelData, file.binaryBlob.data(), info->originalSize, maxDstSize) };
-	if (compressedDataSize <= 0) {
+	size_t compressedDataSize{ LZ4F_compressFrame(file.binaryBlob.data(), maxDstSize, (char*)pixelData, info->originalSize, &preferences) };
+	if (LZ4F_isError(compressedDataSize)) {
 		std::cout << "Failed to compress data.\n";
 	} else {
 		std::cout << "Compressed data with ratio " << (compressedDataSize / (float)info->originalSize) << "\n\n";

@@ -9,7 +9,6 @@
 #define STB_IMAGE_RESIZE_IMPLEMENTATION
 #include "stb_image.h"
 #include "stb_image_resize.h"
-#include "lz4.h"
 
 #include "asset_loader.h"
 #include "texture_asset.h"
