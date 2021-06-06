@@ -9,6 +9,7 @@
 #define STB_IMAGE_RESIZE_IMPLEMENTATION
 #include "stb_image.h"
 #include "stb_image_resize.h"
+#include "lz4.h"
 
 #include "asset_loader.h"
 #include "texture_asset.h"
@@ -35,13 +36,13 @@ bool convertImage(const fs::path& input, const fs::path& output)
 {
 	int texWidth, texHeight, texChannels;
 
-	auto pngstart = std::chrono::high_resolution_clock::now();
+	auto pngStart{ std::chrono::high_resolution_clock::now() };
 
-	stbi_uc* pixels = stbi_load(input.u8string().c_str(), &texWidth, &texHeight, &texChannels, STBI_rgb_alpha);
+	stbi_uc* pixels{ stbi_load(input.u8string().c_str(), &texWidth, &texHeight, &texChannels, STBI_rgb_alpha) };
 
-	auto pngend = std::chrono::high_resolution_clock::now();
+	auto pngEnd{ std::chrono::high_resolution_clock::now() };
 
-	auto diff = pngend - pngstart;
+	auto diff = pngEnd - pngStart;
 
 	std::cout << "png took " << std::chrono::duration_cast<std::chrono::nanoseconds>(diff).count() / 1000000.0 << "ms" << std::endl;
 
@@ -50,10 +51,10 @@ bool convertImage(const fs::path& input, const fs::path& output)
 		return false;
 	}
 
-	int texture_size = texWidth * texHeight * 4;
+	int texture_size{ texWidth * texHeight * 4 };
 
 	TextureInfo texinfo;
-	texinfo.textureSize = texture_size;
+	texinfo.originalSize = texture_size;
 
 
 	std::string s{ input.filename().generic_string() };
@@ -61,14 +62,16 @@ bool convertImage(const fs::path& input, const fs::path& output)
 
 	texinfo.textureFormat = colorTexture ? TextureFormat::SRGBA8 : TextureFormat::RGBA8;
 	texinfo.originalFile = input.string();
-	auto start = std::chrono::high_resolution_clock::now();
+
+	auto mipStart{ std::chrono::high_resolution_clock::now() };
 
 	texinfo.width = texWidth;
 	texinfo.height = texHeight;
 
-	std::vector<unsigned char> all_buffer;
+	std::vector<unsigned char> allBuffer;
 
-	size_t all_buffer_size{ (size_t)texture_size };
+
+	size_t allBufferSize{ (size_t)texture_size };
 	uint32_t width{ texinfo.width };
 	uint32_t height{ texinfo.height };
 	uint32_t miplevels{ 1 };
@@ -77,16 +80,16 @@ bool convertImage(const fs::path& input, const fs::path& output)
 	while (width > 1 || height > 1) {
 		width >>= 1;
 		height >>= 1;
-		all_buffer_size += (size_t)width * height * 4;
+		allBufferSize += (size_t)width * height * 4;
 		++miplevels;
 	}
 
 	texinfo.miplevels = miplevels;
-	all_buffer.resize(all_buffer_size);
+	allBuffer.resize(allBufferSize);
 	width = texinfo.width;
 	height = texinfo.height;
 	size_t mipSize{ (size_t)width * height * 4 };
-	unsigned char* ptr{ all_buffer.data() };
+	unsigned char* ptr{ allBuffer.data() };
 
 	memcpy(ptr, pixels, mipSize);
 
@@ -98,13 +101,14 @@ bool convertImage(const fs::path& input, const fs::path& output)
 		mipSize = (size_t)width * height * 4;
 	}
 
-	texinfo.textureSize = all_buffer_size;
+	auto mipEnd{ std::chrono::high_resolution_clock::now() };
+	auto mipDiff{ mipEnd - mipStart };
 
-	assets::AssetFile newImage = assets::packTexture(&texinfo, all_buffer.data());
+	std::cout << "creating mipmaps took " << std::chrono::duration_cast<std::chrono::nanoseconds>(mipDiff).count() / 1000000.0 << "ms" << std::endl;
 
-	auto  end = std::chrono::high_resolution_clock::now();
-
-	std::cout << "creating mipmaps took " << std::chrono::duration_cast<std::chrono::nanoseconds>(diff).count() / 1000000.0 << "ms" << std::endl;
+	texinfo.originalSize = allBuffer.size();
+	// The texinfo::compressedSize will be populated by packTexture, and compression takes place there
+	assets::AssetFile newImage{ assets::packTexture(&texinfo, allBuffer.data()) };
 
 	stbi_image_free(pixels);
 

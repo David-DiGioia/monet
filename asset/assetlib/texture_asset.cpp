@@ -3,6 +3,7 @@
 #include <iostream>
 
 #include "json.hpp"
+#include "lz4.h"
 
 assets::TextureFormat parse_format(const char* f) {
 
@@ -23,7 +24,8 @@ assets::TextureInfo assets::readTextureInfo(AssetFile* file)
 
 	std::string formatString = texture_metadata["format"];
 	info.textureFormat = parse_format(formatString.c_str());
-	info.textureSize = texture_metadata["buffer_size"];
+	info.originalSize = texture_metadata["original_size"];
+	info.compressedSize = texture_metadata["compressed_size"];
 	info.originalFile = texture_metadata["original_file"];
 	info.miplevels = texture_metadata["miplevels"];
 	info.width = texture_metadata["width"];
@@ -32,9 +34,12 @@ assets::TextureInfo assets::readTextureInfo(AssetFile* file)
 	return info;
 }
 
-void assets::unpackTexture(const char* sourcebuffer, size_t sourceSize, char* destination)
+void assets::unpackTexture(const char* compressedBuffer, char* destination, size_t compressedSize, size_t dstCapacity)
 {
-	memcpy(destination, sourcebuffer, sourceSize);
+	const int decompressedSize{ LZ4_decompress_safe(compressedBuffer, destination, compressedSize, dstCapacity) };
+	if (decompressedSize < 0) {
+		std::cout << "Decompression failed\n";
+	}
 }
 
 
@@ -51,12 +56,26 @@ assets::AssetFile assets::packTexture(TextureInfo* info, void* pixelData)
 
 	char* pixels = (char*)pixelData;
 
-	file.binaryBlob.resize(info->textureSize);
-	memcpy(file.binaryBlob.data(), pixels, info->textureSize);
+	// maximum size of compressed output
+	const int maxDstSize{ LZ4_compressBound(info->originalSize) };
+
+	// we will use that size for our destination boundary when allocating space
+	file.binaryBlob.resize(maxDstSize);
+
+	const int compressedDataSize{ LZ4_compress_default((char*)pixelData, file.binaryBlob.data(), info->originalSize, maxDstSize) };
+	if (compressedDataSize <= 0) {
+		std::cout << "Failed to compress data.\n";
+	} else {
+		std::cout << "Compressed data with ratio " << (compressedDataSize / (float)info->originalSize) << "\n\n";
+	}
+
+	info->compressedSize = compressedDataSize;
+	file.binaryBlob.resize(compressedDataSize);
 
 	nlohmann::json texture_metadata;
 	texture_metadata["format"] = "RGBA8";
-	texture_metadata["buffer_size"] = info->textureSize;
+	texture_metadata["original_size"] = info->originalSize;
+	texture_metadata["compressed_size"] = info->compressedSize;
 	texture_metadata["original_file"] = info->originalFile;
 	texture_metadata["miplevels"] = info->miplevels;
 	texture_metadata["width"] = info->width;

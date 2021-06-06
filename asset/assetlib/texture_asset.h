@@ -12,7 +12,8 @@ namespace assets {
 
 	struct TextureInfo {
 		// size in bytes
-		uint64_t textureSize;
+		uint64_t originalSize;
+		uint64_t compressedSize;
 		// width and height are in texels
 		uint32_t width;
 		uint32_t height;
@@ -23,7 +24,7 @@ namespace assets {
 
 	TextureInfo readTextureInfo(AssetFile* file);
 
-	void unpackTexture(const char* sourcebuffer, size_t sourceSize, char* destination);
+	void unpackTexture(const char* compressedBuffer, char* destination, size_t compressedSize, size_t dstCapacity);
 
 	AssetFile packTexture(TextureInfo* info, void* pixelData);
 }

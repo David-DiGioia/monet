@@ -11,6 +11,8 @@ add_library(spirv_reflect STATIC)
 
 add_library(fmt_lib STATIC)
 
+add_library(lz4 STATIC)
+
 #set(CMAKE_LIBRARY_OUTPUT_DIRECTORY "${PROJECT_SOURCE_DIR}/libs")
 #set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY "${PROJECT_SOURCE_DIR}/libs")
 
@@ -30,6 +32,13 @@ target_sources(spirv_reflect PRIVATE
     "${CMAKE_CURRENT_SOURCE_DIR}/spv_reflect/spirv_reflect.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/spv_reflect/spirv_reflect.c"
 )
+
+target_sources(lz4 PRIVATE 
+    "${CMAKE_CURRENT_SOURCE_DIR}/lz4/lz4.h"
+    "${CMAKE_CURRENT_SOURCE_DIR}/lz4/lz4.c"
+)
+
+target_include_directories(lz4 PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/lz4" )
 
 target_include_directories(spirv_reflect PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/spv_reflect" )
 target_include_directories(spirv_reflect PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/spv_reflect/include" )

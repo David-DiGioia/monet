@@ -204,18 +204,17 @@ bool vkutil::loadImageFromAsset(VulkanEngine& engine, const char* path, VkFormat
 		}
 	}
 
-	assets::TextureInfo textureInfo;
+	assets::TextureInfo texInfo;
 
 	{
 		ZoneScopedN("read_texture_info")
-		textureInfo = assets::readTextureInfo(&file);
+		texInfo = assets::readTextureInfo(&file);
 	}
 
-	*outMipLevels = (uint32_t)textureInfo.miplevels;
+	*outMipLevels = (uint32_t)texInfo.miplevels;
 
-	VkDeviceSize imageSize{ textureInfo.textureSize };
 	VkFormat image_format;
-	switch (textureInfo.textureFormat) {
+	switch (texInfo.textureFormat) {
 
 	case assets::TextureFormat::RGBA8:
 		image_format = VK_FORMAT_R8G8B8A8_UNORM;
@@ -227,20 +226,20 @@ bool vkutil::loadImageFromAsset(VulkanEngine& engine, const char* path, VkFormat
 		return false;
 	}
 
-	AllocatedBuffer stagingBuffer{ engine.createBuffer(imageSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VMA_MEMORY_USAGE_CPU_ONLY) };
+	AllocatedBuffer stagingBuffer{ engine.createBuffer(texInfo.originalSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VMA_MEMORY_USAGE_CPU_ONLY) };
 
 	void* data;
 	vmaMapMemory(engine._allocator, stagingBuffer._allocation, &data);
 
 	{
 		ZoneScopedN("unpack_texture")
-		assets::unpackTexture(file.binaryBlob.data(), file.binaryBlob.size(), (char*)data);
+		assets::unpackTexture(file.binaryBlob.data(), (char*)data, texInfo.compressedSize, texInfo.originalSize);
 	}
 
 	vmaUnmapMemory(engine._allocator, stagingBuffer._allocation);
 
 	//outImage = upload_image(textureInfo.pixelsize[0], textureInfo.pixelsize[1], image_format, engine, stagingBuffer);
-	upload_image(engine, textureInfo, format, stagingBuffer, outImage);
+	upload_image(engine, texInfo, format, stagingBuffer, outImage);
 
 	vmaDestroyBuffer(engine._allocator, stagingBuffer._buffer, stagingBuffer._allocation);
 
