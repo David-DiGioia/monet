@@ -1,67 +1,86 @@
-#include "asset_loader.h"
+﻿#include "asset_loader.h"
 
 #include <fstream>
 #include <iostream>
 
+#define TRACY_ENABLE
+#include "../tracy/Tracy.hpp"		// CPU profiling
+#include "compression.h"
+
 using namespace assets;
 
-bool assets::saveBinaryFile(const  char* path, const AssetFile& file)
+bool assets::saveBinaryFile(const char* path, const AssetFile& file)
 {
-	std::ofstream outfile;
-	outfile.open(path, std::ios::binary | std::ios::out);
-	if (!outfile.is_open())
+	std::ofstream outFile;
+	outFile.open(path, std::ios::binary | std::ios::out);
+	if (!outFile.is_open())
 	{
 		std::cout << "Error when trying to write file: " << path << std::endl;
 	}
-	outfile.write(file.type, 4);
+	outFile.write(file.type, 4);
 	uint32_t version = file.version;
 	//version
-	outfile.write((const char*)&version, sizeof(uint32_t));
+	outFile.write((const char*)&version, sizeof(uint32_t));
 
 	//json length
 	uint32_t length = static_cast<uint32_t>(file.json.size());
-	outfile.write((const char*)&length, sizeof(uint32_t));
+	outFile.write((const char*)&length, sizeof(uint32_t));
 
 	//blob length
 	uint32_t blobLength = static_cast<uint32_t>(file.binaryBlob.size());
-	outfile.write((const char*)&blobLength, sizeof(uint32_t));
+	outFile.write((const char*)&blobLength, sizeof(uint32_t));
 
 	//json stream
-	outfile.write(file.json.data(), length);
-	//pixel data
-	outfile.write(file.binaryBlob.data(), file.binaryBlob.size());
+	outFile.write(file.json.data(), length);
 
-	outfile.close();
+	//pixel data
+	char* compressedBlob{ new char[file.binaryBlob.size()] };
+
+	CompressResult_t res{ compressBuffer(file.binaryBlob.data(), compressedBlob, file.binaryBlob.size()) };
+	//outFile.write(file.binaryBlob.data(), file.binaryBlob.size());
+	outFile.write(compressedBlob, res.sizeOut);
+
+	delete[] compressedBlob;
+
+	outFile.close();
 
 	return true;
 }
 
-bool assets::loadBinaryFile(const  char* path, AssetFile& outputFile)
+bool assets::loadBinaryFile(const char* path, AssetFile& outputFile)
 {
-	std::ifstream infile;
-	infile.open(path, std::ios::binary);
+	std::ifstream inFile;
+	{
+		ZoneScopedN("open file");
+		inFile.open(path, std::ios::binary);
+	}
 
-	if (!infile.is_open()) return false;
+	if (!inFile.is_open()) return false;
 
-	infile.seekg(0);
+	inFile.seekg(0);
 
+	{
+		ZoneScopedN("read header");
+		inFile.read(outputFile.type, 4);
 
-	infile.read(outputFile.type, 4);
-	
-	infile.read((char*)&outputFile.version, sizeof(uint32_t));
+		inFile.read((char*)&outputFile.version, sizeof(uint32_t));
 
-	uint32_t jsonlen = 0;
-	infile.read((char*)&jsonlen, sizeof(uint32_t));
+		uint32_t jsonlen = 0;
+		inFile.read((char*)&jsonlen, sizeof(uint32_t));
 
-	uint32_t bloblen = 0;
-	infile.read((char*)&bloblen, sizeof(uint32_t));
+		uint32_t bloblen = 0;
+		inFile.read((char*)&bloblen, sizeof(uint32_t));
 
-	outputFile.json.resize(jsonlen);
+		outputFile.json.resize(jsonlen);
 
-	infile.read(outputFile.json.data(), jsonlen);
+		inFile.read(outputFile.json.data(), jsonlen);
 
-	outputFile.binaryBlob.resize(bloblen);
-	infile.read(outputFile.binaryBlob.data(), bloblen);
-
+		outputFile.binaryBlob.resize(bloblen);
+	}
+	{
+		ZoneScopedN("decompress file");
+		//inFile.read(outputFile.binaryBlob.data(), bloblen);
+		decompressFile(inFile, outputFile.binaryBlob.data());
+	}
 	return true;
 }

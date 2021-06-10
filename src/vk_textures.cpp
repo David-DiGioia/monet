@@ -91,8 +91,8 @@ void vkutil::generateMipmaps(VkCommandBuffer cmd, VkImage image, int32_t texWidt
 		1, &barrier);
 }
 
-void upload_image(VulkanEngine& engine, assets::TextureInfo info, VkFormat format, const AllocatedBuffer& stagingBuffer, AllocatedImage& outImage) {
-	ZoneScoped
+void uploadImage(VulkanEngine& engine, assets::TextureInfo info, VkFormat format, const AllocatedBuffer& stagingBuffer, AllocatedImage& outImage) {
+	ZoneScoped;
 	VkExtent3D imageExtent{};
 	imageExtent.width = static_cast<uint32_t>(info.width);
 	imageExtent.height = static_cast<uint32_t>(info.height);
@@ -191,11 +191,11 @@ void upload_image(VulkanEngine& engine, assets::TextureInfo info, VkFormat forma
 
 bool vkutil::loadImageFromAsset(VulkanEngine& engine, const char* path, VkFormat format, uint32_t* outMipLevels, AllocatedImage& outImage)
 {
-	ZoneScoped
+	ZoneScoped;
 	assets::AssetFile file;
 
 	{
-		ZoneScopedN("load_binaryfile")
+		ZoneScopedN("load_binaryfile");
 		bool loaded{ assets::loadBinaryFile(path, file) };
 
 		if (!loaded) {
@@ -207,7 +207,7 @@ bool vkutil::loadImageFromAsset(VulkanEngine& engine, const char* path, VkFormat
 	assets::TextureInfo texInfo;
 
 	{
-		ZoneScopedN("read_texture_info")
+		ZoneScopedN("read_texture_info");
 		texInfo = assets::readTextureInfo(&file);
 	}
 
@@ -232,18 +232,25 @@ bool vkutil::loadImageFromAsset(VulkanEngine& engine, const char* path, VkFormat
 	vmaMapMemory(engine._allocator, stagingBuffer._allocation, &data);
 
 	{
-		ZoneScopedN("unpack_texture")
-		assets::unpackTexture(file.binaryBlob.data(), (char*)data, texInfo.compressedSize, texInfo.originalSize);
+		ZoneScopedN("unpack_texture");
+		//assets::unpackTexture(file.binaryBlob.data(), (char*)data, texInfo.compressedSize, texInfo.originalSize);
+		assets::unpackTexture(file.binaryBlob.data(), file.binaryBlob.size(), data);
 	}
 
 	vmaUnmapMemory(engine._allocator, stagingBuffer._allocation);
 
+
 	//outImage = upload_image(textureInfo.pixelsize[0], textureInfo.pixelsize[1], image_format, engine, stagingBuffer);
-	upload_image(engine, texInfo, format, stagingBuffer, outImage);
+	uploadImage(engine, texInfo, format, stagingBuffer, outImage);
 
-	vmaDestroyBuffer(engine._allocator, stagingBuffer._buffer, stagingBuffer._allocation);
-
-	std::cout << "Texture loaded successfully " << path << '\n';
+	{
+		ZoneScopedN("destroy_buffer");
+		vmaDestroyBuffer(engine._allocator, stagingBuffer._buffer, stagingBuffer._allocation);
+	}
+	//{
+	//	ZoneScopedN("print");
+	//	std::cout << "Texture loaded successfully " << path << '\n';
+	//}
 
 	return true;
 }

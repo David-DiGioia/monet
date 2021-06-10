@@ -35,19 +35,25 @@ assets::TextureInfo assets::readTextureInfo(AssetFile* file)
 	return info;
 }
 
-void assets::unpackTexture(const char* compressedBuffer, char* destination, size_t compressedSize, size_t dstCapacity)
+//void assets::unpackTexture(const char* compressedBuffer, char* destination, size_t compressedSize, size_t dstCapacity)
+//{
+//	LZ4F_dctx* context;
+//	LZ4F_createDecompressionContext(&context, LZ4F_VERSION);
+//
+//	size_t bufHint{ LZ4F_decompress(context, destination, &dstCapacity, compressedBuffer, &compressedSize, nullptr) };
+//	if (LZ4F_isError(bufHint)) {
+//		std::cout << "Decompression failed\n";
+//	}
+//
+//	std::cout << "compressedSize: " << compressedSize << "\n";
+//
+//	LZ4F_freeDecompressionContext(context);
+//}
+
+void assets::unpackTexture(const char* sourcebuffer, size_t sourceSize, void* destination)
 {
-	LZ4F_dctx* context;
-	LZ4F_createDecompressionContext(&context, LZ4F_VERSION);
-
-	size_t bufHint{ LZ4F_decompress(context, destination, &dstCapacity, compressedBuffer, &compressedSize, nullptr) };
-	if (LZ4F_isError(bufHint)) {
-		std::cout << "Decompression failed\n";
-	}
-
-	LZ4F_freeDecompressionContext(context);
+	memcpy(destination, sourcebuffer, sourceSize);
 }
-
 
 assets::AssetFile assets::packTexture(TextureInfo* info, void* pixelData)
 {
@@ -61,29 +67,30 @@ assets::AssetFile assets::packTexture(TextureInfo* info, void* pixelData)
 
 
 	char* pixels = (char*)pixelData;
+	file.binaryBlob.resize(info->originalSize);
+	memcpy(file.binaryBlob.data(), pixelData, file.binaryBlob.size());
 
-	LZ4F_preferences_t preferences{};
-	preferences.frameInfo.contentSize = info->originalSize;
-	// TODO(marceline-cramer) Custom compression level from bundle manifest
-	preferences.compressionLevel = LZ4HC_CLEVEL_DEFAULT;
-	preferences.autoFlush = 1;
-	preferences.favorDecSpeed = 1;
+	//LZ4F_preferences_t preferences{};
+	//preferences.frameInfo.contentSize = info->originalSize;
+	//preferences.compressionLevel = LZ4HC_CLEVEL_DEFAULT;
+	//preferences.autoFlush = 1;
+	//preferences.favorDecSpeed = 1;
 
-	// maximum size of compressed output
-	size_t maxDstSize{ LZ4F_compressFrameBound(info->originalSize, &preferences) };
+	//// maximum size of compressed output
+	//size_t maxDstSize{ LZ4F_compressFrameBound(info->originalSize, &preferences) };
 
-	// we will use that size for our destination boundary when allocating space
-	file.binaryBlob.resize(maxDstSize);
+	//// we will use that size for our destination boundary when allocating space
+	//file.binaryBlob.resize(maxDstSize);
 
-	size_t compressedDataSize{ LZ4F_compressFrame(file.binaryBlob.data(), maxDstSize, (char*)pixelData, info->originalSize, &preferences) };
-	if (LZ4F_isError(compressedDataSize)) {
-		std::cout << "Failed to compress data.\n";
-	} else {
-		std::cout << "Compressed data with ratio " << (compressedDataSize / (float)info->originalSize) << "\n\n";
-	}
+	//size_t compressedDataSize{ LZ4F_compressFrame(file.binaryBlob.data(), maxDstSize, (char*)pixelData, info->originalSize, &preferences) };
+	//if (LZ4F_isError(compressedDataSize)) {
+	//	std::cout << "Failed to compress data.\n";
+	//} else {
+	//	std::cout << "Compressed data with ratio " << (compressedDataSize / (float)info->originalSize) << "\n\n";
+	//}
 
-	info->compressedSize = compressedDataSize;
-	file.binaryBlob.resize(compressedDataSize);
+	//info->compressedSize = compressedDataSize;
+	//file.binaryBlob.resize(compressedDataSize);
 
 	nlohmann::json texture_metadata;
 	texture_metadata["format"] = "RGBA8";

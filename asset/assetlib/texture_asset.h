@@ -24,7 +24,8 @@ namespace assets {
 
 	TextureInfo readTextureInfo(AssetFile* file);
 
-	void unpackTexture(const char* compressedBuffer, char* destination, size_t compressedSize, size_t dstCapacity);
+	//void unpackTexture(const char* compressedBuffer, char* destination, size_t compressedSize, size_t dstCapacity);
+	void unpackTexture(const char* sourcebuffer, size_t sourceSize, void* destination);
 
 	AssetFile packTexture(TextureInfo* info, void* pixelData);
 }

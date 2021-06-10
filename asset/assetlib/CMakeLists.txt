@@ -7,6 +7,8 @@ add_library (assetlib STATIC
 "texture_asset.cpp"
 "asset_loader.h"
 "asset_loader.cpp"
+"compression.h"
+"compression.cpp"
 )
 
 target_include_directories(assetlib PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}")
