@@ -8,8 +8,10 @@ add_executable (monet ${ENGINE_FILES})
 
 set_property(TARGET monet PROPERTY VS_DEBUGGER_WORKING_DIRECTORY "$<TARGET_FILE_DIR:monet>")
 
-target_include_directories(monet PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}")
+target_compile_options(monet PUBLIC $<$<CONFIG:Release>:/GL>)
+target_link_options(monet PUBLIC $<$<CONFIG:Release>:/LTCG>)
 
+target_include_directories(monet PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}")
  
 target_compile_definitions(monet PUBLIC TRACY_ENABLE)
 target_compile_definitions(monet PUBLIC GLM_FORCE_DEPTH_ZERO_TO_ONE) 
