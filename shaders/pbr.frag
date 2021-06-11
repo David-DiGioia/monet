@@ -22,9 +22,7 @@ struct Light {
 };
 
 layout (set = 0, binding = 1) uniform SceneData {
-    vec4 ambientColor;
-    vec4 sunDirection;
-    vec4 sunColor; // w is for sun power
+    mat4 lightSpaceMatrix; // for shadow mapping
     vec4 camPos; // w is unused
     Light lights[MAX_NUM_TOTAL_LIGHTS];
     int numLights;

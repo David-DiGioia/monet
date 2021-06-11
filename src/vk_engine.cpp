@@ -420,6 +420,7 @@ void VulkanEngine::initScene()
 	cube.transformMatrix = glm::mat4{ 1.0 };
 	cube.castShadow = false;
 	_renderables.insert(cube);
+	_sceneParameters = GPUSceneData{}; // zero out scene parameters
 
 	_app->init(*this);
 }
@@ -1754,10 +1755,9 @@ void VulkanEngine::drawObjects(VkCommandBuffer cmd, const std::multiset<RenderOb
 	TracyVkZone(getCurrentFrame().tracyContext, cmd, "Draw objects");
 
 	_sceneParameters.lightSpaceMatrix = _shadowGlobal.lightSpaceMatrix;
-	_sceneParameters.numLights = 0;
-	// copy scene data to scene buffer
 	_sceneParameters.camPos = glm::vec4(_camTransform.pos, 1.0);
 
+	// copy scene data to scene buffer
 	char* sceneData;
 	vmaMapMemory(_allocator, _sceneParameterBuffer._allocation, (void**)&sceneData);
 	int frameIndex{ _frameNumber % FRAME_OVERLAP };

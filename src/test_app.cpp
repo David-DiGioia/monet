@@ -15,21 +15,7 @@ void TestApp::init(VulkanEngine& engine)
 
 	_camera.pos = glm::vec3{ 0.0, 2.0, 2.0 };
 
-	_bed.setRenderObject(engine.createRenderObject("bed"));
-
-	_sofa.setRenderObject(engine.createRenderObject("sofa"));
-	_sofa.setPos(glm::vec3(-2.5, 0.0, 0.4));
-	_sofa.setRot(glm::rotate(glm::radians(110.0f), glm::vec3{ 0.0, 1.0, 0.0 }));
-	_sofa.parent = &_bed;
-
-	_chair.setRenderObject(engine.createRenderObject("chair"));
-	_chair.setPos(glm::vec3(-2.1, 0.0, -2.0));
-	_chair.setRot(glm::rotate(glm::radians(80.0f), glm::vec3{ 0.0, 1.0, 0.0 }));
-
-	for (int i{ 0 }; i < 10; ++i) {
-		GameObject chair{ engine.createRenderObject("chair") };
-		chair.setPos(glm::vec3(-2.1, 0.0, -2.0 * (i + 2)));
-	}
+	_bed.setRenderObject(engine.createRenderObject("bed", "default"));
 
 	//float halfExtent{ 1.0f };
 	//PxMaterial* material{ engine.create_physics_material(0.5, 0.5, 0.6) };
@@ -38,10 +24,6 @@ void TestApp::init(VulkanEngine& engine)
 	//_cube.setRenderObject(engine.create_render_object("cube", "default"));
 	//_cube.setPos(glm::vec3(0.0, 3.0, 0.0));
 	//engine.add_to_physics_engine_dynamic(&_cube, shape);
-
-
-	GameObject plane{ engine.createRenderObject("plane", "default") };
-	plane.setScale(glm::vec3(5.0f));
 
 	Light light{};
 	light.color = glm::vec4{ 1.0, 0.1, 0.1, 100.0 };
@@ -61,9 +43,7 @@ void TestApp::updateCamera(VulkanEngine& engine)
 void TestApp::update(VulkanEngine& engine, float delta)
 {
 	_lights[0].position.x = std::sinf(_time) * 3.0f;
-	_sofa.setPos(_sofaPos);
 	_bed.setPos(_bedPos);
-	_chair.setPos(_chairPos);
 
 	updateCamera(engine);
 	engine.setSceneLights(_lights);
