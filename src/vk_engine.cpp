@@ -639,6 +639,10 @@ void VulkanEngine::loadMaterials()
 				file >> cubemapMaterial >> cubemapTexName >> cubemapResStr >> useMipmap >> isCubemap >> cubeVertPath >> cubeFragPath;
 				std::cout << "Rendering to texture '" << cubemapTexName << "'\n";
 				cubemapRes = static_cast<uint32_t>(std::stoul(cubemapResStr));
+			} else if (field == "attr:") {
+				std::string flags;
+				ss >> flags;
+				info.attributeFlags = std::stoul(flags);
 			} else if (field == "bind:") {
 				VkDescriptorSetLayoutBinding binding{};
 				binding.descriptorCount = 1;
@@ -773,7 +777,7 @@ void VulkanEngine::initPipeline(const MaterialCreateInfo& info, const std::strin
 	pipelineBuilder._multisampling = vkinit::multisamplingStateCreateInfo(_msaaSamples, 0.5f);
 	pipelineBuilder._colorBlendAttachment = vkinit::colorBlendAttachmentState();
 	pipelineBuilder._depthStencil = vkinit::depthStencilCreateInfo(true, true, VK_COMPARE_OP_LESS_OR_EQUAL);
-	VertexInputDescription vertexDescription{ Vertex::getVertexDescription() };
+	VertexInputDescription vertexDescription{ Vertex::getVertexDescription(info.attributeFlags) };
 	// connect the pipeline builder vertex input info to the one we get from Vertex
 	pipelineBuilder._vertexInputInfo.vertexAttributeDescriptionCount = vertexDescription.attributes.size();
 	pipelineBuilder._vertexInputInfo.pVertexAttributeDescriptions = vertexDescription.attributes.data();

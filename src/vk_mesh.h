@@ -14,13 +14,20 @@ struct VertexInputDescription {
 	VkPipelineVertexInputStateCreateFlags flags{ 0 };
 };
 
+enum VertexAttributes {
+	ATTR_POSITION = 1,
+	ATTR_NORMAL = 2,
+	ATTR_TANGENT = 4,
+	ATTR_UV = 8
+};
+
 struct Vertex {
 	glm::vec3 position;
 	glm::vec3 normal;
 	glm::vec3 tangent;
 	glm::vec2 uv;
 
-	static VertexInputDescription getVertexDescription();
+	static VertexInputDescription getVertexDescription(uint32_t attrFlags);
 };
 
 struct Mesh {

@@ -21,9 +21,9 @@ frag:	equirectangular.frag.spv
 bind:	0
 	type:	COMBINED_IMAGE_SAMPLER
 	stage:	FRAGMENT
-//	path:	../hdri/8k_stars.tx
 	path:	../hdri/wide_street_01_4k.hdr
 	format:	R32G32B32A32_SFLOAT
+attr:	1
 END
 
 // first create normal cubemap
@@ -35,6 +35,7 @@ true
 true
 equirect_to_cubemap.vert.spv
 equirect_to_cubemap.frag.spv
+attr:	1
 END
 
 
@@ -47,6 +48,7 @@ bind:	0
 	stage:	FRAGMENT
 	path:	cubemap
 	format:	R32G32B32A32_SFLOAT
+attr:	1
 END
 
 // now create the irradiance map sampling from the cubemap material we just made
@@ -58,6 +60,7 @@ false
 true
 cubemap_to_irradiance.vert.spv
 cubemap_to_irradiance.frag.spv
+attr:	1
 END
 
 // now create pre-filtered environment map
@@ -69,6 +72,7 @@ true
 true
 cubemap_to_irradiance.vert.spv
 prefilter_environment.frag.spv
+attr:	1
 END
 
 // create integrated brdf map
@@ -80,6 +84,7 @@ false
 false
 cubemap_to_irradiance.vert.spv
 integrate_brdf.frag.spv
+attr:	1
 END
 
 // test any cubemap texture
@@ -91,6 +96,7 @@ bind:	0
 	stage:	FRAGMENT
 	path:	cubemap
 	format:	R32G32B32A32_SFLOAT
+attr:	1
 END
 
 // ----------------------------------------------------------------------------------------
@@ -150,4 +156,5 @@ bind:	7
 	stage:	FRAGMENT
 	path:	integrated_brdf_map
 	format:	R32G32B32A32_SFLOAT
+attr:	15
 END

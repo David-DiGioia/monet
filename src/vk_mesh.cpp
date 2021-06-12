@@ -3,7 +3,7 @@
 #include <cstddef> // offsetof
 #include <iostream>
 
-VertexInputDescription Vertex::getVertexDescription()
+VertexInputDescription Vertex::getVertexDescription(uint32_t attrFlags)
 {
 	VertexInputDescription description;
 
@@ -39,10 +39,10 @@ VertexInputDescription Vertex::getVertexDescription()
 	uvAttribute.format = VK_FORMAT_R32G32_SFLOAT; // vec2
 	uvAttribute.offset = offsetof(Vertex, uv);
 
-	description.attributes.push_back(positionAttribute);
-	description.attributes.push_back(normalAttribute);
-	description.attributes.push_back(tangentAttribute);
-	description.attributes.push_back(uvAttribute);
+	if (attrFlags & ATTR_POSITION) description.attributes.push_back(positionAttribute);
+	if (attrFlags & ATTR_NORMAL) description.attributes.push_back(normalAttribute);
+	if (attrFlags & ATTR_TANGENT) description.attributes.push_back(tangentAttribute);
+	if (attrFlags & ATTR_UV) description.attributes.push_back(uvAttribute);
 
 	return description;
 }

@@ -143,6 +143,7 @@ struct MaterialCreateInfo {
 	std::string name;
 	std::string vertPath;
 	std::string fragPath;
+	uint32_t attributeFlags;
 	std::vector<VkDescriptorSetLayoutBinding> bindings;
 	std::vector<Texture> bindingTextures;
 };

@@ -703,7 +703,7 @@ void initShadowPipeline(VulkanEngine& engine, VkRenderPass& renderpass, VkPipeli
 	// vertex input controls how to read vertices from vertex buffers
 	VkPipelineVertexInputStateCreateInfo vertexInputInfo{ vkinit::vertexInputStateCreateInfo() };
 	// input assembly is the configuration for drawing triangle lists, strips, or individual points
-	VertexInputDescription vertexDescription{ Vertex::getVertexDescription() };
+	VertexInputDescription vertexDescription{ Vertex::getVertexDescription(ATTR_POSITION) };
 	vertexInputInfo.vertexAttributeDescriptionCount = vertexDescription.attributes.size();
 	vertexInputInfo.pVertexAttributeDescriptions = vertexDescription.attributes.data();
 	vertexInputInfo.vertexBindingDescriptionCount = vertexDescription.bindings.size();
