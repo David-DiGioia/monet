@@ -26,7 +26,7 @@ void TestApp::init(VulkanEngine& engine)
 	//engine.add_to_physics_engine_dynamic(&_cube, shape);
 
 	Light light{};
-	light.color = glm::vec4{ 1.0, 0.1, 0.1, 100.0 };
+	light.color = glm::vec4{ 0.1, 1.0, 0.1, 0.0 };
 	light.position = glm::vec4{ 1.0, 5.0, 1.0, 0.0 };
 
 	_lights.push_back(light);

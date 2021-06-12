@@ -140,7 +140,7 @@ void create_rt_pipeline_layout(VulkanEngine& engine, VkDescriptorSetLayout layou
 
 void create_rt_pipeline(VulkanEngine& engine, VkRenderPass renderpass, VkExtent2D extent, VkPipelineLayout layout, VkPipeline* outPipeline, const std::string& vertPath, const std::string& fragPath)
 {
-	std::string prefix{ "../../shaders/" };
+	std::string prefix{ "../../shaders/spirv/" };
 
 	VkShaderModule vertShader;
 	if (!engine.loadShaderModule(prefix + vertPath, &vertShader)) {
@@ -692,7 +692,7 @@ void initShadowPipeline(VulkanEngine& engine, VkRenderPass& renderpass, VkPipeli
 
 	std::vector<VkDynamicState> dynamicStateEnables = { VK_DYNAMIC_STATE_VIEWPORT, VK_DYNAMIC_STATE_SCISSOR, VK_DYNAMIC_STATE_DEPTH_BIAS };
 
-	std::string prefix{ "../../shaders/" };
+	std::string prefix{ "../../shaders/spirv/" };
 	std::string vertPath{ prefix + "depth.vert.spv" };
 	VkShaderModule vertShader;
 	if (!engine.loadShaderModule(vertPath, &vertShader)) {

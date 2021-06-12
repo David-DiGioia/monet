@@ -573,9 +573,9 @@ void VulkanEngine::loadTexture(const std::string& path, VkFormat format)
 
 void VulkanEngine::loadMaterials()
 {
-	std::string prefix{ "../../shaders/" };
-	std::string loadFile{ "_load_materials.txt" };
-	std::ifstream file{ prefix + loadFile };
+	std::string prefix{ "../../shaders/spirv/" };
+	std::string loadFile{ "../../shaders/_load_materials.txt" };
+	std::ifstream file{ loadFile };
 	std::string line;
 
 	std::unordered_map<std::string, VkDescriptorType> stringToType;

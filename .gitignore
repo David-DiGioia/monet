@@ -3,6 +3,7 @@
 /asset/assets_export
 /asset/assets
 extra/traces
+/shaders/spirv
 
 # Ignore all model files except the default folder
 !/asset/assets/models/_default
