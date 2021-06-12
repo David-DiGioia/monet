@@ -44,3 +44,5 @@ add_custom_target(
     DEPENDS ${SPIRV_BINARY_FILES}
 	SOURCES ${GLSL_SOURCE_FILES}
     )
+
+add_dependencies(monet Shaders)
