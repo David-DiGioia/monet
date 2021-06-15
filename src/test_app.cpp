@@ -15,7 +15,7 @@ void TestApp::init(VulkanEngine& engine)
 
 	_camera.pos = glm::vec3{ 0.0, 2.0, 2.0 };
 
-	_bed.setRenderObject(engine.createRenderObject("bed", "default"));
+	_bed.setRenderObject(engine.createRenderObject("skinning", "default"));
 
 	//float halfExtent{ 1.0f };
 	//PxMaterial* material{ engine.create_physics_material(0.5, 0.5, 0.6) };

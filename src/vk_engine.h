@@ -22,6 +22,8 @@
 #include "../tracy/TracyVulkan.hpp"
 #include "application.h"
 #include "physics.h"
+#include "asset_loader.h"
+#include "mesh_asset.h"
 
 #define VK_CHECK(x)\
 	do\
@@ -149,7 +151,7 @@ struct MaterialCreateInfo {
 };
 
 struct RenderObject {
-	Mesh* mesh;
+	AbstractMesh* mesh;
 	Material* material;
 	mutable glm::mat4 transformMatrix;
 	bool castShadow;
@@ -307,7 +309,7 @@ public:
 
 	std::multiset<RenderObject> _renderables;
 	std::unordered_map<std::string, Material> _materials;
-	std::unordered_map<std::string, Mesh> _meshes;
+	std::unordered_map<std::string, AbstractMesh*> _meshes;
 
 	Transform _camTransform{};
 
@@ -385,7 +387,7 @@ public:
 	Material* createMaterial(const MaterialCreateInfo& info, VkPipeline pipeline, VkPipelineLayout layout, VkDescriptorSetLayout materialSetLayout);
 
 	// returns nullptr if it can't be found
-	Mesh* getMesh(const std::string& name);
+	AbstractMesh* getMesh(const std::string& name);
 
 	const RenderObject* createRenderObject(const std::string& meshName, const std::string& matName, bool castShadow=true);
 
@@ -434,11 +436,7 @@ private:
 
 	void loadMeshes();
 
-	void loadMesh(const std::string& name, const std::string& path);
-
 	void loadMaterials();
-
-	void uploadMesh(Mesh& mesh);
 
 	void showFPS();
 
@@ -482,9 +480,11 @@ private:
 
 	void cameraTransformation();
 
-	// For use with vertex buffers or index buffers
+	void loadMesh(const std::string& name, const std::string& path);
+
+	// For use with vertex buffers or index buffers. If !isVertexBuffer, then index buffer is assumed
 	template <typename T>
-	void uploadBuffer(const std::vector<T>& vec, AllocatedBuffer& buffer)
+	void uploadBuffer(const std::vector<T>& vec, AllocatedBuffer& buffer, bool isVertexBuffer)
 	{
 		const size_t bufferSize{ vec.size() * sizeof(T) };
 		// allocate staging buffer
@@ -510,7 +510,7 @@ private:
 		std::memcpy(data, vec.data(), vec.size() * sizeof(T));
 		vmaUnmapMemory(_allocator, stagingBuffer._allocation);
 
-		VkBufferUsageFlags bufferUsage{ std::is_same_v<T, Vertex> ? VK_BUFFER_USAGE_VERTEX_BUFFER_BIT : VK_BUFFER_USAGE_INDEX_BUFFER_BIT };
+		VkBufferUsageFlags bufferUsage = isVertexBuffer ? VK_BUFFER_USAGE_VERTEX_BUFFER_BIT : VK_BUFFER_USAGE_INDEX_BUFFER_BIT;
 
 		// now we need the GPU-side buffer since we've populated the staging buffer
 		VkBufferCreateInfo bufferInfo{};
@@ -540,6 +540,28 @@ private:
 		});
 		vmaDestroyBuffer(_allocator, stagingBuffer._buffer, stagingBuffer._allocation);
 	}
+
+	template <typename T>
+	void uploadMesh(Mesh<T>* mesh)
+	{
+		uploadBuffer(mesh->_vertices, mesh->_vertexBuffer, true);
+		uploadBuffer(mesh->_indices, mesh->_indexBuffer, false);
+	}
+
+	template <typename T>
+	void loadMeshHelper(const std::string& name, assets::MeshInfo& info, const assets::AssetFile& assetFile)
+	{
+		Mesh<T>* mesh{ new Mesh<T>{} };
+		mesh->_vertices.resize(info.vertexBufferSize / sizeof(T));
+		mesh->_indices.resize(info.indexBufferSize / info.indexSize);
+		assets::unpackMesh(&info, assetFile.binaryBlob.data(), (char*)mesh->_vertices.data(), (char*)mesh->_indices.data());
+
+		// send mesh to GPU
+		uploadMesh(mesh);
+
+		_meshes[name] = mesh;
+	}
+
 };
 
 class PipelineBuilder {

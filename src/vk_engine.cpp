@@ -29,8 +29,6 @@
 #include "SDL_mixer.h"
 #include "util.h"
 #include "texture_asset.h"
-#include "mesh_asset.h"
-#include "asset_loader.h"
 
 #define VMA_IMPLEMENTATION
 #include "vk_mem_alloc.h"
@@ -478,11 +476,39 @@ void VulkanEngine::immediateSubmit(std::function<void(VkCommandBuffer cmd)>&& fu
 	vkResetCommandPool(_device, _uploadContext._commandPool, 0);
 }
 
-// upload to GPU
-void VulkanEngine::uploadMesh(Mesh& mesh)
+// load mesh onto CPU then upload it to the GPU
+void VulkanEngine::loadMesh(const std::string& name, const std::string& path)
 {
-	uploadBuffer(mesh._vertices, mesh._vertexBuffer);
-	uploadBuffer(mesh._indices, mesh._indexBuffer);
+
+	assets::AssetFile assetFile;
+	nlohmann::json metadata;
+
+	assets::loadBinaryFile(path.c_str(), assetFile, metadata);
+	assets::MeshInfo info{ assets::readMeshInfo(metadata) };
+
+	if (info.vertexFormat == assets::VertexFormat::PNTV_F32) {
+
+		loadMeshHelper<Vertex>(name, info, assetFile);
+
+	} else if (info.vertexFormat == assets::VertexFormat::PNTVIW_F32) {
+
+		loadMeshHelper<VertexSkinned>(name, info, assetFile);
+
+	} else {
+		std::cout << "Error: unrecognized vertex format in VulkanEngine::loadMesh\n";
+	}
+
+
+
+	//Mesh mesh{};
+	//mesh.load_from_obj(path);
+
+	//// make sure mesh is sent to GPU
+	//upload_mesh(mesh);
+
+	//// note that we are copying them. Eventually we'll delete the
+	//// hardcoded monkey and triangle so it's no problem for now
+	//_meshes[name] = mesh;
 }
 
 void VulkanEngine::loadMeshes()
@@ -508,37 +534,6 @@ void VulkanEngine::loadMeshes()
 			}
 		}
 	}
-}
-
-// load mesh onto CPU then upload it to the GPU
-void VulkanEngine::loadMesh(const std::string& name, const std::string& path)
-{
-	Mesh mesh{};
-
-	assets::AssetFile assetFile;
-	assets::loadBinaryFile(path.c_str(), assetFile);
-	
-	assets::MeshInfo info{ assets::readMeshInfo(&assetFile) };
-	mesh._vertices.resize(info.vertexBufferSize / sizeof(Vertex));
-	mesh._indices.resize(info.indexBufferSize / info.indexSize);
-	assets::unpackMesh(&info, assetFile.binaryBlob.data(), (char*)mesh._vertices.data(), (char*)mesh._indices.data());
-
-	// send mesh to GPU
-	uploadMesh(mesh);
-	
-	_meshes[name] = mesh;
-
-
-
-	//Mesh mesh{};
-	//mesh.load_from_obj(path);
-
-	//// make sure mesh is sent to GPU
-	//upload_mesh(mesh);
-
-	//// note that we are copying them. Eventually we'll delete the
-	//// hardcoded monkey and triangle so it's no problem for now
-	//_meshes[name] = mesh;
 }
 
 void VulkanEngine::loadTexture(const std::string& path, VkFormat format)
@@ -777,7 +772,7 @@ void VulkanEngine::initPipeline(const MaterialCreateInfo& info, const std::strin
 	pipelineBuilder._multisampling = vkinit::multisamplingStateCreateInfo(_msaaSamples, 0.5f);
 	pipelineBuilder._colorBlendAttachment = vkinit::colorBlendAttachmentState();
 	pipelineBuilder._depthStencil = vkinit::depthStencilCreateInfo(true, true, VK_COMPARE_OP_LESS_OR_EQUAL);
-	VertexInputDescription vertexDescription{ Vertex::getVertexDescription(info.attributeFlags) };
+	VertexInputDescription vertexDescription{ getVertexDescription(info.attributeFlags) };
 	// connect the pipeline builder vertex input info to the one we get from Vertex
 	pipelineBuilder._vertexInputInfo.vertexAttributeDescriptionCount = vertexDescription.attributes.size();
 	pipelineBuilder._vertexInputInfo.pVertexAttributeDescriptions = vertexDescription.attributes.data();
@@ -1440,14 +1435,14 @@ Material* VulkanEngine::getMaterial(const std::string& name)
 	}
 }
 
-Mesh* VulkanEngine::getMesh(const std::string& name)
+AbstractMesh* VulkanEngine::getMesh(const std::string& name)
 {
 	auto it{ _meshes.find(name) };
 	if (it == _meshes.end()) {
 		std::cout << " Could not find mesh '" << name << "' Did you remember to export the .gltf file and bake?\n";
 		return nullptr;
 	} else {
-		return &(it->second);
+		return it->second;
 	}
 }
 
@@ -1495,7 +1490,7 @@ void VulkanEngine::initBoundingSphere() {
 		_boundingSphereR = f * k;
 	} else {
 		_boundingSphereZ = -0.5f * (f + n) * (1 + k2);
-		_boundingSphereR = 0.5f * std::sqrtf((f-n) * (f-n) + 2 * (f*f + n*n) * k2 + (f + n) * (f + n) * k2 * k2);
+		_boundingSphereR = 0.5f * std::sqrtf((f - n) * (f - n) + 2 * (f * f + n * n) * k2 + (f + n) * (f + n) * k2 * k2);
 	}
 }
 
@@ -1553,7 +1548,7 @@ void VulkanEngine::shadowPass(VkCommandBuffer& cmd)
 	glm::mat4 rotate{ glm::rotation(glm::vec3{ 0.0, 0.0, -1.0 }, dir) };
 	//glm::mat4 translate{ glm::translate(glm::vec3{ 4.0f, 8.0f, 2.0f }) };
 	glm::mat4 translate{ glm::translate(center - halfLength * dir) };
-	glm::mat4 lightView{ translate * rotate};
+	glm::mat4 lightView{ translate * rotate };
 	lightView = glm::inverse(lightView);
 
 	_shadowGlobal.lightSpaceMatrix = lightProjection * lightView;
@@ -1571,7 +1566,7 @@ void VulkanEngine::shadowPass(VkCommandBuffer& cmd)
 	vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, _shadowGlobal.shadowPipelineLayout, 0, 1, &getCurrentFrame().shadow.shadowDescriptorSetLight, 0, nullptr);
 	vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, _shadowGlobal.shadowPipelineLayout, 1, 1, &getCurrentFrame().shadow.shadowDescriptorSetObjects, 0, nullptr);
 
-	Mesh* lastMesh{ nullptr };
+	AbstractMesh* lastMesh{ nullptr };
 
 	uint32_t idx{ 0 };
 	for (const RenderObject& object : _renderables) {
@@ -1769,7 +1764,7 @@ void VulkanEngine::drawObjects(VkCommandBuffer cmd, const std::multiset<RenderOb
 	std::memcpy(sceneData, &_sceneParameters, sizeof(GPUSceneData));
 	vmaUnmapMemory(_allocator, _sceneParameterBuffer._allocation);
 
-	Mesh* lastMesh{ nullptr };
+	AbstractMesh* lastMesh{ nullptr };
 	Material* lastMaterial{ nullptr };
 
 	uint32_t pipelineBinds{ 0 };
@@ -1915,8 +1910,8 @@ bool VulkanEngine::advancePhysics(float delta)
 void VulkanEngine::updatePhysics()
 {
 	ZoneScoped
-	// Advance forward simulation
-	advancePhysics(_delta);
+		// Advance forward simulation
+		advancePhysics(_delta);
 
 	// Update gameobject transforms to match the transforms of the physics objects
 	for (GameObject* go : _physicsObjects) {
@@ -1981,12 +1976,10 @@ bool VulkanEngine::input() {
 			if (e.window.event == SDL_WINDOWEVENT_SIZE_CHANGED) {
 				std::cout << "Window resized\n";
 				resizeWindow(e.window.data1, e.window.data2);
-			}
-			else if (e.window.event == SDL_WINDOWEVENT_MINIMIZED) {
+			} else if (e.window.event == SDL_WINDOWEVENT_MINIMIZED) {
 				std::cout << "Window minimized\n";
 				_minimized = true;
-			}
-			else if (e.window.event == SDL_WINDOWEVENT_RESTORED) {
+			} else if (e.window.event == SDL_WINDOWEVENT_RESTORED) {
 				std::cout << "Window restored\n";
 				_minimized = false;
 			}

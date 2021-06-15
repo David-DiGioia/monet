@@ -6,6 +6,7 @@
 #include "vk_initializers.h"
 #include "asset_loader.h"
 #include "texture_asset.h"
+#include "json.hpp"
 
 #define STB_IMAGE_IMPLEMENTATION
 #include "stb_image.h"
@@ -193,10 +194,11 @@ bool vkutil::loadImageFromAsset(VulkanEngine& engine, const char* path, VkFormat
 {
 	ZoneScoped;
 	assets::AssetFile file;
+	nlohmann::json metadata;
 
 	{
 		ZoneScopedN("load_binaryfile");
-		bool loaded{ assets::loadBinaryFile(path, file) };
+		bool loaded{ assets::loadBinaryFile(path, file, metadata) };
 
 		if (!loaded) {
 			std::cout << "Error when loading image\n";
@@ -205,10 +207,9 @@ bool vkutil::loadImageFromAsset(VulkanEngine& engine, const char* path, VkFormat
 	}
 
 	assets::TextureInfo texInfo;
-
 	{
 		ZoneScopedN("read_texture_info");
-		texInfo = assets::readTextureInfo(&file);
+		texInfo = assets::readTextureInfo(metadata);
 	}
 
 	*outMipLevels = (uint32_t)texInfo.miplevels;

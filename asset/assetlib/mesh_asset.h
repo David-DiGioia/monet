@@ -8,8 +8,19 @@ namespace assets {
 
 		float position[3];
 		float normal[3];
-		float tangent[3];
+		float tangent[4];
 		float uv[2];
+	};
+
+	// custom, matches VertexSkinned in vk_mesh.h
+	struct Vertex_f32_PNTVIW {
+
+		float position[3];
+		float normal[3];
+		float tangent[4]; // fourth component is sign
+		float uv[2];
+		uint16_t jointIndices[4];
+		float jointWeights[4];
 	};
 
 	struct Vertex_f32_PNCV {
@@ -31,7 +42,8 @@ namespace assets {
 	enum class VertexFormat : uint32_t
 	{
 		Unknown = 0,
-		PNTV_F32, //	tangent instead of color
+		PNTV_F32,        //	tangent instead of color
+		PNTVIW_F32,      //	skinned vertex
 		PNCV_F32,        // everything at 32 bits
 		P32N8C8V16       // position at 32 bits, normal at 8 bits, color at 8 bits, uvs at 16 bits float
 	};
@@ -52,9 +64,10 @@ namespace assets {
 		VertexFormat vertexFormat;
 		char indexSize;
 		std::string originalFile;
+		CompressionMode compressionMode;
 	};
 
-	MeshInfo readMeshInfo(AssetFile* file);
+	MeshInfo readMeshInfo(nlohmann::json& metadata);
 
 	void unpackMesh(MeshInfo* info, const char* sourcebuffer, char* vertexBuffer, char* indexBuffer);
 

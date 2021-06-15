@@ -3,7 +3,7 @@
 
 layout (location = 0) in vec3 vPosition;
 layout (location = 1) in vec3 vNormal;
-layout (location = 2) in vec3 vTangent;
+layout (location = 2) in vec4 vTangent;
 layout (location = 3) in vec2 vTexCoord;
 
 layout (location = 0) out vec2 texCoord;
@@ -56,11 +56,11 @@ void main()
     texCoord = vTexCoord;
 
     // transform TBN vectors from model space to world space
-    vec3 T = normalize(vec3(modelMatrix * vec4(vTangent, 0.0)));
+    vec3 T = normalize(vec3(modelMatrix * vec4(vTangent.xyz, 0.0)));
     vec3 N = normalize(vec3(modelMatrix * vec4(vNormal, 0.0)));
     // re-orthogonalize T with respect to N
     T = normalize(T - dot(T, N) * N);
-    vec3 B = cross(N, T); // bitangent vector
+    vec3 B = cross(N, T) * vTangent.w; // bitangent vector
     // this matrix transforms from tangent space to world space
     mat3 TBN = mat3(T, B, N);
 

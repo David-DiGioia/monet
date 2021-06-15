@@ -7,6 +7,7 @@
 #include <assert.h>
 #include <cinttypes>
 #include <fstream>
+#include <iostream>
 
 #include "lz4frame.h"
 
@@ -59,10 +60,11 @@ size_t readBuffer(void* dstBuf, const void*& srcBuf, size_t readSize, size_t& sr
 /* ================================================= */
 
 CompressResult_t compressBufferInternal(const void* inBuf, void* outBuf,
-	size_t inBufSize, LZ4F_compressionContext_t ctx,
+	const size_t inBufSize, LZ4F_compressionContext_t ctx,
 	void* inChunk, size_t inChunkSize,
 	void* outChunk, size_t outCapacity)
 {
+	size_t inBufSizeCopy{ inBufSize };
 	CompressResult_t result = { 1, 0, 0 };  /* result for an error */
 	uint64_t count_in{};
 	uint64_t count_out{};
@@ -81,16 +83,20 @@ CompressResult_t compressBufferInternal(const void* inBuf, void* outBuf,
 			return result;
 		}
 
-		count_out = headerSize;
 		printf("Buffer size is %u bytes, header size %u bytes \n", (unsigned)outCapacity, (unsigned)headerSize);
 		//safe_fwrite(outChunk, 1, headerSize, outBuf);
+		count_out = headerSize;
+		if (count_out > inBufSize) {
+			std::cout << "Compression would cause buffer overflow. Aborting.\n";
+			return { -1, inBufSize, inBufSize + 1 };;
+		}
 		writeBuffer(outBuf, outChunk, headerSize);
 	}
 
 	/* stream file */
 	for (;;) {
 		//const size_t readSize = fread(inChunk, 1, IN_CHUNK_SIZE, inBuf);
-		const size_t readSize = readBuffer(inChunk, inBuf, IN_CHUNK_SIZE, inBufSize);
+		const size_t readSize = readBuffer(inChunk, inBuf, IN_CHUNK_SIZE, inBufSizeCopy);
 		if (readSize == 0) break; /* nothing left to read from input file */
 		count_in += readSize;
 
@@ -102,9 +108,13 @@ CompressResult_t compressBufferInternal(const void* inBuf, void* outBuf,
 
 		//printf("Writing %u bytes\n", (unsigned)compressedSize);
 		//safe_fwrite(outChunk, 1, compressedSize, outBuf);
+		count_out += compressedSize;
+		if (count_out > inBufSize) {
+			std::cout << "Compression would cause buffer overflow. Aborting.\n";
+			return { -1, inBufSize, inBufSize + 1 };;
+		}
 		memcpy(outBuf, outChunk, compressedSize);
 		outBuf = (char*)outBuf + compressedSize;
-		count_out += compressedSize;
 	}
 
 	/* flush whatever remains within internal buffers */
@@ -117,8 +127,12 @@ CompressResult_t compressBufferInternal(const void* inBuf, void* outBuf,
 
 		//printf("Writing %u bytes \n", (unsigned)compressedSize);
 		//safe_fwrite(outChunk, 1, compressedSize, outBuf);
-		writeBuffer(outBuf, outChunk, compressedSize);
 		count_out += compressedSize;
+		if (count_out > inBufSize) {
+			std::cout << "Compression would cause buffer overflow. Aborting.\n";
+			return { -1, inBufSize, inBufSize + 1 };;
+		}
+		writeBuffer(outBuf, outChunk, compressedSize);
 	}
 
 	result.sizeIn = count_in;
@@ -152,6 +166,9 @@ CompressResult_t compressBuffer(const void* inBuf, void* outBuf, uint32_t inBufS
 	LZ4F_freeCompressionContext(ctx);   /* supports free on NULL */
 	free(src);
 	free(outbuff);
+
+
+
 	return result;
 }
 

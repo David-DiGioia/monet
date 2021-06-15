@@ -6,7 +6,7 @@
 #include "lz4hc.h"
 #include "lz4frame.h"
 
-assets::TextureFormat parse_format(const char* f) {
+assets::TextureFormat parseFormat(const char* f) {
 
 	if (strcmp(f, "RGBA8") == 0) {
 		return assets::TextureFormat::RGBA8;
@@ -17,20 +17,21 @@ assets::TextureFormat parse_format(const char* f) {
 	}
 }
 
-assets::TextureInfo assets::readTextureInfo(AssetFile* file)
+assets::TextureInfo assets::readTextureInfo(nlohmann::json& metadata)
 {
 	TextureInfo info;
 
-	nlohmann::json texture_metadata = nlohmann::json::parse(file->json);
+	std::string formatString = metadata["format"];
+	info.textureFormat = parseFormat(formatString.c_str());
+	info.originalSize = metadata["original_size"];
+	//info.compressedSize = texture_metadata["compressed_size"];
+	info.originalFile = metadata["original_file"];
+	info.miplevels = metadata["miplevels"];
+	info.width = metadata["width"];
+	info.height = metadata["height"];
 
-	std::string formatString = texture_metadata["format"];
-	info.textureFormat = parse_format(formatString.c_str());
-	info.originalSize = texture_metadata["original_size"];
-	info.compressedSize = texture_metadata["compressed_size"];
-	info.originalFile = texture_metadata["original_file"];
-	info.miplevels = texture_metadata["miplevels"];
-	info.width = texture_metadata["width"];
-	info.height = texture_metadata["height"];
+	std::string compressionMode = metadata["compression_mode"];
+	info.compressionMode = parseCompression(compressionMode.c_str());
 
 	return info;
 }
@@ -69,40 +70,6 @@ assets::AssetFile assets::packTexture(TextureInfo* info, void* pixelData)
 	char* pixels = (char*)pixelData;
 	file.binaryBlob.resize(info->originalSize);
 	memcpy(file.binaryBlob.data(), pixelData, file.binaryBlob.size());
-
-	//LZ4F_preferences_t preferences{};
-	//preferences.frameInfo.contentSize = info->originalSize;
-	//preferences.compressionLevel = LZ4HC_CLEVEL_DEFAULT;
-	//preferences.autoFlush = 1;
-	//preferences.favorDecSpeed = 1;
-
-	//// maximum size of compressed output
-	//size_t maxDstSize{ LZ4F_compressFrameBound(info->originalSize, &preferences) };
-
-	//// we will use that size for our destination boundary when allocating space
-	//file.binaryBlob.resize(maxDstSize);
-
-	//size_t compressedDataSize{ LZ4F_compressFrame(file.binaryBlob.data(), maxDstSize, (char*)pixelData, info->originalSize, &preferences) };
-	//if (LZ4F_isError(compressedDataSize)) {
-	//	std::cout << "Failed to compress data.\n";
-	//} else {
-	//	std::cout << "Compressed data with ratio " << (compressedDataSize / (float)info->originalSize) << "\n\n";
-	//}
-
-	//info->compressedSize = compressedDataSize;
-	//file.binaryBlob.resize(compressedDataSize);
-
-	nlohmann::json texture_metadata;
-	texture_metadata["format"] = "RGBA8";
-	texture_metadata["original_size"] = info->originalSize;
-	texture_metadata["compressed_size"] = info->compressedSize;
-	texture_metadata["original_file"] = info->originalFile;
-	texture_metadata["miplevels"] = info->miplevels;
-	texture_metadata["width"] = info->width;
-	texture_metadata["height"] = info->height;
-
-	std::string stringified = texture_metadata.dump();
-	file.json = stringified;
 
 	return file;
 }

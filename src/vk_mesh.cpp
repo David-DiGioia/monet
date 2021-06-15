@@ -3,7 +3,14 @@
 #include <cstddef> // offsetof
 #include <iostream>
 
-VertexInputDescription Vertex::getVertexDescription(uint32_t attrFlags)
+
+// TODO:
+// Skinned meshes need to use a separate vertex shader and therefore a separate pipeline.
+// This getVertexDescription will need not hardcode the offset of Vertex.
+// Probably this should be templated
+
+
+VertexInputDescription getVertexDescription(uint32_t attrFlags)
 {
 	VertexInputDescription description;
 
@@ -30,7 +37,7 @@ VertexInputDescription Vertex::getVertexDescription(uint32_t attrFlags)
 	VkVertexInputAttributeDescription tangentAttribute{};
 	tangentAttribute.binding = 0;
 	tangentAttribute.location = 2;
-	tangentAttribute.format = VK_FORMAT_R32G32B32_SFLOAT; // vec3
+	tangentAttribute.format = VK_FORMAT_R32G32B32A32_SFLOAT; // vec4
 	tangentAttribute.offset = offsetof(Vertex, tangent);
 
 	VkVertexInputAttributeDescription uvAttribute{};
@@ -39,10 +46,24 @@ VertexInputDescription Vertex::getVertexDescription(uint32_t attrFlags)
 	uvAttribute.format = VK_FORMAT_R32G32_SFLOAT; // vec2
 	uvAttribute.offset = offsetof(Vertex, uv);
 
+	VkVertexInputAttributeDescription jointIndicesAttribute{};
+	jointIndicesAttribute.binding = 0;
+	jointIndicesAttribute.location = 4;
+	jointIndicesAttribute.format = VK_FORMAT_R32G32B32A32_SFLOAT; // vec4
+	jointIndicesAttribute.offset = offsetof(VertexSkinned, jointIndices);
+
+	VkVertexInputAttributeDescription jointWeightsAttribute{};
+	jointWeightsAttribute.binding = 0;
+	jointWeightsAttribute.location = 5;
+	jointWeightsAttribute.format = VK_FORMAT_R32G32B32A32_SFLOAT; // vec4
+	jointWeightsAttribute.offset = offsetof(VertexSkinned, jointWeights);
+
 	if (attrFlags & ATTR_POSITION) description.attributes.push_back(positionAttribute);
 	if (attrFlags & ATTR_NORMAL) description.attributes.push_back(normalAttribute);
 	if (attrFlags & ATTR_TANGENT) description.attributes.push_back(tangentAttribute);
 	if (attrFlags & ATTR_UV) description.attributes.push_back(uvAttribute);
+	if (attrFlags & ATTR_JOINT_INDICES) description.attributes.push_back(jointIndicesAttribute);
+	if (attrFlags & ATTR_JOINT_WEIGHTS) description.attributes.push_back(jointWeightsAttribute);
 
 	return description;
 }

@@ -16,7 +16,7 @@ target_include_directories(assetlib PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}")
 target_compile_options(assetlib PUBLIC $<$<CONFIG:Release>:/GL>)
 target_link_options(assetlib PUBLIC $<$<CONFIG:Release>:/LTCG>)
 
-target_link_libraries(assetlib PRIVATE json)
+target_link_libraries(assetlib PUBLIC json)
 
 target_include_directories(assetlib PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/../../third_party/lz4/include")
 target_link_libraries(assetlib PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/../../third_party/lz4/static/liblz4_static.lib")
