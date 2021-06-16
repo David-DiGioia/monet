@@ -706,6 +706,18 @@ void VulkanEngine::loadMaterials()
 	file.close();
 }
 
+// determine vertex stride from the vertex attributes
+uint32_t strideFromAttributes(uint32_t attr) {
+	uint32_t sum{ 0 };
+	if (attr & ATTR_POSITION) sum += sizeof(glm::vec3);
+	if (attr & ATTR_NORMAL) sum += sizeof(glm::vec3);
+	if (attr & ATTR_TANGENT) sum += sizeof(glm::vec4);
+	if (attr & ATTR_UV) sum += sizeof(glm::vec2);
+	if (attr & ATTR_JOINT_INDICES) sum += 4 * sizeof(uint16_t);
+	if (attr & ATTR_JOINT_WEIGHTS) sum += sizeof(glm::vec4);
+	return sum;
+}
+
 void VulkanEngine::initPipeline(const MaterialCreateInfo& info, const std::string& prefix)
 {
 	VkShaderModule vertShader;
@@ -772,7 +784,11 @@ void VulkanEngine::initPipeline(const MaterialCreateInfo& info, const std::strin
 	pipelineBuilder._multisampling = vkinit::multisamplingStateCreateInfo(_msaaSamples, 0.5f);
 	pipelineBuilder._colorBlendAttachment = vkinit::colorBlendAttachmentState();
 	pipelineBuilder._depthStencil = vkinit::depthStencilCreateInfo(true, true, VK_COMPARE_OP_LESS_OR_EQUAL);
-	VertexInputDescription vertexDescription{ getVertexDescription(info.attributeFlags) };
+
+	std::cout << "stride from attributes: " << strideFromAttributes(info.attributeFlags) << '\n';
+	std::cout << "sizeof(Vertex skinned): " << sizeof(VertexSkinned) << '\n';
+	VertexInputDescription vertexDescription{ getVertexDescription(info.attributeFlags, strideFromAttributes(info.attributeFlags)) };
+
 	// connect the pipeline builder vertex input info to the one we get from Vertex
 	pipelineBuilder._vertexInputInfo.vertexAttributeDescriptionCount = vertexDescription.attributes.size();
 	pipelineBuilder._vertexInputInfo.pVertexAttributeDescriptions = vertexDescription.attributes.data();

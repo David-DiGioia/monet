@@ -4,20 +4,14 @@
 #include <iostream>
 
 
-// TODO:
-// Skinned meshes need to use a separate vertex shader and therefore a separate pipeline.
-// This getVertexDescription will need not hardcode the offset of Vertex.
-// Probably this should be templated
-
-
-VertexInputDescription getVertexDescription(uint32_t attrFlags)
+VertexInputDescription getVertexDescription(uint32_t attrFlags, uint32_t stride)
 {
 	VertexInputDescription description;
 
 	// we will have just 1 vertex buffer binding, with a per-vertex rate
 	VkVertexInputBindingDescription mainBinding{};
 	mainBinding.binding = 0;
-	mainBinding.stride = sizeof(Vertex);
+	mainBinding.stride = stride;
 	mainBinding.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
 
 	description.bindings.push_back(mainBinding);

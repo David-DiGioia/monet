@@ -36,11 +36,15 @@ struct Vertex {
 };
 
 struct VertexSkinned {
+	glm::vec3 position;
+	glm::vec3 normal;
+	glm::vec4 tangent; // w component is sign (from GLTF format)
+	glm::vec2 uv;
 	uint16_t jointIndices[4];
 	glm::vec4 jointWeights;
 };
 
-VertexInputDescription getVertexDescription(uint32_t attrFlags);
+VertexInputDescription getVertexDescription(uint32_t attrFlags, uint32_t stride);
 
 struct AbstractMesh {
 	// vertex data on CPU
