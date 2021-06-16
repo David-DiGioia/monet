@@ -715,7 +715,9 @@ uint32_t strideFromAttributes(uint32_t attr) {
 	if (attr & ATTR_UV) sum += sizeof(glm::vec2);
 	if (attr & ATTR_JOINT_INDICES) sum += 4 * sizeof(uint16_t);
 	if (attr & ATTR_JOINT_WEIGHTS) sum += sizeof(glm::vec4);
-	return sum;
+
+	// Hacky, but we don't want to screw up cubemap atm
+	return std::max(sum, (uint32_t)sizeof(Vertex));
 }
 
 void VulkanEngine::initPipeline(const MaterialCreateInfo& info, const std::string& prefix)

@@ -27,7 +27,6 @@ enum VertexAttributes {
 	ATTR_JOINT_WEIGHTS = 32,
 };
 
-// TODO: maybe combine the struct from vk_mesh.h and mesh_asset.h?
 struct Vertex {
 	glm::vec3 position;
 	glm::vec3 normal;
