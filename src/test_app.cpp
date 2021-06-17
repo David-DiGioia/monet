@@ -15,10 +15,9 @@ void TestApp::init(VulkanEngine& engine)
 
 	_camera.pos = glm::vec3{ 0.0, 2.0, 2.0 };
 
-	_bed.setRenderObject(engine.createRenderObject("skinning", "default_skinned"));
+	_skinning.setRenderObject(engine.createRenderObject("skinning", "default_skinned"));
 
-	_sofa.setRenderObject(engine.createRenderObject("cube", "default"));
-	_sofa.setPos(glm::vec3(3.0, 0.0, 0.0));
+	_cubeObj.setRenderObject(engine.createRenderObject("cube", "default"));
 
 	//float halfExtent{ 1.0f };
 	//PxMaterial* material{ engine.create_physics_material(0.5, 0.5, 0.6) };
@@ -46,7 +45,8 @@ void TestApp::updateCamera(VulkanEngine& engine)
 void TestApp::update(VulkanEngine& engine, float delta)
 {
 	_lights[0].position.x = std::sinf(_time) * 3.0f;
-	_bed.setPos(_bedPos);
+	_skinning.setPos(_skinningPos);
+	_cubeObj.setPos(_cubePos);
 
 	updateCamera(engine);
 	engine.setSceneLights(_lights);
@@ -154,9 +154,8 @@ void TestApp::gui()
 	//	ImGui::DragFloat("theta", &_camRotTheta, 0.005f);
 	//}
 
-	ImGui::DragFloat3("Sofa Pos", (float*)&_sofaPos, 0.005f);
-	ImGui::DragFloat3("Bed Pos", (float*)&_bedPos, 0.005f);
-	ImGui::DragFloat3("Chair Pos", (float*)&_chairPos, 0.005f);
+	ImGui::DragFloat3("Cube Pos", (float*)&_cubePos, 0.005f);
+	ImGui::DragFloat3("Cylinder Pos", (float*)&_skinningPos, 0.005f);
 
 	//ImGui::SliderFloat("Roughness", &_guiData.roughness_mult, 0.0f, 1.0f);
 

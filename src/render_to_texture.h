@@ -12,6 +12,8 @@ void prepareShadowMapRenderpass(VulkanEngine& engine, VkRenderPass* renderpass);
 
 void initShadowPipeline(VulkanEngine& engine, VkRenderPass& renderpass, VkPipelineLayout pipelineLayout, VkPipeline* pipeline);
 
+void initShadowPipelineSkinned(VulkanEngine& engine, VkRenderPass& renderpass, VkPipelineLayout pipelineLayout, VkPipeline* pipeline);
+
 void setupDescriptorSetLayouts(VulkanEngine& engine, std::array<VkDescriptorSetLayout, 2>& setLayoutsOut, VkPipelineLayout* pipelineLayout);
 
 void setupDescriptorSets(VulkanEngine& engine, ShadowFrameResources& shadowFrame, VkBuffer& objectBuffer, std::array<VkDescriptorSetLayout, 2>& setLayouts);

@@ -658,7 +658,7 @@ void setupDescriptorSets(VulkanEngine& engine, ShadowFrameResources& shadowFrame
 	vkUpdateDescriptorSets(engine._device, writeDescriptorSets.size(), writeDescriptorSets.data(), 0, nullptr);
 }
 
-void initShadowPipeline(VulkanEngine& engine, VkRenderPass& renderpass, VkPipelineLayout pipelineLayout, VkPipeline* pipeline)
+void initShadowPipelineInternal(VulkanEngine& engine, VkRenderPass& renderpass, VkPipelineLayout pipelineLayout, VkPipeline* pipeline, bool isSkinned)
 {
 	VkPipelineInputAssemblyStateCreateInfo inputAssemblyStateCI{ vkinit::inputAssemblyCreateInfo(VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST) };
 
@@ -702,8 +702,11 @@ void initShadowPipeline(VulkanEngine& engine, VkRenderPass& renderpass, VkPipeli
 
 	// vertex input controls how to read vertices from vertex buffers
 	VkPipelineVertexInputStateCreateInfo vertexInputInfo{ vkinit::vertexInputStateCreateInfo() };
+
+	uint32_t stride{ isSkinned ? sizeof(VertexSkinned) : sizeof(Vertex) };
 	// input assembly is the configuration for drawing triangle lists, strips, or individual points
-	VertexInputDescription vertexDescription{ getVertexDescription(ATTR_POSITION, sizeof(Vertex)) };
+	VertexInputDescription vertexDescription{ getVertexDescription(ATTR_POSITION, stride) };
+
 	vertexInputInfo.vertexAttributeDescriptionCount = vertexDescription.attributes.size();
 	vertexInputInfo.pVertexAttributeDescriptions = vertexDescription.attributes.data();
 	vertexInputInfo.vertexBindingDescriptionCount = vertexDescription.bindings.size();
@@ -745,4 +748,14 @@ void initShadowPipeline(VulkanEngine& engine, VkRenderPass& renderpass, VkPipeli
 	});
 
 	vkDestroyShaderModule(engine._device, vertShader, nullptr);
+}
+
+void initShadowPipeline(VulkanEngine& engine, VkRenderPass& renderpass, VkPipelineLayout pipelineLayout, VkPipeline* pipeline)
+{
+	initShadowPipelineInternal(engine, renderpass, pipelineLayout, pipeline, false);
+}
+
+void initShadowPipelineSkinned(VulkanEngine& engine, VkRenderPass& renderpass, VkPipelineLayout pipelineLayout, VkPipeline* pipeline)
+{
+	initShadowPipelineInternal(engine, renderpass, pipelineLayout, pipeline, true);
 }

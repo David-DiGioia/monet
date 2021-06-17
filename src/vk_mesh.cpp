@@ -19,13 +19,13 @@ VertexInputDescription getVertexDescription(uint32_t attrFlags, uint32_t stride)
 	VkVertexInputAttributeDescription positionAttribute{};
 	positionAttribute.binding = 0;
 	positionAttribute.location = 0;
-	positionAttribute.format = VK_FORMAT_R32G32B32_SFLOAT; // vec3
+	positionAttribute.format = VK_FORMAT_R32G32B32A32_SFLOAT; // vec4
 	positionAttribute.offset = offsetof(Vertex, position);
 
 	VkVertexInputAttributeDescription normalAttribute{};
 	normalAttribute.binding = 0;
 	normalAttribute.location = 1;
-	normalAttribute.format = VK_FORMAT_R32G32B32_SFLOAT; // vec3
+	normalAttribute.format = VK_FORMAT_R32G32B32A32_SFLOAT; // vec4
 	normalAttribute.offset = offsetof(Vertex, normal);
 
 	VkVertexInputAttributeDescription tangentAttribute{};

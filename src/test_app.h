@@ -35,15 +35,15 @@ private:
 	std::vector<Light> _lights;
 
 	// objects
-	GameObject _sofa{};
 	GameObject _cube{};
-	GameObject _bed{};
+	GameObject _cubeObj{};
+	GameObject _skinning{};
 	GameObject _chair{};
 
 	// physics variables
 	bool _applyForce{ false };
 
-	glm::vec3 _bedPos{ 0.0, 0.0, 0.0 };
-	glm::vec3 _sofaPos{ -2.5, 0.0, 0.4 };
+	glm::vec3 _skinningPos{ 0.0, 0.0, 0.0 };
+	glm::vec3 _cubePos{ -2.5, 0.0, 0.4 };
 	glm::vec3 _chairPos{ -2.1, 0.0, -2.0 };
 };

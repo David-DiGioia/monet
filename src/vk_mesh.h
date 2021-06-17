@@ -2,7 +2,7 @@
 
 #include <vector>
 #include <string>
-#include <limits>4
+#include <limits>
 #include <cstdint>
 
 #include "vk_types.h"
@@ -10,6 +10,7 @@
 #include "glm/vec2.hpp"
 #include "glm/gtc/quaternion.hpp"
 #include "glm/gtx/quaternion.hpp"
+#include "mesh_asset.h"
 
 struct VertexInputDescription {
 	std::vector<VkVertexInputBindingDescription> bindings;
@@ -28,35 +29,36 @@ enum VertexAttributes {
 };
 
 struct Vertex {
-	glm::vec3 position;
-	glm::vec3 normal;
+	glm::vec4 position;
+	glm::vec4 normal;
 	glm::vec4 tangent; // w component is sign (from GLTF format)
 	glm::vec2 uv;
 };
 
 struct VertexSkinned {
-	glm::vec3 position;
-	glm::vec3 normal;
+	glm::vec4 position;
+	glm::vec4 normal;
 	glm::vec4 tangent; // w component is sign (from GLTF format)
 	glm::vec2 uv;
-	uint16_t jointIndices[4];
+	glm::vec4 jointIndices;
 	glm::vec4 jointWeights;
 };
 
 VertexInputDescription getVertexDescription(uint32_t attrFlags, uint32_t stride);
 
 struct AbstractMesh {
+	assets::VertexFormat vertexFormat;
 	// vertex data on CPU
-	std::vector<uint16_t> _indices;
+	std::vector<uint16_t> indices;
 	// vertex data on GPU
-	AllocatedBuffer _vertexBuffer;
-	AllocatedBuffer _indexBuffer;
+	AllocatedBuffer vertexBuffer;
+	AllocatedBuffer indexBuffer;
 };
 
 template <typename V>
 struct Mesh : public AbstractMesh {
 	// vertex data on CPU
-	std::vector<V> _vertices;
+	std::vector<V> vertices;
 };
 
 struct Node {

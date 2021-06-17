@@ -36,7 +36,7 @@
 bool RenderObject::operator<(const RenderObject& other) const
 {
 	if (material->pipeline == other.material->pipeline) {
-		return mesh->_vertexBuffer._buffer < other.mesh->_vertexBuffer._buffer;
+		return mesh->vertexBuffer._buffer < other.mesh->vertexBuffer._buffer;
 	} else {
 		return material->pipeline < other.material->pipeline;
 	}
@@ -709,12 +709,12 @@ void VulkanEngine::loadMaterials()
 // determine vertex stride from the vertex attributes
 uint32_t strideFromAttributes(uint32_t attr) {
 	uint32_t sum{ 0 };
-	if (attr & ATTR_POSITION) sum += sizeof(glm::vec3);
-	if (attr & ATTR_NORMAL) sum += sizeof(glm::vec3);
-	if (attr & ATTR_TANGENT) sum += sizeof(glm::vec4);
-	if (attr & ATTR_UV) sum += sizeof(glm::vec2);
-	if (attr & ATTR_JOINT_INDICES) sum += 4 * sizeof(uint16_t);
-	if (attr & ATTR_JOINT_WEIGHTS) sum += sizeof(glm::vec4);
+	if (attr & ATTR_POSITION) sum += sizeof(Vertex::position);
+	if (attr & ATTR_NORMAL) sum += sizeof(Vertex::normal);
+	if (attr & ATTR_TANGENT) sum += sizeof(Vertex::tangent);
+	if (attr & ATTR_UV) sum += sizeof(Vertex::uv);
+	if (attr & ATTR_JOINT_INDICES) sum += sizeof(VertexSkinned::jointIndices);
+	if (attr & ATTR_JOINT_WEIGHTS) sum += sizeof(VertexSkinned::jointWeights);
 
 	// Hacky, but we don't want to screw up cubemap atm
 	return std::max(sum, (uint32_t)sizeof(Vertex));
@@ -787,8 +787,6 @@ void VulkanEngine::initPipeline(const MaterialCreateInfo& info, const std::strin
 	pipelineBuilder._colorBlendAttachment = vkinit::colorBlendAttachmentState();
 	pipelineBuilder._depthStencil = vkinit::depthStencilCreateInfo(true, true, VK_COMPARE_OP_LESS_OR_EQUAL);
 
-	std::cout << "stride from attributes: " << strideFromAttributes(info.attributeFlags) << '\n';
-	std::cout << "sizeof(Vertex skinned): " << sizeof(VertexSkinned) << '\n';
 	VertexInputDescription vertexDescription{ getVertexDescription(info.attributeFlags, strideFromAttributes(info.attributeFlags)) };
 
 	// connect the pipeline builder vertex input info to the one we get from Vertex
@@ -1478,6 +1476,7 @@ void VulkanEngine::initShadowPass()
 	std::array<VkDescriptorSetLayout, 2> setLayouts{};
 	setupDescriptorSetLayouts(*this, setLayouts, &_shadowGlobal.shadowPipelineLayout);
 	initShadowPipeline(*this, _shadowGlobal.renderPass, _shadowGlobal.shadowPipelineLayout, &_shadowGlobal.shadowPipeline);
+	initShadowPipelineSkinned(*this, _shadowGlobal.renderPass, _shadowGlobal.shadowPipelineLayout, &_shadowGlobal.shadowPipelineSkinned);
 
 	for (auto i{ 0 }; i < FRAME_OVERLAP; ++i) {
 		ShadowFrameResources& shadowFrame{ _frames[i % FRAME_OVERLAP].shadow };
@@ -1585,23 +1584,33 @@ void VulkanEngine::shadowPass(VkCommandBuffer& cmd)
 	vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, _shadowGlobal.shadowPipelineLayout, 1, 1, &getCurrentFrame().shadow.shadowDescriptorSetObjects, 0, nullptr);
 
 	AbstractMesh* lastMesh{ nullptr };
+	bool lastSkinned{ false };
 
 	uint32_t idx{ 0 };
 	for (const RenderObject& object : _renderables) {
+		bool isSkinned{ object.mesh->vertexFormat == assets::VertexFormat::PNTVIW_F32 };
+
+		if (lastSkinned != isSkinned) {
+			VkPipeline pipeline{ isSkinned ? _shadowGlobal.shadowPipelineSkinned : _shadowGlobal.shadowPipeline };
+			vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline);
+
+			lastSkinned = isSkinned;
+		}
+
 		if (object.castShadow) {
 
 			// only bind the mesh if it's a different one from last bind
 			if (object.mesh != lastMesh) {
 				// bind the mesh vertex buffer with offset 0
 				VkDeviceSize offset{ 0 };
-				vkCmdBindVertexBuffers(cmd, 0, 1, &object.mesh->_vertexBuffer._buffer, &offset);
-				vkCmdBindIndexBuffer(cmd, object.mesh->_indexBuffer._buffer, 0, VK_INDEX_TYPE_UINT16);
+				vkCmdBindVertexBuffers(cmd, 0, 1, &object.mesh->vertexBuffer._buffer, &offset);
+				vkCmdBindIndexBuffer(cmd, object.mesh->indexBuffer._buffer, 0, VK_INDEX_TYPE_UINT16);
 
 				lastMesh = object.mesh;
 			}
 
 			//vkCmdDraw(cmd, object.mesh->_vertices.size(), 1, 0, idx);
-			vkCmdDrawIndexed(cmd, object.mesh->_indices.size(), 1, 0, 0, idx);
+			vkCmdDrawIndexed(cmd, object.mesh->indices.size(), 1, 0, 0, idx);
 
 		}
 		++idx;
@@ -1824,15 +1833,15 @@ void VulkanEngine::drawObjects(VkCommandBuffer cmd, const std::multiset<RenderOb
 		if (object.mesh != lastMesh) {
 			// bind the mesh vertex buffer with offset 0
 			VkDeviceSize offset{ 0 };
-			vkCmdBindVertexBuffers(cmd, 0, 1, &object.mesh->_vertexBuffer._buffer, &offset);
-			vkCmdBindIndexBuffer(cmd, object.mesh->_indexBuffer._buffer, 0, VK_INDEX_TYPE_UINT16);
+			vkCmdBindVertexBuffers(cmd, 0, 1, &object.mesh->vertexBuffer._buffer, &offset);
+			vkCmdBindIndexBuffer(cmd, object.mesh->indexBuffer._buffer, 0, VK_INDEX_TYPE_UINT16);
 
 			lastMesh = object.mesh;
 			++vertexBufferBinds;
 		}
 
 		//vkCmdDraw(cmd, object.mesh->_vertices.size(), 1, 0, idx);
-		vkCmdDrawIndexed(cmd, object.mesh->_indices.size(), 1, 0, 0, idx);
+		vkCmdDrawIndexed(cmd, object.mesh->indices.size(), 1, 0, 0, idx);
 		++idx;
 	}
 

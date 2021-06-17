@@ -89,6 +89,7 @@ struct ShadowGlobalResources {
 	// Slope depth bias factor, applied depending on polygon's slope
 	float depthBiasSlope{ 1.75f };
 	VkPipeline shadowPipeline;
+	VkPipeline shadowPipelineSkinned;
 	VkPipelineLayout shadowPipelineLayout;
 	glm::mat4 lightSpaceMatrix;
 };
@@ -544,17 +545,18 @@ private:
 	template <typename T>
 	void uploadMesh(Mesh<T>* mesh)
 	{
-		uploadBuffer(mesh->_vertices, mesh->_vertexBuffer, true);
-		uploadBuffer(mesh->_indices, mesh->_indexBuffer, false);
+		uploadBuffer(mesh->vertices, mesh->vertexBuffer, true);
+		uploadBuffer(mesh->indices, mesh->indexBuffer, false);
 	}
 
 	template <typename T>
 	void loadMeshHelper(const std::string& name, assets::MeshInfo& info, const assets::AssetFile& assetFile)
 	{
 		Mesh<T>* mesh{ new Mesh<T>{} };
-		mesh->_vertices.resize(info.vertexBufferSize / sizeof(T));
-		mesh->_indices.resize(info.indexBufferSize / info.indexSize);
-		assets::unpackMesh(&info, assetFile.binaryBlob.data(), (char*)mesh->_vertices.data(), (char*)mesh->_indices.data());
+		mesh->vertices.resize(info.vertexBufferSize / sizeof(T));
+		mesh->indices.resize(info.indexBufferSize / info.indexSize);
+		mesh->vertexFormat = info.vertexFormat;
+		assets::unpackMesh(&info, assetFile.binaryBlob.data(), (char*)mesh->vertices.data(), (char*)mesh->indices.data());
 
 		// send mesh to GPU
 		uploadMesh(mesh);

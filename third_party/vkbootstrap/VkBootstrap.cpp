@@ -14,6 +14,13 @@
  * Copyright © 2020 Charles Giessen (charles@lunarg.com)
  */
 
+/*
+                         ARE YOU LOOKING FOR THE DEBUG CALLBACK????
+Search this (line 300):
+VkBool32 default_debug_callback (VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
+
+*/
+
 #include "VkBootstrap.h"
 
 #include <cstdio>
