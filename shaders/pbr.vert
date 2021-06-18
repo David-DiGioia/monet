@@ -1,8 +1,8 @@
 #version 460 // version 460 required for indexing into transform array with gl_BaseInstance
 #define MAX_NUM_TOTAL_LIGHTS 10
 
-layout (location = 0) in vec4 vPosition;
-layout (location = 1) in vec4 vNormal;
+layout (location = 0) in vec3 vPosition;
+layout (location = 1) in vec3 vNormal;
 layout (location = 2) in vec4 vTangent;
 layout (location = 3) in vec2 vTexCoord;
 
@@ -51,13 +51,13 @@ void main()
     // gl_BaseInstance is the firstInstance parameter in vkCmdDraw
     // which we can use as an arbitrary integer
     mat4 modelMatrix = objectBuffer.objects[gl_BaseInstance].model;
-    vec4 worldPos4 = modelMatrix * vec4(vPosition.xyz, 1.0f);
+    vec4 worldPos4 = modelMatrix * vec4(vPosition, 1.0f);
     gl_Position = cameraData.viewProj * worldPos4;
     texCoord = vTexCoord;
 
     // transform TBN vectors from model space to world space
     vec3 T = normalize(vec3(modelMatrix * vec4(vTangent.xyz, 0.0)));
-    vec3 N = normalize(vec3(modelMatrix * vec4(vNormal.xyz, 0.0)));
+    vec3 N = normalize(vec3(modelMatrix * vec4(vNormal, 0.0)));
     // re-orthogonalize T with respect to N
     T = normalize(T - dot(T, N) * N);
     vec3 B = cross(N, T) * vTangent.w; // bitangent vector

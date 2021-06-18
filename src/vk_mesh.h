@@ -29,15 +29,15 @@ enum VertexAttributes {
 };
 
 struct Vertex {
-	glm::vec4 position;
-	glm::vec4 normal;
+	glm::vec3 position;
+	glm::vec3 normal;
 	glm::vec4 tangent; // w component is sign (from GLTF format)
 	glm::vec2 uv;
 };
 
 struct VertexSkinned {
-	glm::vec4 position;
-	glm::vec4 normal;
+	glm::vec3 position;
+	glm::vec3 normal;
 	glm::vec4 tangent; // w component is sign (from GLTF format)
 	glm::vec2 uv;
 	glm::vec4 jointIndices;

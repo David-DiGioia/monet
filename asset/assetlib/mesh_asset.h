@@ -6,8 +6,8 @@ namespace assets {
 	// custom, matches Vertex in vk_mesh.h
 	struct Vertex_f32_PNTV {
 
-		float position[4];
-		float normal[4];
+		float position[3];
+		float normal[3];
 		float tangent[4];
 		float uv[2];
 	};
@@ -15,8 +15,8 @@ namespace assets {
 	// custom, matches VertexSkinned in vk_mesh.h
 	struct Vertex_f32_PNTVIW {
 
-		float position[4];
-		float normal[4];
+		float position[3];
+		float normal[3];
 		float tangent[4]; // fourth component is sign
 		float uv[2];
 		float jointIndices[4];

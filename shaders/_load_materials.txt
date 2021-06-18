@@ -161,7 +161,7 @@ END
 
 
 name:	default_skinned
-vert:	pbr.vert.spv
+vert:	skinned_model.vert.spv
 frag:	pbr.frag.spv
 // diffuse
 bind:	0
