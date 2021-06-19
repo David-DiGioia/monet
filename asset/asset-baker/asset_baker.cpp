@@ -13,6 +13,7 @@
 #include "asset_loader.h"
 #include "texture_asset.h"
 #include "mesh_asset.h"
+#include "vk_mesh.h"
 
 #define TINYGLTF_IMPLEMENTATION
 #include "tiny_gltf.h"
@@ -21,7 +22,6 @@
 #include "glm/gtx/transform.hpp"
 #include "glm/gtx/quaternion.hpp"
 
-#include "mesh_asset.h"
 
 namespace fs = std::filesystem;
 using namespace assets;
@@ -471,6 +471,64 @@ bool extractMeshesGLTF(tinygltf::Model& model, const fs::path& input, const fs::
 	}
 	return true;
 }
+
+//Node* findNode(Node* parent, uint32_t index) {
+//	Node* nodeFound = nullptr;
+//	if (parent->index == index) {
+//		return parent;
+//	}
+//	for (auto& child : parent->children) {
+//		nodeFound = findNode(child, index);
+//		if (nodeFound) {
+//			break;
+//		}
+//	}
+//	return nodeFound;
+//}
+//
+//Node* nodeFromIndex(uint32_t index) {
+//	Node* nodeFound = nullptr;
+//	for (Node& node : nodes) {
+//		nodeFound = findNode(node, index);
+//		if (nodeFound) {
+//			break;
+//		}
+//	}
+//	return nodeFound;
+//}
+//
+//// from https://github.com/SaschaWillems/Vulkan-glTF-PBR/blob/master/base/VulkanglTFModel.cpp
+//void loadSkins(tinygltf::Model& gltfModel)
+//{
+//	for (tinygltf::Skin& source : gltfModel.skins) {
+//		Skin* newSkin{ new Skin{} };
+//		newSkin->name = source.name;
+//
+//		// Find skeleton root node
+//		if (source.skeleton > -1) {
+//			newSkin->skeletonRoot = nodeFromIndex(source.skeleton);
+//		}
+//
+//		// Find joint nodes
+//		for (int jointIndex : source.joints) {
+//			Node* node = nodeFromIndex(jointIndex);
+//			if (node) {
+//				newSkin->joints.push_back(nodeFromIndex(jointIndex));
+//			}
+//		}
+//
+//		// Get inverse bind matrices from buffer
+//		if (source.inverseBindMatrices > -1) {
+//			const tinygltf::Accessor& accessor = gltfModel.accessors[source.inverseBindMatrices];
+//			const tinygltf::BufferView& bufferView = gltfModel.bufferViews[accessor.bufferView];
+//			const tinygltf::Buffer& buffer = gltfModel.buffers[bufferView.buffer];
+//			newSkin->inverseBindMatrices.resize(accessor.count);
+//			memcpy(newSkin->inverseBindMatrices.data(), &buffer.data[accessor.byteOffset + bufferView.byteOffset], accessor.count * sizeof(glm::mat4));
+//		}
+//
+//		skins.push_back(newSkin);
+//	}
+//}
 
 /*
 std::string calculateMaterialNameGLTF(tinygltf::Model& model, int materialIndex)

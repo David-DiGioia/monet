@@ -117,3 +117,37 @@ struct Animation {
 	float end{ std::numeric_limits<float>::min() };
 	float currentTime{ 0.0f };
 };
+
+struct Texture {
+	AllocatedImage image;
+	VkImageView imageView;
+	uint32_t mipLevels;
+};
+
+// note that we store the VkPipeline and layout by value, not pointer.
+// They are 64 bit handles to internal driver structures anyway so storing
+// a pointer to them isn't very useful
+struct Material {
+	// analogous to instance of descriptor set layout, which is why it's per material
+	VkDescriptorSet textureSet;
+	VkPipeline pipeline;
+	VkPipelineLayout pipelineLayout;
+};
+
+struct MaterialCreateInfo {
+	std::string name;
+	std::string vertPath;
+	std::string fragPath;
+	uint32_t attributeFlags;
+	std::vector<VkDescriptorSetLayoutBinding> bindings;
+	std::vector<Texture> bindingTextures;
+};
+
+struct RenderObject {
+	AbstractMesh* mesh;
+	Material* material;
+	mutable glm::mat4 transformMatrix;
+	bool castShadow;
+
+	bool operator<(const RenderObject& other) const;
+};
