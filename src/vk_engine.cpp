@@ -486,11 +486,11 @@ void VulkanEngine::loadMesh(const std::string& name, const std::string& path)
 	assets::loadBinaryFile(path.c_str(), assetFile, metadata);
 	assets::MeshInfo info{ assets::readMeshInfo(metadata) };
 
-	if (info.vertexFormat == assets::VertexFormat::PNTV_F32) {
+	if (info.vertexFormat == VertexFormat::DEFAULT) {
 
 		loadMeshHelper<Vertex>(name, info, assetFile);
 
-	} else if (info.vertexFormat == assets::VertexFormat::PNTVIW_F32) {
+	} else if (info.vertexFormat == VertexFormat::SKINNED) {
 
 		loadMeshHelper<VertexSkinned>(name, info, assetFile);
 
@@ -528,8 +528,11 @@ void VulkanEngine::loadMeshes()
 					std::cout << "Loading mesh '" << name << "'\n";
 
 					for (const auto& meshFile : fs::directory_iterator(file)) {
-						loadMesh(name, meshFile.path().generic_string());
+						if (meshFile.path().extension() == ".mesh") {
+							loadMesh(name, meshFile.path().generic_string());
+						}
 					}
+
 				}
 			}
 		}
@@ -1588,7 +1591,7 @@ void VulkanEngine::shadowPass(VkCommandBuffer& cmd)
 
 	uint32_t idx{ 0 };
 	for (const RenderObject& object : _renderables) {
-		bool isSkinned{ object.mesh->vertexFormat == assets::VertexFormat::PNTVIW_F32 };
+		bool isSkinned{ object.mesh->vertexFormat == VertexFormat::SKINNED };
 
 		if (lastSkinned != isSkinned) {
 			VkPipeline pipeline{ isSkinned ? _shadowGlobal.shadowPipelineSkinned : _shadowGlobal.shadowPipeline };

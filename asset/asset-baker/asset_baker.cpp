@@ -12,15 +12,19 @@
 
 #include "asset_loader.h"
 #include "texture_asset.h"
-#include "mesh_asset.h"
 #include "vk_mesh.h"
 
 #define TINYGLTF_IMPLEMENTATION
 #include "tiny_gltf.h"
 
-#include "glm/glm.hpp"
 #include "glm/gtx/transform.hpp"
 #include "glm/gtx/quaternion.hpp"
+#define GLM_FORCE_RADIANS
+#define GLM_FORCE_DEPTH_ZERO_TO_ONE
+#include "glm/glm.hpp"
+#include "glm/gtc/matrix_transform.hpp"
+#include "glm/gtc/type_ptr.hpp"
+#include "glm/gtx/string_cast.hpp"
 
 
 namespace fs = std::filesystem;
@@ -271,7 +275,7 @@ void extractVerticesGLTF(tinygltf::Primitive& primitive, tinygltf::Model& model,
 
 // specialization for skinned vertices
 template <>
-void extractVerticesGLTF(tinygltf::Primitive& primitive, tinygltf::Model& model, std::vector<assets::Vertex_f32_PNTVIW>& _vertices)
+void extractVerticesGLTF(tinygltf::Primitive& primitive, tinygltf::Model& model, std::vector<VertexSkinned>& _vertices)
 {
 	extractVerticesInternalGLTF(primitive, model, _vertices);
 
@@ -393,8 +397,13 @@ std::string calculateMeshNameGLTF(tinygltf::Model& model, int meshIndex, int pri
 	return meshname;
 }
 
+std::string calculateSkeletonNameGLTF()
+{
+	return std::string{ "SKEL" };
+}
+
 template <typename VFormat>
-bool extractMeshesGLTF(tinygltf::Model& model, const fs::path& input, const fs::path& outputFolder, const ConverterState& convState, assets::VertexFormat vertexFormatEnum)
+bool extractMeshesGLTF(tinygltf::Model& model, const fs::path& input, const fs::path& outputFolder, const ConverterState& convState, VertexFormat vertexFormatEnum)
 {
 	tinygltf::Model* glmod = &model;
 	for (auto meshindex = 0; meshindex < model.meshes.size(); meshindex++) {
@@ -412,7 +421,7 @@ bool extractMeshesGLTF(tinygltf::Model& model, const fs::path& input, const fs::
 			_vertices.clear();
 			_indices.clear();
 
-			std::string meshname = calculateMeshNameGLTF(model, meshindex, primindex);
+			std::string meshname{ calculateMeshNameGLTF(model, meshindex, primindex) };
 
 			auto& primitive = glmesh.primitives[primindex];
 
@@ -427,20 +436,16 @@ bool extractMeshesGLTF(tinygltf::Model& model, const fs::path& input, const fs::
 			meshinfo.indexSize = sizeof(uint16_t);
 			meshinfo.originalFile = input.string();
 
-			meshinfo.bounds = assets::calculateBounds(_vertices.data(), _vertices.size());
+			meshinfo.bounds = calculateBounds(_vertices.data(), _vertices.size());
 
-			assets::AssetFile newFile{ assets::packMesh(&meshinfo, (char*)_vertices.data(), (char*)_indices.data()) };
+			assets::AssetFile newFile{ packMesh(&meshinfo, (char*)_vertices.data(), (char*)_indices.data()) };
 
 			nlohmann::json metadata;
 
-			if (meshinfo.vertexFormat == VertexFormat::PNTV_F32) {
-				metadata["vertex_format"] = "PNTV_F32";
-			} else if (meshinfo.vertexFormat == VertexFormat::PNTVIW_F32) {
-				metadata["vertex_format"] = "PNTVIW_F32";
-			} else if (meshinfo.vertexFormat == VertexFormat::P32N8C8V16) {
-				metadata["vertex_format"] = "P32N8C8V16";
-			} else if (meshinfo.vertexFormat == VertexFormat::PNCV_F32) {
-				metadata["vertex_format"] = "PNCV_F32";
+			if (meshinfo.vertexFormat == VertexFormat::DEFAULT) {
+				metadata["vertex_format"] = "DEFAULT";
+			} else if (meshinfo.vertexFormat == VertexFormat::SKINNED) {
+				metadata["vertex_format"] = "SKINNED";
 			}
 
 			metadata["vertex_buffer_size"] = meshinfo.vertexBufferSize;
@@ -472,366 +477,274 @@ bool extractMeshesGLTF(tinygltf::Model& model, const fs::path& input, const fs::
 	return true;
 }
 
-//Node* findNode(Node* parent, uint32_t index) {
-//	Node* nodeFound = nullptr;
-//	if (parent->index == index) {
-//		return parent;
-//	}
-//	for (auto& child : parent->children) {
-//		nodeFound = findNode(child, index);
-//		if (nodeFound) {
-//			break;
-//		}
-//	}
-//	return nodeFound;
-//}
-//
-//Node* nodeFromIndex(uint32_t index) {
-//	Node* nodeFound = nullptr;
-//	for (Node& node : nodes) {
-//		nodeFound = findNode(node, index);
-//		if (nodeFound) {
-//			break;
-//		}
-//	}
-//	return nodeFound;
-//}
-//
-//// from https://github.com/SaschaWillems/Vulkan-glTF-PBR/blob/master/base/VulkanglTFModel.cpp
-//void loadSkins(tinygltf::Model& gltfModel)
-//{
-//	for (tinygltf::Skin& source : gltfModel.skins) {
-//		Skin* newSkin{ new Skin{} };
-//		newSkin->name = source.name;
-//
-//		// Find skeleton root node
-//		if (source.skeleton > -1) {
-//			newSkin->skeletonRoot = nodeFromIndex(source.skeleton);
-//		}
-//
-//		// Find joint nodes
-//		for (int jointIndex : source.joints) {
-//			Node* node = nodeFromIndex(jointIndex);
-//			if (node) {
-//				newSkin->joints.push_back(nodeFromIndex(jointIndex));
-//			}
-//		}
-//
-//		// Get inverse bind matrices from buffer
-//		if (source.inverseBindMatrices > -1) {
-//			const tinygltf::Accessor& accessor = gltfModel.accessors[source.inverseBindMatrices];
-//			const tinygltf::BufferView& bufferView = gltfModel.bufferViews[accessor.bufferView];
-//			const tinygltf::Buffer& buffer = gltfModel.buffers[bufferView.buffer];
-//			newSkin->inverseBindMatrices.resize(accessor.count);
-//			memcpy(newSkin->inverseBindMatrices.data(), &buffer.data[accessor.byteOffset + bufferView.byteOffset], accessor.count * sizeof(glm::mat4));
-//		}
-//
-//		skins.push_back(newSkin);
-//	}
-//}
-
-/*
-std::string calculateMaterialNameGLTF(tinygltf::Model& model, int materialIndex)
-{
-	char buffer[50];
-
-	itoa(materialIndex, buffer, 10);
-	std::string matname = "MAT_" + std::string{ &buffer[0] } + "_" + model.materials[materialIndex].name;
-	return matname;
+Node* findNode(Node* parent, uint32_t index) {
+	Node* nodeFound = nullptr;
+	if (parent->index == index) {
+		return parent;
+	}
+	for (auto& child : parent->children) {
+		nodeFound = findNode(child, index);
+		if (nodeFound) {
+			break;
+		}
+	}
+	return nodeFound;
 }
 
-void extractMaterialsGLTF(tinygltf::Model& model, const fs::path& input, const fs::path& outputFolder, const ConverterState& convState)
+Node* nodeFromIndex(SkeletalAnimationData& data, uint32_t index) {
+	Node* nodeFound = nullptr;
+	for (Node* node : data.nodes) {
+		nodeFound = findNode(node, index);
+		if (nodeFound) {
+			break;
+		}
+	}
+	return nodeFound;
+}
+
+// from https://github.com/SaschaWillems/Vulkan-glTF-PBR/blob/master/base/VulkanglTFModel.cpp
+void loadSkins(SkeletalAnimationData& data, tinygltf::Model& gltfModel)
 {
+	for (tinygltf::Skin& source : gltfModel.skins) {
+		Skin* newSkin{ new Skin{} };
+		newSkin->name = source.name;
 
-	int nm = 0;
-	for (auto& glmat : model.materials) {
-		std::string matname = calculateMaterialNameGLTF(model, nm);
+		// Find skeleton root node
+		if (source.skeleton > -1) {
+			newSkin->skeletonRoot = nodeFromIndex(data, source.skeleton);
+		}
 
-		nm++;
-		auto& pbr = glmat.pbrMetallicRoughness;
-
-
-		assets::MaterialInfo newMaterial;
-		newMaterial.baseEffect = "defaultPBR";
-
-		{
-			if (pbr.baseColorTexture.index < 0)
-			{
-				pbr.baseColorTexture.index = 0;
+		// Find joint nodes
+		for (int jointIndex : source.joints) {
+			Node* node = nodeFromIndex(data, jointIndex);
+			if (node) {
+				newSkin->joints.push_back(nodeFromIndex(data, jointIndex));
 			}
-			auto baseColor = model.textures[pbr.baseColorTexture.index];
-			auto baseImage = model.images[baseColor.source];
-
-			fs::path baseColorPath = outputFolder.parent_path() / baseImage.uri;
-
-			baseColorPath.replace_extension(".tx");
-
-			baseColorPath = convState.convertToExportRelative(baseColorPath);
-
-			newMaterial.textures["baseColor"] = baseColorPath.string();
-		}
-		if (pbr.metallicRoughnessTexture.index >= 0)
-		{
-			auto image = model.textures[pbr.metallicRoughnessTexture.index];
-			auto baseImage = model.images[image.source];
-
-			fs::path baseColorPath = outputFolder.parent_path() / baseImage.uri;
-
-			baseColorPath.replace_extension(".tx");
-
-			baseColorPath = convState.convertToExportRelative(baseColorPath);
-
-			newMaterial.textures["metallicRoughness"] = baseColorPath.string();
 		}
 
-		if (glmat.normalTexture.index >= 0)
-		{
-			auto image = model.textures[glmat.normalTexture.index];
-			auto baseImage = model.images[image.source];
-
-			fs::path baseColorPath = outputFolder.parent_path() / baseImage.uri;
-
-			baseColorPath.replace_extension(".tx");
-
-			baseColorPath = convState.convertToExportRelative(baseColorPath);
-
-			newMaterial.textures["normals"] = baseColorPath.string();
+		// Get inverse bind matrices from buffer
+		if (source.inverseBindMatrices > -1) {
+			const tinygltf::Accessor& accessor = gltfModel.accessors[source.inverseBindMatrices];
+			const tinygltf::BufferView& bufferView = gltfModel.bufferViews[accessor.bufferView];
+			const tinygltf::Buffer& buffer = gltfModel.buffers[bufferView.buffer];
+			newSkin->inverseBindMatrices.resize(accessor.count);
+			memcpy(newSkin->inverseBindMatrices.data(), &buffer.data[accessor.byteOffset + bufferView.byteOffset], accessor.count * sizeof(glm::mat4));
 		}
 
-		if (glmat.occlusionTexture.index >= 0)
-		{
-			auto image = model.textures[glmat.occlusionTexture.index];
-			auto baseImage = model.images[image.source];
-
-			fs::path baseColorPath = outputFolder.parent_path() / baseImage.uri;
-
-			baseColorPath.replace_extension(".tx");
-
-			baseColorPath = convState.convertToExportRelative(baseColorPath);
-
-			newMaterial.textures["occlusion"] = baseColorPath.string();
-		}
-
-		if (glmat.emissiveTexture.index >= 0)
-		{
-			auto image = model.textures[glmat.emissiveTexture.index];
-			auto baseImage = model.images[image.source];
-
-			fs::path baseColorPath = outputFolder.parent_path() / baseImage.uri;
-
-			baseColorPath.replace_extension(".tx");
-
-			baseColorPath = convState.convertToExportRelative(baseColorPath);
-
-			newMaterial.textures["emissive"] = baseColorPath.string();
-		}
-
-
-		fs::path materialPath = outputFolder / (matname + ".mat");
-
-		if (glmat.alphaMode.compare("BLEND") == 0) {
-			newMaterial.transparency = TransparencyMode::Transparent;
-		} else {
-			newMaterial.transparency = TransparencyMode::Opaque;
-		}
-
-		assets::AssetFile newFile = assets::pack_material(&newMaterial);
-
-		//save to disk
-		saveBinaryFile(materialPath.string().c_str(), newFile);
+		data.skins.push_back(newSkin);
 	}
 }
-*/
 
-/*
-void extractNodesGLTF(tinygltf::Model& model, const fs::path& input, const fs::path& outputFolder, const ConverterState& convState)
+void loadAnimations(SkeletalAnimationData& data, tinygltf::Model& gltfModel)
 {
-	assets::PrefabInfo prefab;
+	for (tinygltf::Animation& anim : gltfModel.animations) {
+		Animation animation{};
+		animation.name = anim.name;
+		if (anim.name.empty()) {
+			animation.name = std::to_string(data.animations.size());
+		}
 
-	std::vector<uint64_t> meshnodes;
-	for (int i = 0; i < model.nodes.size(); i++)
-	{
-		auto& node = model.nodes[i];
+		// Samplers
+		for (auto& samp : anim.samplers) {
+			AnimationSampler sampler{};
 
-		std::string nodename = node.name;
-
-		prefab.node_names[i] = nodename;
-
-		std::array<float, 16> matrix;
-
-		//node has a matrix
-		if (node.matrix.size() > 0)
-		{
-			for (int n = 0; n < 16; n++) {
-				matrix[n] = node.matrix[n];
+			if (samp.interpolation == "LINEAR") {
+				sampler.interpolation = AnimationSampler::InterpolationType::LINEAR;
+			}
+			if (samp.interpolation == "STEP") {
+				sampler.interpolation = AnimationSampler::InterpolationType::STEP;
+			}
+			if (samp.interpolation == "CUBICSPLINE") {
+				sampler.interpolation = AnimationSampler::InterpolationType::CUBICSPLINE;
 			}
 
-			//glm::mat4 flip = glm::mat4{ 1.0 };
-			//flip[1][1] = -1;
-
-			glm::mat4 mat;
-
-			memcpy(&mat, &matrix, sizeof(glm::mat4));
-
-			mat = mat;// * flip;
-
-			memcpy(matrix.data(), &mat, sizeof(glm::mat4));
-		}
-		//separate transform
-		else
-		{
-
-			glm::mat4 translation{ 1.f };
-			if (node.translation.size() > 0)
+			// Read sampler input time values
 			{
-				translation = glm::translate(glm::vec3{ node.translation[0],node.translation[1] ,node.translation[2] });
+				const tinygltf::Accessor& accessor = gltfModel.accessors[samp.input];
+				const tinygltf::BufferView& bufferView = gltfModel.bufferViews[accessor.bufferView];
+				const tinygltf::Buffer& buffer = gltfModel.buffers[bufferView.buffer];
+
+				assert(accessor.componentType == TINYGLTF_COMPONENT_TYPE_FLOAT);
+
+				const void* dataPtr = &buffer.data[accessor.byteOffset + bufferView.byteOffset];
+				const float* buf = static_cast<const float*>(dataPtr);
+				for (size_t index = 0; index < accessor.count; index++) {
+					sampler.inputs.push_back(buf[index]);
+				}
+
+				for (auto input : sampler.inputs) {
+					if (input < animation.start) {
+						animation.start = input;
+					};
+					if (input > animation.end) {
+						animation.end = input;
+					}
+				}
 			}
 
-			glm::mat4 rotation{ 1.f };
-
-			if (node.rotation.size() > 0)
+			// Read sampler output T/R/S values 
 			{
-				glm::quat rot(node.rotation[3], node.rotation[0], node.rotation[1], node.rotation[2]);
-				rotation = glm::mat4{ rot };
+				const tinygltf::Accessor& accessor = gltfModel.accessors[samp.output];
+				const tinygltf::BufferView& bufferView = gltfModel.bufferViews[accessor.bufferView];
+				const tinygltf::Buffer& buffer = gltfModel.buffers[bufferView.buffer];
+
+				assert(accessor.componentType == TINYGLTF_COMPONENT_TYPE_FLOAT);
+
+				const void* dataPtr = &buffer.data[accessor.byteOffset + bufferView.byteOffset];
+
+				switch (accessor.type) {
+				case TINYGLTF_TYPE_VEC3: {
+					const glm::vec3* buf = static_cast<const glm::vec3*>(dataPtr);
+					for (size_t index = 0; index < accessor.count; index++) {
+						sampler.outputsVec4.push_back(glm::vec4(buf[index], 0.0f));
+					}
+					break;
+				}
+				case TINYGLTF_TYPE_VEC4: {
+					const glm::vec4* buf = static_cast<const glm::vec4*>(dataPtr);
+					for (size_t index = 0; index < accessor.count; index++) {
+						sampler.outputsVec4.push_back(buf[index]);
+					}
+					break;
+				}
+				default: {
+					std::cout << "unknown type" << std::endl;
+					break;
+				}
+				}
 			}
 
-			glm::mat4 scale{ 1.f };
-			if (node.scale.size() > 0)
-			{
-				scale = glm::scale(glm::vec3{ node.scale[0],node.scale[1] ,node.scale[2] });
+			animation.samplers.push_back(sampler);
+		}
+
+		// Channels
+		for (auto& source : anim.channels) {
+			AnimationChannel channel{};
+
+			if (source.target_path == "rotation") {
+				channel.path = AnimationChannel::PathType::ROTATION;
 			}
-			//glm::mat4 flip = glm::mat4{ 1.0 };
-			//flip[1][1] = -1;
-
-			glm::mat4 transformMatrix = (translation * rotation * scale);// * flip;
-
-			memcpy(matrix.data(), &transformMatrix, sizeof(glm::mat4));
-		}
-
-		prefab.node_matrices[i] = prefab.matrices.size();
-		prefab.matrices.push_back(matrix);
-
-		if (node.mesh >= 0)
-		{
-			auto mesh = model.meshes[node.mesh];
-
-			if (mesh.primitives.size() > 1) {
-				meshnodes.push_back(i);
-			} else {
-				auto primitive = mesh.primitives[0];
-				std::string meshname = calculate_gltf_mesh_name(model, node.mesh, 0);
-
-				fs::path meshpath = outputFolder / (meshname + ".mesh");
-
-				int material = primitive.material;
-
-				std::string matname = calculateMaterialNameGLTF(model, material);
-
-				fs::path materialpath = outputFolder / (matname + ".mat");
-
-				assets::PrefabInfo::NodeMesh nmesh;
-				nmesh.mesh_path = convState.convertToExportRelative(meshpath).string();
-				nmesh.material_path = convState.convertToExportRelative(materialpath).string();
-
-				prefab.node_meshes[i] = nmesh;
+			if (source.target_path == "translation") {
+				channel.path = AnimationChannel::PathType::TRANSLATION;
 			}
+			if (source.target_path == "scale") {
+				channel.path = AnimationChannel::PathType::SCALE;
+			}
+			if (source.target_path == "weights") {
+				std::cout << "weights not yet supported, skipping channel" << std::endl;
+				continue;
+			}
+			channel.samplerIndex = source.sampler;
+			channel.node = nodeFromIndex(data, source.target_node);
+			if (!channel.node) {
+				continue;
+			}
+
+			animation.channels.push_back(channel);
+		}
+
+		data.animations.push_back(animation);
+	}
+}
+
+void loadNode(SkeletalAnimationData& data, Node* parent, const tinygltf::Node& node, uint32_t nodeIndex, const tinygltf::Model& model)
+{
+	Node* newNode = new Node{};
+	newNode->index = nodeIndex;
+	newNode->parent = parent;
+	newNode->name = node.name;
+	newNode->skinIndex = node.skin;
+	newNode->matrix = glm::mat4(1.0f);
+
+	// Generate local node matrix
+	glm::vec3 translation = glm::vec3(0.0f);
+	if (node.translation.size() == 3) {
+		translation = glm::make_vec3(node.translation.data());
+		newNode->translation = translation;
+	}
+	glm::mat4 rotation = glm::mat4(1.0f);
+	if (node.rotation.size() == 4) {
+		glm::quat q = glm::make_quat(node.rotation.data());
+		newNode->rotation = glm::mat4(q);
+	}
+	glm::vec3 scale = glm::vec3(1.0f);
+	if (node.scale.size() == 3) {
+		scale = glm::make_vec3(node.scale.data());
+		newNode->scale = scale;
+	}
+	if (node.matrix.size() == 16) {
+		newNode->matrix = glm::make_mat4x4(node.matrix.data());
+	};
+
+	// Node with children
+	if (node.children.size() > 0) {
+		for (size_t i = 0; i < node.children.size(); i++) {
+			loadNode(data, newNode, model.nodes[node.children[i]], node.children[i], model);
 		}
 	}
 
-	//calculate parent hierarchies
-	//gltf stores children, but we want parent
-	for (int i = 0; i < model.nodes.size(); i++)
-	{
-		for (auto c : model.nodes[i].children)
-		{
-			prefab.node_parents[c] = i;
+	if (parent) {
+		parent->children.push_back(newNode);
+	} else {
+		data.nodes.push_back(newNode);
+	}
+
+	data.linearNodes.push_back(newNode);
+}
+
+void extractSkeletalAnimation(tinygltf::Model gltfModel, const fs::path& input, const fs::path& outputFolder)
+{
+	std::string error;
+
+	SkeletalAnimationData data{};
+
+	const tinygltf::Scene& scene = gltfModel.scenes[gltfModel.defaultScene > -1 ? gltfModel.defaultScene : 0];
+
+	for (size_t i = 0; i < scene.nodes.size(); i++) {
+		const tinygltf::Node node = gltfModel.nodes[scene.nodes[i]];
+		loadNode(data, nullptr, node, scene.nodes[i], gltfModel);
+	}
+
+	if (gltfModel.animations.size() > 0) {
+		loadAnimations(data, gltfModel);
+	}
+
+	loadSkins(data, gltfModel);
+
+	for (auto node : data.linearNodes) {
+		// Assign skins
+		if (node->skinIndex > -1) {
+			node->skin = data.skins[node->skinIndex];
+		}
+		// Initial pose
+		if (node->mesh) {
+			node->update();
 		}
 	}
 
-	//for every gltf node that is a root node (no parents), apply the coordinate fixup
+	SkeletalAnimationInfo animInfo;
+	animInfo.nodesSize = data.nodes.size() * sizeof(Node);
+	animInfo.linearNodesSize = data.linearNodes.size() * sizeof(Node);
+	animInfo.skinsSize = data.skins.size() * sizeof(Skin);
+	animInfo.animationsSize = data.animations.size() * sizeof(Animation);
+	animInfo.originalFile = input.string();
 
-	glm::mat4 flip = glm::mat4{ 1.0 };
-	flip[1][1] = -1;
+	AssetFile newFile{ packSkeletalAnimation(&animInfo, (char*)data.nodes.data(), (char*)data.skins.data(), (char*)data.animations.data()) };
 
+	nlohmann::json metadata;
 
-	glm::mat4 rotation = glm::mat4{ 1.0 };
-	//flip[1][1] = -1;
-	rotation = glm::rotate(glm::radians(-180.f), glm::vec3{ 1,0,0 });
+	metadata["nodes_size"] = animInfo.nodesSize;
+	metadata["skins_size"] = animInfo.skinsSize;
+	metadata["animations_size"] = animInfo.animationsSize;
+	metadata["original_file"] = animInfo.originalFile;
 
-
-	//flip[2][2] = -1;
-	for (int i = 0; i < model.nodes.size(); i++)
-	{
-
-		auto it = prefab.node_parents.find(i);
-		if (it == prefab.node_parents.end())
-		{
-			auto matrix = prefab.matrices[prefab.node_matrices[i]];
-			//no parent, root node
-			glm::mat4 mat;
-
-			memcpy(&mat, &matrix, sizeof(glm::mat4));
-
-			mat = rotation * (flip * mat);
-
-			memcpy(&matrix, &mat, sizeof(glm::mat4));
-
-			prefab.matrices[prefab.node_matrices[i]] = matrix;
-
-		}
-	}
-
-
-	int nodeindex = model.nodes.size();
-	//iterate nodes with mesh, convert each submesh into a node
-	for (int i = 0; i < meshnodes.size(); i++)
-	{
-		auto& node = model.nodes[i];
-
-		if (node.mesh < 0) break;
-
-		auto mesh = model.meshes[node.mesh];
-
-
-		for (int primindex = 0; primindex < mesh.primitives.size(); primindex++)
-		{
-			auto primitive = mesh.primitives[primindex];
-			int newnode = nodeindex++;
-
-			char buffer[50];
-
-			itoa(primindex, buffer, 10);
-
-			prefab.node_names[newnode] = prefab.node_names[i] + "_PRIM_" + &buffer[0];
-
-			int material = primitive.material;
-			auto mat = model.materials[material];
-			std::string matname = calculateMaterialNameGLTF(model, material);
-			std::string meshname = calculateMeshNameGLTF(model, node.mesh, primindex);
-
-			fs::path materialpath = outputFolder / (matname + ".mat");
-			fs::path meshpath = outputFolder / (meshname + ".mesh");
-
-			assets::PrefabInfo::NodeMesh nmesh;
-			nmesh.mesh_path = convState.convertToExportRelative(meshpath).string();
-			nmesh.material_path = convState.convertToExportRelative(materialpath).string();
-
-			prefab.node_meshes[newnode] = nmesh;
-		}
-
-	}
-
-
-	assets::AssetFile newFile = assets::pack_prefab(prefab);
-
-	fs::path scenefilepath = (outputFolder.parent_path()) / input.stem();
-
-	scenefilepath.replace_extension(".pfb");
+	std::string skelName{ calculateSkeletonNameGLTF() };
+	fs::path skelPath = outputFolder / (skelName + ".skel");
 
 	//save to disk
-	saveBinaryFile(scenefilepath.string().c_str(), newFile);
+	saveBinaryFile(skelPath.string().c_str(), metadata, newFile);
 }
-*/
+
 int main(int argc, char* argv[])
 {
 	if (argc < 2) {
@@ -851,21 +764,18 @@ int main(int argc, char* argv[])
 		convstate.asset_path = path;
 		convstate.export_path = exported_dir;
 
-		for (auto& p : fs::recursive_directory_iterator(directory))
-		{
+		for (auto& p : fs::recursive_directory_iterator(directory)) {
 			std::cout << "File: " << p << std::endl;
 
 			auto relative = p.path().lexically_proximate(directory);
 
 			auto export_path = exported_dir / relative;
 
-			if (!fs::is_directory(export_path.parent_path()))
-			{
+			if (!fs::is_directory(export_path.parent_path())) {
 				fs::create_directory(export_path.parent_path());
 			}
 
-			if (p.path().extension() == ".png" || p.path().extension() == ".jpg" || p.path().extension() == ".TGA")
-			{
+			if (p.path().extension() == ".png" || p.path().extension() == ".jpg" || p.path().extension() == ".TGA") {
 				std::cout << "found a texture" << std::endl;
 
 				auto newpath = p.path();
@@ -875,13 +785,11 @@ int main(int argc, char* argv[])
 				convertImage(p.path(), export_path);
 			}
 
-			if (p.path().extension() == ".gltf")
-			{
+			if (p.path().extension() == ".gltf") {
 				std::cout << "found a mesh (gltf)\n";
 
-				using namespace tinygltf;
-				Model model;
-				TinyGLTF loader;
+				tinygltf::Model model;
+				tinygltf::TinyGLTF loader;
 				std::string err;
 				std::string warn;
 
@@ -905,15 +813,15 @@ int main(int argc, char* argv[])
 					// If the mesh is skinned, we must use vertex format which includes skinning data
 					std::cout << "skins: " << model.skins.size() << '\n';
 					if (model.skins.size() == 0) {
-						extractMeshesGLTF<assets::Vertex_f32_PNTV>(model, p.path(), folder, convstate, assets::VertexFormat::PNTV_F32);
+						extractMeshesGLTF<Vertex>(model, p.path(), folder, convstate, VertexFormat::DEFAULT);
 					} else {
-						extractMeshesGLTF<assets::Vertex_f32_PNTVIW>(model, p.path(), folder, convstate, assets::VertexFormat::PNTVIW_F32);
+						extractMeshesGLTF<VertexSkinned>(model, p.path(), folder, convstate, VertexFormat::SKINNED);
 					}
-
 
 					//extractMaterialsGLTF(model, p.path(), folder, convstate);
 
 					//extractNodesGLTF(model, p.path(), folder, convstate);
+					extractSkeletalAnimation(model, p.path(), folder);
 				}
 			}
 		}

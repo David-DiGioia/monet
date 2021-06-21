@@ -23,7 +23,6 @@
 #include "application.h"
 #include "physics.h"
 #include "asset_loader.h"
-#include "mesh_asset.h"
 
 #define VK_CHECK(x)\
 	do\
