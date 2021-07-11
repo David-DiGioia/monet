@@ -68,10 +68,6 @@ struct GPUCameraData {
 	glm::mat4 viewProj;
 };
 
-struct GPUObjectData {
-	glm::mat4 modelMatrix;
-};
-
 struct ShadowGlobalResources {
 	uint32_t width;
 	uint32_t height;
@@ -275,7 +271,7 @@ public:
 
 	std::multiset<RenderObject> _renderables;
 	std::unordered_map<std::string, Material> _materials;
-	std::unordered_map<std::string, AbstractMesh*> _meshes;
+	std::unordered_map<std::string, Mesh*> _meshes;
 
 	Transform _camTransform{};
 
@@ -353,7 +349,7 @@ public:
 	Material* createMaterial(const MaterialCreateInfo& info, VkPipeline pipeline, VkPipelineLayout layout, VkDescriptorSetLayout materialSetLayout);
 
 	// returns nullptr if it can't be found
-	AbstractMesh* getMesh(const std::string& name);
+	Mesh* getMesh(const std::string& name);
 
 	const RenderObject* createRenderObject(const std::string& meshName, const std::string& matName, bool castShadow=true);
 
@@ -448,6 +444,12 @@ private:
 
 	void loadMesh(const std::string& name, const std::string& path);
 
+	void loadSkeletalAnimation(const std::string& name, const std::string& path);
+
+	void uploadMesh(Mesh* mesh);
+
+	void uploadMeshSkinned(Mesh* mesh);
+
 	// For use with vertex buffers or index buffers. If !isVertexBuffer, then index buffer is assumed
 	template <typename T>
 	void uploadBuffer(const std::vector<T>& vec, AllocatedBuffer& buffer, bool isVertexBuffer)
@@ -506,29 +508,6 @@ private:
 		});
 		vmaDestroyBuffer(_allocator, stagingBuffer._buffer, stagingBuffer._allocation);
 	}
-
-	template <typename T>
-	void uploadMesh(Mesh<T>* mesh)
-	{
-		uploadBuffer(mesh->vertices, mesh->vertexBuffer, true);
-		uploadBuffer(mesh->indices, mesh->indexBuffer, false);
-	}
-
-	template <typename T>
-	void loadMeshHelper(const std::string& name, assets::MeshInfo& info, const assets::AssetFile& assetFile)
-	{
-		Mesh<T>* mesh{ new Mesh<T>{} };
-		mesh->vertices.resize(info.vertexBufferSize / sizeof(T));
-		mesh->indices.resize(info.indexBufferSize / info.indexSize);
-		mesh->vertexFormat = info.vertexFormat;
-		assets::unpackMesh(&info, assetFile.binaryBlob.data(), (char*)mesh->vertices.data(), (char*)mesh->indices.data());
-
-		// send mesh to GPU
-		uploadMesh(mesh);
-
-		_meshes[name] = mesh;
-	}
-
 };
 
 class PipelineBuilder {

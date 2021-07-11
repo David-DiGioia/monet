@@ -18,7 +18,6 @@ bool assets::saveBinaryFile(const char* path, nlohmann::json& metadata, AssetFil
 	float compressionRatio{ (float)res.sizeOut / (float)res.sizeIn };
 	float thresholdRatio{ 0.8f };
 	bool useCompression{ compressionRatio < thresholdRatio };
-	useCompression = false;
 
 	if (useCompression) {
 		std::cout << "Compression ratio (" << compressionRatio << ") < threshold (" << thresholdRatio << "), compressing binary blob\n\n";

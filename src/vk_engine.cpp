@@ -114,7 +114,7 @@ void GameObject::setPhysicsObject(physx::PxRigidActor* body)
 
 void GameObject::updateRenderMatrix()
 {
-	_renderObject->transformMatrix = getGlobalMat4();
+	//_renderObject->transformMatrix = getGlobalMat4();
 }
 
 Transform GameObject::getTransform()
@@ -412,12 +412,7 @@ void VulkanEngine::initImgui()
 
 void VulkanEngine::initScene()
 {
-	RenderObject cube{};
-	cube.mesh = getMesh("cube");
-	cube.material = getMaterial("testCubemapMat");
-	cube.transformMatrix = glm::mat4{ 1.0 };
-	cube.castShadow = false;
-	_renderables.insert(cube);
+	createRenderObject("cube", "testCubemapMat", false);
 	_sceneParameters = GPUSceneData{}; // zero out scene parameters
 
 	_app->init(*this);
@@ -428,8 +423,19 @@ const RenderObject* VulkanEngine::createRenderObject(const std::string& meshName
 	RenderObject object{};
 	object.mesh = getMesh(meshName);
 	object.material = getMaterial(matName);
-	object.transformMatrix = glm::mat4(1.0);
 	object.castShadow = castShadow;
+
+	if (object.mesh->skel.skins.size() > 0) {
+		object.uniformBlock = nullptr;
+		object.uniformBlockSkinned = new renderObjectSkinnedUB{}; // TODO: free this eventually
+		object.uniformBlockSkinned->jointCount = std::min((uint32_t)object.mesh->skel.skins[0]->joints.size(), MAX_NUM_JOINTS);
+		object.mesh->skel.skins[0]->update();
+	} else {
+		object.uniformBlockSkinned = nullptr;
+		object.uniformBlock = new renderObjectUB{}; // TODO: free this eventually
+		object.uniformBlock->transformMatrix = glm::mat4(1.0f);
+	}
+
 	return &(*_renderables.insert(object));
 }
 
@@ -476,39 +482,74 @@ void VulkanEngine::immediateSubmit(std::function<void(VkCommandBuffer cmd)>&& fu
 	vkResetCommandPool(_device, _uploadContext._commandPool, 0);
 }
 
+void VulkanEngine::uploadMesh(Mesh* mesh)
+{
+	uploadBuffer(mesh->vertices, mesh->vertexBuffer, true);
+	uploadBuffer(mesh->indices, mesh->indexBuffer, false);
+}
+
+void VulkanEngine::uploadMeshSkinned(Mesh* mesh)
+{
+	uploadBuffer(mesh->verticesSkinned, mesh->vertexBuffer, true);
+	uploadBuffer(mesh->indices, mesh->indexBuffer, false);
+}
+
+void VulkanEngine::loadSkeletalAnimation(const std::string& name, const std::string& path)
+{
+	assets::AssetFile assetFile;
+	nlohmann::json metadata;
+
+	assets::loadBinaryFile(path.c_str(), assetFile, metadata);
+	assets::SkeletalAnimationInfo info{ assets::readSkeletalAnimationInfo(metadata) };
+
+	// we heap allocate this so the pointers in SkeletalAnimationData can point to it for duration of its lifetime
+	// TODO: we must eventually delete this...
+	SkeletalAnimationDataPool* skelPool{ new SkeletalAnimationDataPool{} };
+	skelPool->nodes.resize(info.nodesSize / sizeof(Node));
+	skelPool->linearNodes.resize(info.linearNodesSize / sizeof(Node));
+	skelPool->skins.resize(info.skinsSize / sizeof(Skin));
+	skelPool->animations.resize(info.animationsSize / sizeof(Animation));
+	assets::unpackSkeletalAnimation(&info, assetFile.binaryBlob.data(), (char*)skelPool->nodes.data(), (char*)skelPool->skins.data(), (char*)skelPool->animations.data());
+
+	SkeletalAnimationData& skel{ _meshes[name]->skel };
+	vkutil::bufferToPtrArray(skel.nodes, skelPool->nodes);
+	vkutil::bufferToPtrArray(skel.skins, skelPool->skins);
+	vkutil::bufferToPtrArray(skel.animations, skelPool->animations);
+	skel.linearNodes = skel.nodes; // right now all nodes are linear... TODO: update this
+}
+
+
 // load mesh onto CPU then upload it to the GPU
 void VulkanEngine::loadMesh(const std::string& name, const std::string& path)
 {
-
 	assets::AssetFile assetFile;
 	nlohmann::json metadata;
 
 	assets::loadBinaryFile(path.c_str(), assetFile, metadata);
 	assets::MeshInfo info{ assets::readMeshInfo(metadata) };
 
+	Mesh* mesh{ new Mesh{} };
+	mesh->indices.resize(info.indexBufferSize / info.indexSize);
+	mesh->vertexFormat = info.vertexFormat;
+
+
 	if (info.vertexFormat == VertexFormat::DEFAULT) {
 
-		loadMeshHelper<Vertex>(name, info, assetFile);
+		mesh->vertices.resize(info.vertexBufferSize / sizeof(Vertex));
+		assets::unpackMesh(&info, assetFile.binaryBlob.data(), (char*)mesh->vertices.data(), (char*)mesh->indices.data());
+		uploadMesh(mesh);
 
 	} else if (info.vertexFormat == VertexFormat::SKINNED) {
 
-		loadMeshHelper<VertexSkinned>(name, info, assetFile);
+		mesh->verticesSkinned.resize(info.vertexBufferSize / sizeof(VertexSkinned));
+		assets::unpackMesh(&info, assetFile.binaryBlob.data(), (char*)mesh->verticesSkinned.data(), (char*)mesh->indices.data());
+		uploadMeshSkinned(mesh);
 
 	} else {
 		std::cout << "Error: unrecognized vertex format in VulkanEngine::loadMesh\n";
 	}
 
-
-
-	//Mesh mesh{};
-	//mesh.load_from_obj(path);
-
-	//// make sure mesh is sent to GPU
-	//upload_mesh(mesh);
-
-	//// note that we are copying them. Eventually we'll delete the
-	//// hardcoded monkey and triangle so it's no problem for now
-	//_meshes[name] = mesh;
+	_meshes[name] = mesh;
 }
 
 void VulkanEngine::loadMeshes()
@@ -854,7 +895,7 @@ void VulkanEngine::initDescriptorPool() {
 
 void VulkanEngine::initObjectBuffers() {
 	for (auto i{ 0 }; i < FRAME_OVERLAP; ++i) {
-		_frames[i].objectBuffer = createBuffer(sizeof(GPUObjectData) * MAX_OBJECTS, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, VMA_MEMORY_USAGE_CPU_TO_GPU);
+		_frames[i].objectBuffer = createBuffer(sizeof(renderObjectUB) * MAX_OBJECTS, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, VMA_MEMORY_USAGE_CPU_TO_GPU);
 
 		_mainDeletionQueue.pushFunction([=]() {
 			vmaDestroyBuffer(_allocator, _frames[i].objectBuffer._buffer, _frames[i].objectBuffer._allocation);
@@ -949,7 +990,7 @@ void VulkanEngine::initDescriptors()
 		VkDescriptorBufferInfo objectInfo{};
 		objectInfo.buffer = _frames[i].objectBuffer._buffer;
 		objectInfo.offset = 0;
-		objectInfo.range = sizeof(GPUObjectData) * MAX_OBJECTS;
+		objectInfo.range = sizeof(renderObjectUB) * MAX_OBJECTS;
 
 		VkWriteDescriptorSet cameraWrite{ vkinit::writeDescriptorBuffer(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, _frames[i].globalDescriptor, &cameraInfo, 0) };
 		VkWriteDescriptorSet sceneWrite{ vkinit::writeDescriptorBuffer(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, _frames[i].globalDescriptor, &sceneInfo, 1) };
@@ -1454,7 +1495,7 @@ Material* VulkanEngine::getMaterial(const std::string& name)
 	}
 }
 
-AbstractMesh* VulkanEngine::getMesh(const std::string& name)
+Mesh* VulkanEngine::getMesh(const std::string& name)
 {
 	auto it{ _meshes.find(name) };
 	if (it == _meshes.end()) {
@@ -1586,7 +1627,7 @@ void VulkanEngine::shadowPass(VkCommandBuffer& cmd)
 	vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, _shadowGlobal.shadowPipelineLayout, 0, 1, &getCurrentFrame().shadow.shadowDescriptorSetLight, 0, nullptr);
 	vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, _shadowGlobal.shadowPipelineLayout, 1, 1, &getCurrentFrame().shadow.shadowDescriptorSetObjects, 0, nullptr);
 
-	AbstractMesh* lastMesh{ nullptr };
+	Mesh* lastMesh{ nullptr };
 	bool lastSkinned{ false };
 
 	uint32_t idx{ 0 };
@@ -1677,14 +1718,16 @@ void VulkanEngine::draw()
 	// write all the objects' matrices into the SSBO (used in both shadow pass and draw objects)
 	void* objectData;
 	vmaMapMemory(_allocator, getCurrentFrame().objectBuffer._allocation, &objectData);
-	GPUObjectData* objectSSBO{ (GPUObjectData*)objectData };
+	renderObjectUB* objectSSBO{ (renderObjectUB*)objectData };
 	uint32_t idx{ 0 };
 	for (const RenderObject& object : _renderables) {
-		objectSSBO[idx].modelMatrix = object.transformMatrix;
+		objectSSBO[idx] = *object.uniformBlock;
 		++idx;
 	}
 	vmaUnmapMemory(_allocator, getCurrentFrame().objectBuffer._allocation);
 	vmaFlushAllocation(_allocator, getCurrentFrame().objectBuffer._allocation, 0, VK_WHOLE_SIZE);
+
+	// TODO: we should upload uniformBlockSkinned to GPU here
 
 	VK_CHECK(vkBeginCommandBuffer(getCurrentFrame().mainCommandBuffer, &cmdBeginInfo));
 
@@ -1794,7 +1837,7 @@ void VulkanEngine::drawObjects(VkCommandBuffer cmd, const std::multiset<RenderOb
 	std::memcpy(sceneData, &_sceneParameters, sizeof(GPUSceneData));
 	vmaUnmapMemory(_allocator, _sceneParameterBuffer._allocation);
 
-	AbstractMesh* lastMesh{ nullptr };
+	Mesh* lastMesh{ nullptr };
 	Material* lastMaterial{ nullptr };
 
 	uint32_t pipelineBinds{ 0 };

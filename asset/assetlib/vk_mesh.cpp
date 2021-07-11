@@ -2,6 +2,7 @@
 
 #include <cstddef> // offsetof
 #include <iostream>
+#include <algorithm>
 
 
 VertexInputDescription getVertexDescription(uint32_t attrFlags, uint32_t stride)
@@ -136,6 +137,19 @@ assets::AssetFile assets::packMesh(MeshInfo* info, char* vertexData, char* index
 	return file;
 }
 
+assets::SkeletalAnimationInfo assets::readSkeletalAnimationInfo(nlohmann::json& metadata)
+{
+	assets::SkeletalAnimationInfo info;
+
+	info.nodesSize = metadata["nodes_size"];
+	info.skinsSize = metadata["skins_size"];
+	info.animationsSize = metadata["animations_size"];
+	info.originalFile = metadata["original_file"];
+	info.compressionMode = metadata["compression_mode"];
+
+	return info;
+}
+
 void assets::unpackSkeletalAnimation(SkeletalAnimationInfo* info, const char* sourcebuffer, char* nodeBuffer, char* skinBuffer, char* animationBuffer)
 {
 	// copy node buffer
@@ -168,6 +182,107 @@ assets::AssetFile assets::packSkeletalAnimation(SkeletalAnimationInfo* info, cha
 	return file;
 }
 
-void Node::update() {
 
+void updateJointMatrices(Node* root, const glm::mat4& mat)
+{
+	root->cachedMatrix = root->localMatrix() * mat;
+
+	for (Node* child : root->children) {
+		updateJointMatrices(child, root->cachedMatrix);
+	}
+}
+
+void Skin::update()
+{
+	glm::mat4 m = meshNode->getMatrix();
+
+	meshNode->renderObject->uniformBlockSkinned->transformMatrix = m;
+	glm::mat4 inverseTransform = glm::inverse(m);
+	//size_t numJoints = std::min((uint32_t)joints.size(), MAX_NUM_JOINTS);
+	size_t numJoints = (size_t)meshNode->renderObject->uniformBlockSkinned->jointCount;
+
+	updateJointMatrices(skeletonRoot, glm::mat4(1.0f));
+
+	for (size_t i = 0; i < numJoints; ++i) {
+		glm::mat4 jointMat = joints[i]->getCachedMatrix() * inverseBindMatrices[i];
+		jointMat = inverseTransform * jointMat;
+		meshNode->renderObject->uniformBlockSkinned->jointMatrices[i] = jointMat;
+	}
+
+	//meshNode->renderObject->uniformBlockSkinned->jointCount = (float)numJoints;
+
+}
+
+// Node
+
+glm::mat4 Node::localMatrix()
+{
+	return glm::translate(glm::mat4(1.0f), translation) * glm::mat4(rotation) * glm::scale(glm::mat4(1.0f), scale) * matrix;
+}
+
+// potentially expensive... try to avoid calling. instead call skin::update to update cached matrices, and access that
+glm::mat4 Node::getMatrix()
+{
+	std::cout << "Node::getMatrix() called. Consider calling skin::update instead, then call Node:getCachedMatrix()\n";
+
+	glm::mat4 m = localMatrix();
+	Node* p{ parent };
+	while (p) {
+		m = p->localMatrix() * m;
+		p = p->parent;
+	}
+	return m;
+}
+
+glm::mat4 Node::getCachedMatrix()
+{
+	return cachedMatrix;
+}
+
+// Update appropriate uniform block on CPU (without uploading to GPU) depending on whether skinned or not
+/*
+void Node::update()
+{
+	if (renderObject) {
+		glm::mat4 m{ getMatrix() };
+
+		if (skin) {
+
+			renderObject->uniformBlockSkinned->transformMatrix = m;
+			// Update join matrices
+			glm::mat4 inverseTransform = glm::inverse(m);
+			size_t numJoints = std::min((uint32_t)skin->joints.size(), MAX_NUM_JOINTS);
+
+			for (size_t i = 0; i < numJoints; ++i) {
+				Node* jointNode = skin->joints[i];
+				glm::mat4 jointMat = jointNode->getMatrix() * skin->inverseBindMatrices[i];
+				jointMat = inverseTransform * jointMat;
+				renderObject->uniformBlockSkinned->jointMatrices[i] = jointMat;
+			}
+
+			renderObject->uniformBlockSkinned->jointCount = (float)numJoints;
+			//memcpy(renderObject->uniformBuffer.mapped, &renderObject->uniformBlock, sizeof(renderObject->uniformBlock));
+
+		} else {
+
+			renderObject->uniformBlock->transformMatrix = m;
+			//memcpy(renderObject->uniformBuffer.mapped, &m, sizeof(glm::mat4));
+
+		}
+	}
+
+	for (auto& child : children) {
+		child->update();
+	}
+}
+*/
+
+Node::~Node()
+{
+	if (renderObject) {
+		delete renderObject;
+	}
+	for (auto& child : children) {
+		delete child;
+	}
 }

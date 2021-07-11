@@ -2,6 +2,8 @@
 #include <fstream>
 #include <filesystem>
 #include <chrono>
+#include <unordered_map>
+#include <limits>
 
 #include "json.hpp"
 
@@ -25,7 +27,6 @@
 #include "glm/gtc/matrix_transform.hpp"
 #include "glm/gtc/type_ptr.hpp"
 #include "glm/gtx/string_cast.hpp"
-
 
 namespace fs = std::filesystem;
 using namespace assets;
@@ -226,11 +227,10 @@ void extractVerticesInternalGLTF(tinygltf::Primitive& primitive, tinygltf::Model
 			{
 				float* dtf = (float*)tangent_data.data();
 
-				//vec3f 
-				_vertices[i].tangent[0] = *(dtf + (i * 3) + 0);
-				_vertices[i].tangent[1] = *(dtf + (i * 3) + 1);
-				_vertices[i].tangent[2] = *(dtf + (i * 3) + 2);
-				_vertices[i].tangent[3] = *(dtf + (i * 3) + 3);
+				_vertices[i].tangent[0] = *(dtf + (i * 4) + 0);
+				_vertices[i].tangent[1] = *(dtf + (i * 4) + 1);
+				_vertices[i].tangent[2] = *(dtf + (i * 4) + 2);
+				_vertices[i].tangent[3] = *(dtf + (i * 4) + 3);
 			} else {
 				std::cout << "ERROR: Component type mismatch\n";
 				assert(false);
@@ -285,15 +285,15 @@ void extractVerticesGLTF(tinygltf::Primitive& primitive, tinygltf::Model& model,
 	for (int i = 0; i < _vertices.size(); i++) {
 		if (joints_accesor.type == TINYGLTF_TYPE_VEC4)
 		{
-			if (joints_accesor.componentType == TINYGLTF_COMPONENT_TYPE_UNSIGNED_SHORT)
+			if (joints_accesor.componentType == TINYGLTF_COMPONENT_TYPE_UNSIGNED_BYTE)
 			{
-				float* dtf = (float*)joints_data.data();
+				uint8_t* dtf = (uint8_t*)joints_data.data();
 
 				//vec3f 
-				_vertices[i].jointIndices[0] = *(dtf + (i * 3) + 0);
-				_vertices[i].jointIndices[1] = *(dtf + (i * 3) + 1);
-				_vertices[i].jointIndices[2] = *(dtf + (i * 3) + 2);
-				_vertices[i].jointIndices[3] = *(dtf + (i * 3) + 3);
+				_vertices[i].jointIndices[0] = *(dtf + (i * 4) + 0);
+				_vertices[i].jointIndices[1] = *(dtf + (i * 4) + 1);
+				_vertices[i].jointIndices[2] = *(dtf + (i * 4) + 2);
+				_vertices[i].jointIndices[3] = *(dtf + (i * 4) + 3);
 			} else {
 				std::cout << "ERROR: Component type mismatch\n";
 				assert(false);
@@ -315,10 +315,10 @@ void extractVerticesGLTF(tinygltf::Primitive& primitive, tinygltf::Model& model,
 				float* dtf = (float*)weights_data.data();
 
 				//vec3f 
-				_vertices[i].jointWeights[0] = *(dtf + (i * 3) + 0);
-				_vertices[i].jointWeights[1] = *(dtf + (i * 3) + 1);
-				_vertices[i].jointWeights[2] = *(dtf + (i * 3) + 2);
-				_vertices[i].jointWeights[3] = *(dtf + (i * 3) + 3);
+				_vertices[i].jointWeights[0] = *(dtf + (i * 4) + 0);
+				_vertices[i].jointWeights[1] = *(dtf + (i * 4) + 1);
+				_vertices[i].jointWeights[2] = *(dtf + (i * 4) + 2);
+				_vertices[i].jointWeights[3] = *(dtf + (i * 4) + 3);
 			} else {
 				std::cout << "ERROR: Component type mismatch\n";
 				assert(false);
@@ -405,8 +405,14 @@ std::string calculateSkeletonNameGLTF()
 template <typename VFormat>
 bool extractMeshesGLTF(tinygltf::Model& model, const fs::path& input, const fs::path& outputFolder, const ConverterState& convState, VertexFormat vertexFormatEnum)
 {
+	/*
+		Note: meshes are what we normally think of as meshes, but primitives do NOT refer to triangles in this case.
+		Primitives are a single mesh broken up into pieces, either to allow a single mesh to have multiple materials
+		or to avoid the limitation of 65535 vertices (for 16-bit indices) for a mesh.
+	*/
+
 	tinygltf::Model* glmod = &model;
-	for (auto meshindex = 0; meshindex < model.meshes.size(); meshindex++) {
+	for (auto meshindex = 0; meshindex < model.meshes.size(); ++meshindex) {
 
 		auto& glmesh = model.meshes[meshindex];
 
@@ -416,14 +422,14 @@ bool extractMeshesGLTF(tinygltf::Model& model, const fs::path& input, const fs::
 		std::vector<VFormat> _vertices;
 		std::vector<uint16_t> _indices;
 
-		for (auto primindex = 0; primindex < glmesh.primitives.size(); primindex++) {
+		for (auto primindex = 0; primindex < glmesh.primitives.size(); ++primindex) {
 
 			_vertices.clear();
 			_indices.clear();
 
 			std::string meshname{ calculateMeshNameGLTF(model, meshindex, primindex) };
 
-			auto& primitive = glmesh.primitives[primindex];
+			tinygltf::Primitive& primitive = glmesh.primitives[primindex];
 
 			extractIndicesGLTF(primitive, model, _indices);
 			extractVerticesGLTF(primitive, model, _vertices);
@@ -477,48 +483,49 @@ bool extractMeshesGLTF(tinygltf::Model& model, const fs::path& input, const fs::
 	return true;
 }
 
-Node* findNode(Node* parent, uint32_t index) {
-	Node* nodeFound = nullptr;
-	if (parent->index == index) {
-		return parent;
-	}
-	for (auto& child : parent->children) {
-		nodeFound = findNode(child, index);
-		if (nodeFound) {
-			break;
-		}
-	}
-	return nodeFound;
-}
+//uint32_t findNode(uint32_t parent, uint32_t index) {
+//	Node* nodeFound = nullptr;
+//	if (parent->indexGLTF == index) {
+//		return parent;
+//	}
+//	for (uint32_t child : parent->children) {
+//		nodeFound = findNode(child, index);
+//		if (nodeFound) {
+//			break;
+//		}
+//	}
+//	return nodeFound;
+//}
 
-Node* nodeFromIndex(SkeletalAnimationData& data, uint32_t index) {
-	Node* nodeFound = nullptr;
-	for (Node* node : data.nodes) {
-		nodeFound = findNode(node, index);
-		if (nodeFound) {
-			break;
-		}
-	}
-	return nodeFound;
-}
+//Node* nodeFromIndex(SkeletalAnimationData& data, uint32_t index) {
+//	Node* nodeFound = nullptr;
+//	for (Node& node : data.nodes) {
+//		nodeFound = findNode(&node, index);
+//		if (nodeFound) {
+//			break;
+//		}
+//	}
+//	return nodeFound;
+//}
 
 // from https://github.com/SaschaWillems/Vulkan-glTF-PBR/blob/master/base/VulkanglTFModel.cpp
-void loadSkins(SkeletalAnimationData& data, tinygltf::Model& gltfModel)
+void loadSkins(SkeletalAnimationDataAsset& data, tinygltf::Model& gltfModel, int32_t meshNodeIdx)
 {
-	for (tinygltf::Skin& source : gltfModel.skins) {
-		Skin* newSkin{ new Skin{} };
-		newSkin->name = source.name;
+	
+	if (gltfModel.skins.size() > 1) {
+		std::cout << "Error: More than one skin not supported yet!\n";
+	}
 
-		// Find skeleton root node
-		if (source.skeleton > -1) {
-			newSkin->skeletonRoot = nodeFromIndex(data, source.skeleton);
-		}
+	for (tinygltf::Skin& source : gltfModel.skins) {
+		SkinAsset newSkin{};
+		newSkin.name = source.name;
+		newSkin.skeletonRootIdx = source.skeleton;
+		newSkin.meshNodeIdx = meshNodeIdx;
 
 		// Find joint nodes
 		for (int jointIndex : source.joints) {
-			Node* node = nodeFromIndex(data, jointIndex);
-			if (node) {
-				newSkin->joints.push_back(nodeFromIndex(data, jointIndex));
+			if (jointIndex > -1) {
+				newSkin.joints.push_back(jointIndex);
 			}
 		}
 
@@ -527,15 +534,15 @@ void loadSkins(SkeletalAnimationData& data, tinygltf::Model& gltfModel)
 			const tinygltf::Accessor& accessor = gltfModel.accessors[source.inverseBindMatrices];
 			const tinygltf::BufferView& bufferView = gltfModel.bufferViews[accessor.bufferView];
 			const tinygltf::Buffer& buffer = gltfModel.buffers[bufferView.buffer];
-			newSkin->inverseBindMatrices.resize(accessor.count);
-			memcpy(newSkin->inverseBindMatrices.data(), &buffer.data[accessor.byteOffset + bufferView.byteOffset], accessor.count * sizeof(glm::mat4));
+			newSkin.inverseBindMatrices.resize(accessor.count);
+			memcpy(newSkin.inverseBindMatrices.data(), &buffer.data[accessor.byteOffset + bufferView.byteOffset], accessor.count * sizeof(glm::mat4));
 		}
 
 		data.skins.push_back(newSkin);
 	}
 }
 
-void loadAnimations(SkeletalAnimationData& data, tinygltf::Model& gltfModel)
+void loadAnimations(SkeletalAnimationDataAsset& data, tinygltf::Model& gltfModel)
 {
 	for (tinygltf::Animation& anim : gltfModel.animations) {
 		Animation animation{};
@@ -618,7 +625,7 @@ void loadAnimations(SkeletalAnimationData& data, tinygltf::Model& gltfModel)
 		}
 
 		// Channels
-		for (auto& source : anim.channels) {
+		for (tinygltf::AnimationChannel& source : anim.channels) {
 			AnimationChannel channel{};
 
 			if (source.target_path == "rotation") {
@@ -631,12 +638,12 @@ void loadAnimations(SkeletalAnimationData& data, tinygltf::Model& gltfModel)
 				channel.path = AnimationChannel::PathType::SCALE;
 			}
 			if (source.target_path == "weights") {
-				std::cout << "weights not yet supported, skipping channel" << std::endl;
+				std::cout << "weights not yet supported, skipping channel\n";
 				continue;
 			}
 			channel.samplerIndex = source.sampler;
-			channel.node = nodeFromIndex(data, source.target_node);
-			if (!channel.node) {
+			channel.nodeIdx = source.target_node;
+			if (channel.nodeIdx < 0) {
 				continue;
 			}
 
@@ -647,48 +654,42 @@ void loadAnimations(SkeletalAnimationData& data, tinygltf::Model& gltfModel)
 	}
 }
 
-void loadNode(SkeletalAnimationData& data, Node* parent, const tinygltf::Node& node, uint32_t nodeIndex, const tinygltf::Model& model)
+void loadNode(SkeletalAnimationDataAsset& data, const tinygltf::Node& node, const tinygltf::Model& model)
 {
-	Node* newNode = new Node{};
-	newNode->index = nodeIndex;
-	newNode->parent = parent;
-	newNode->name = node.name;
-	newNode->skinIndex = node.skin;
-	newNode->matrix = glm::mat4(1.0f);
+	// parent index is set by caller after all nodes are loaded
+	NodeAsset newNode{};
+	//newNode.parentIdx = parentIdx;
+	newNode.name = node.name;
+	newNode.skinIndex = node.skin;
+	newNode.matrix = glm::mat4(1.0f);
+	newNode.mesh = node.mesh;
 
 	// Generate local node matrix
 	glm::vec3 translation = glm::vec3(0.0f);
 	if (node.translation.size() == 3) {
 		translation = glm::make_vec3(node.translation.data());
-		newNode->translation = translation;
+		newNode.translation = translation;
 	}
 	glm::mat4 rotation = glm::mat4(1.0f);
 	if (node.rotation.size() == 4) {
 		glm::quat q = glm::make_quat(node.rotation.data());
-		newNode->rotation = glm::mat4(q);
+		newNode.rotation = glm::mat4(q);
 	}
 	glm::vec3 scale = glm::vec3(1.0f);
 	if (node.scale.size() == 3) {
 		scale = glm::make_vec3(node.scale.data());
-		newNode->scale = scale;
+		newNode.scale = scale;
 	}
 	if (node.matrix.size() == 16) {
-		newNode->matrix = glm::make_mat4x4(node.matrix.data());
+		newNode.matrix = glm::make_mat4x4(node.matrix.data());
 	};
 
 	// Node with children
-	if (node.children.size() > 0) {
-		for (size_t i = 0; i < node.children.size(); i++) {
-			loadNode(data, newNode, model.nodes[node.children[i]], node.children[i], model);
-		}
+	for (int child : node.children) {
+		newNode.children.push_back(child);
 	}
 
-	if (parent) {
-		parent->children.push_back(newNode);
-	} else {
-		data.nodes.push_back(newNode);
-	}
-
+	data.nodes.push_back(newNode);
 	data.linearNodes.push_back(newNode);
 }
 
@@ -696,31 +697,37 @@ void extractSkeletalAnimation(tinygltf::Model gltfModel, const fs::path& input, 
 {
 	std::string error;
 
-	SkeletalAnimationData data{};
+	SkeletalAnimationDataAsset data{};
 
 	const tinygltf::Scene& scene = gltfModel.scenes[gltfModel.defaultScene > -1 ? gltfModel.defaultScene : 0];
 
-	for (size_t i = 0; i < scene.nodes.size(); i++) {
-		const tinygltf::Node node = gltfModel.nodes[scene.nodes[i]];
-		loadNode(data, nullptr, node, scene.nodes[i], gltfModel);
+	int32_t meshNodeIdx{ -1 };
+	for (size_t i = 0; i < gltfModel.nodes.size(); ++i) {
+		loadNode(data, gltfModel.nodes[i], gltfModel);
+		if (data.nodes.back().mesh > -1) {
+			meshNodeIdx = i;
+		}
+	}
+
+	// set parent indices for loaded nodes
+	for (int i = 0; i < data.nodes.size(); ++i) {
+		for (int32_t child : data.nodes[i].children) {
+			data.nodes[child].parentIdx = i;
+		}
 	}
 
 	if (gltfModel.animations.size() > 0) {
 		loadAnimations(data, gltfModel);
 	}
 
-	loadSkins(data, gltfModel);
+	loadSkins(data, gltfModel, meshNodeIdx);
 
-	for (auto node : data.linearNodes) {
-		// Assign skins
-		if (node->skinIndex > -1) {
-			node->skin = data.skins[node->skinIndex];
-		}
-		// Initial pose
-		if (node->mesh) {
-			node->update();
-		}
-	}
+	//for (NodeAsset& node : data.linearNodes) {
+	//	// Initial pose
+	//	if (node.mesh > -1) {
+	//		node.update();
+	//	}
+	//}
 
 	SkeletalAnimationInfo animInfo;
 	animInfo.nodesSize = data.nodes.size() * sizeof(Node);
@@ -822,6 +829,7 @@ int main(int argc, char* argv[])
 
 					//extractNodesGLTF(model, p.path(), folder, convstate);
 					extractSkeletalAnimation(model, p.path(), folder);
+
 				}
 			}
 		}

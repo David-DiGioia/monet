@@ -13,6 +13,9 @@
 #include "asset_loader.h"
 #include "json.hpp"
 
+// Changing this value here also requires changing it in the vertex shader
+constexpr uint32_t MAX_NUM_JOINTS{ 128 };
+
 // ------------------------------------------------------------------------------------------ //
 //                                         Vertex                                             //
 // ------------------------------------------------------------------------------------------ //
@@ -59,66 +62,21 @@ enum class VertexFormat : uint32_t
 VertexInputDescription getVertexDescription(uint32_t attrFlags, uint32_t stride);
 
 // ------------------------------------------------------------------------------------------ //
-//                                         Mesh                                               //
-// ------------------------------------------------------------------------------------------ //
-
-struct AbstractMesh {
-	VertexFormat vertexFormat;
-	// vertex data on CPU
-	std::vector<uint16_t> indices;
-	// vertex data on GPU
-	AllocatedBuffer vertexBuffer;
-	AllocatedBuffer indexBuffer;
-};
-
-template <typename V>
-struct Mesh : public AbstractMesh {
-	// vertex data on CPU
-	std::vector<V> vertices;
-};
-
-struct MeshBounds {
-
-	float origin[3];
-	float radius;
-	float extents[3];
-};
-
-
-// ------------------------------------------------------------------------------------------ //
 //                                         Skeleton                                           //
 // ------------------------------------------------------------------------------------------ //
 
-struct Skin;
-
-struct Node {
-	Node* parent;
-	uint32_t index;
-	std::vector<Node*> children;
-	glm::mat4 matrix;
-	std::string name;
-	Mesh<VertexSkinned>* mesh;
-	Skin* skin;
-	int32_t skinIndex = -1;
-	glm::vec3 translation{};
-	glm::vec3 scale{ 1.0f };
-	glm::quat rotation{};
-	//BoundingBox bvh;
-	//BoundingBox aabb;
-
-	glm::mat4 localMatrix();
-	glm::mat4 getMatrix();
-	void update();
-	~Node();
-};
+struct Node;
 
 struct Skin {
 	std::string name;
-	Node* skeletonRoot{ nullptr };
+	Node* skeletonRoot{}; // node which is root of skeleton
+	Node* meshNode{}; // node which has a pointer to the mesh
 	std::vector<glm::mat4> inverseBindMatrices;
 	std::vector<Node*> joints;
 	AllocatedBuffer ssbo; // pass actual joint matrices for current animation frame using ssbo
 	VkDescriptorSet descriptorSet;
+
+	void update();
 };
 
 enum class Interpolation {
@@ -137,7 +95,7 @@ enum class NodeProperty {
 struct AnimationChannel {
 	enum PathType { TRANSLATION, ROTATION, SCALE };
 	PathType path;
-	Node* node;
+	uint32_t nodeIdx;
 	uint32_t samplerIndex;
 };
 
@@ -156,11 +114,68 @@ struct Animation {
 	float end = std::numeric_limits<float>::min();
 };
 
+struct Mesh;
+struct RenderObject;
+
+struct Node {
+	Node* parent;
+	std::vector<Node*> children;
+	glm::mat4 matrix;
+	glm::mat4 cachedMatrix;
+	std::string name;
+	RenderObject* renderObject;
+	Skin* skin;
+	glm::vec3 translation{};
+	glm::vec3 scale{ 1.0f };
+	glm::quat rotation{};
+	//BoundingBox bvh;
+	//BoundingBox aabb;
+
+	glm::mat4 localMatrix();
+	glm::mat4 getMatrix();
+	glm::mat4 getCachedMatrix();
+	//void update();
+	~Node();
+};
+
 struct SkeletalAnimationData {
 	std::vector<Node*> nodes;
 	std::vector<Node*> linearNodes;
+	std::vector<Animation*> animations;
 	std::vector<Skin*> skins;
+	//Skin* skin;
+};
+
+// Heap allocated space where the animation data lives. These buffers will have many pointers pointing to them.
+struct SkeletalAnimationDataPool {
+	std::vector<Node> nodes;
+	std::vector<Node> linearNodes;
 	std::vector<Animation> animations;
+	std::vector<Skin> skins;
+};
+
+// ------------------------------------------------------------------------------------------ //
+//                                         Mesh                                               //
+// ------------------------------------------------------------------------------------------ //
+
+struct Mesh {
+	VertexFormat vertexFormat;
+	// vertex data on CPU
+	std::vector<Vertex> vertices;
+	std::vector<VertexSkinned> verticesSkinned;
+	std::vector<uint16_t> indices;
+	// vertex data on GPU
+	AllocatedBuffer vertexBuffer;
+	AllocatedBuffer indexBuffer;
+
+	SkeletalAnimationData skel;
+};
+
+struct MeshBounds {
+
+	float origin[3];
+	float radius;
+	float extents[3];
 };
 
 // ------------------------------------------------------------------------------------------ //
@@ -192,18 +207,26 @@ struct MaterialCreateInfo {
 	std::vector<Texture> bindingTextures;
 };
 
-struct RenderObject {
-	AbstractMesh* mesh;
-	Material* material;
+struct renderObjectUB {
 	mutable glm::mat4 transformMatrix;
+};
+
+struct renderObjectSkinnedUB {
+	mutable glm::mat4 transformMatrix;
+	glm::mat4 jointMatrices[MAX_NUM_JOINTS]{};
+	float jointCount{ 0 };
+};
+
+struct RenderObject {
+	Mesh* mesh;
+	Material* material;
+	//mutable glm::mat4 transformMatrix;
 	bool castShadow;
 
-	// Skinning
-	std::vector<Node*> nodes;
-	std::vector<Skin*> skins;
-	std::vector<Animation> animations;
-
 	bool operator<(const RenderObject& other) const;
+
+	renderObjectUB* uniformBlock;
+	renderObjectSkinnedUB* uniformBlockSkinned;
 };
 
 // ------------------------------------------------------------------------------------------ //
@@ -212,6 +235,40 @@ struct RenderObject {
 
 
 namespace assets {
+
+	// Serializable version of node that we convert glTF files to before compressing and writing to disk
+	struct NodeAsset {
+		int32_t parentIdx;
+		//int32_t indexGLTF;
+		std::vector<int32_t> children;
+		glm::mat4 matrix;
+		std::string name;
+		int32_t mesh;
+		//Skin* skin;
+		int32_t skinIndex = -1;
+		glm::vec3 translation{};
+		glm::vec3 scale{ 1.0f };
+		glm::quat rotation{};
+		//BoundingBox bvh;
+		//BoundingBox aabb;
+	};
+
+	struct SkinAsset {
+		std::string name;
+		int32_t skeletonRootIdx{}; // index of node which is root of skeleton
+		int32_t meshNodeIdx{};
+		std::vector<glm::mat4> inverseBindMatrices;
+		std::vector<int32_t> joints; // indices of nodes
+		AllocatedBuffer ssbo; // pass actual joint matrices for current animation frame using ssbo
+		VkDescriptorSet descriptorSet;
+	};
+
+	struct SkeletalAnimationDataAsset {
+		std::vector<NodeAsset> nodes;
+		std::vector<NodeAsset> linearNodes;
+		std::vector<Animation> animations;
+		std::vector<SkinAsset> skins;
+	};
 
 	struct MeshInfo {
 		// size in bytes
@@ -241,6 +298,8 @@ namespace assets {
 		std::string originalFile;
 		assets::CompressionMode compressionMode;
 	};
+
+	SkeletalAnimationInfo readSkeletalAnimationInfo(nlohmann::json& metadata);
 
 	void unpackSkeletalAnimation(SkeletalAnimationInfo* info, const char* sourcebuffer, char* nodeBuffer, char* skinBuffer, char* animationBuffer);
 
