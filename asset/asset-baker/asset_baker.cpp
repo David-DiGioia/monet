@@ -660,7 +660,7 @@ void loadNode(SkeletalAnimationDataAsset& data, const tinygltf::Node& node, cons
 	NodeAsset newNode{};
 	//newNode.parentIdx = parentIdx;
 	newNode.name = node.name;
-	newNode.skinIndex = node.skin;
+	//newNode.skinIndex = node.skin;
 	newNode.matrix = glm::mat4(1.0f);
 	newNode.mesh = node.mesh;
 

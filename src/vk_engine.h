@@ -284,6 +284,7 @@ public:
 	AllocatedBuffer _sceneParameterBuffer;
 
 	VkDescriptorSetLayout _objectSetLayout;
+	VkDescriptorSetLayout _skinSetLayout;
 
 	UploadContext _uploadContext;
 

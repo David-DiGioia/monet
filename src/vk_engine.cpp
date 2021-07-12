@@ -424,17 +424,7 @@ const RenderObject* VulkanEngine::createRenderObject(const std::string& meshName
 	object.mesh = getMesh(meshName);
 	object.material = getMaterial(matName);
 	object.castShadow = castShadow;
-
-	if (object.mesh->skel.skins.size() > 0) {
-		object.uniformBlock = nullptr;
-		object.uniformBlockSkinned = new renderObjectSkinnedUB{}; // TODO: free this eventually
-		object.uniformBlockSkinned->jointCount = std::min((uint32_t)object.mesh->skel.skins[0]->joints.size(), MAX_NUM_JOINTS);
-		object.mesh->skel.skins[0]->update();
-	} else {
-		object.uniformBlockSkinned = nullptr;
-		object.uniformBlock = new renderObjectUB{}; // TODO: free this eventually
-		object.uniformBlock->transformMatrix = glm::mat4(1.0f);
-	}
+	object.uniformBlock.transformMatrix = glm::mat4(1.0f);
 
 	return &(*_renderables.insert(object));
 }
@@ -502,14 +492,68 @@ void VulkanEngine::loadSkeletalAnimation(const std::string& name, const std::str
 	assets::loadBinaryFile(path.c_str(), assetFile, metadata);
 	assets::SkeletalAnimationInfo info{ assets::readSkeletalAnimationInfo(metadata) };
 
-	// we heap allocate this so the pointers in SkeletalAnimationData can point to it for duration of its lifetime
-	// TODO: we must eventually delete this...
+	assets::SkeletalAnimationDataAsset skelAsset{};
+	skelAsset.nodes.resize(info.nodesSize / sizeof(assets::NodeAsset));
+	skelAsset.linearNodes.resize(info.linearNodesSize / sizeof(assets::NodeAsset));
+	skelAsset.skins.resize(info.skinsSize / sizeof(assets::SkinAsset));
+	skelAsset.animations.resize(info.animationsSize / sizeof(Animation));
+	assets::unpackSkeletalAnimation(&info, assetFile.binaryBlob.data(), (char*)skelAsset.nodes.data(), (char*)skelAsset.skins.data(), (char*)skelAsset.animations.data());
+
+	// TODO: eventually free skelPool
 	SkeletalAnimationDataPool* skelPool{ new SkeletalAnimationDataPool{} };
 	skelPool->nodes.resize(info.nodesSize / sizeof(Node));
-	skelPool->linearNodes.resize(info.linearNodesSize / sizeof(Node));
 	skelPool->skins.resize(info.skinsSize / sizeof(Skin));
 	skelPool->animations.resize(info.animationsSize / sizeof(Animation));
-	assets::unpackSkeletalAnimation(&info, assetFile.binaryBlob.data(), (char*)skelPool->nodes.data(), (char*)skelPool->skins.data(), (char*)skelPool->animations.data());
+
+	// convert assets to real thing
+
+	for (int i = 0; i < skelAsset.nodes.size(); ++i) {
+		skelPool->nodes[i].parent = &skelPool->nodes[skelAsset.nodes[i].parentIdx];
+		skelPool->nodes[i].matrix = skelAsset.nodes[i].matrix;
+		skelPool->nodes[i].cachedMatrix = glm::mat4(1.0f);
+		skelPool->nodes[i].name = skelAsset.nodes[i].name;
+		skelPool->nodes[i].translation = skelAsset.nodes[i].translation;
+		skelPool->nodes[i].scale = skelAsset.nodes[i].scale;
+		skelPool->nodes[i].rotation = skelAsset.nodes[i].rotation;
+	}
+
+	for (int i = 0; i < skelAsset.skins.size(); ++i) {
+		skelPool->skins[i].name = skelAsset.skins[i].name;
+		skelPool->skins[i].skeletonRoot = &skelPool->nodes[skelAsset.skins[i].skeletonRootIdx];
+		skelPool->skins[i].inverseBindMatrices = skelAsset.skins[i].inverseBindMatrices;
+		skelPool->skins[i].uniformBlock.jointCount = (float)std::min((uint32_t)skelPool->skins[i].joints.size(), MAX_NUM_JOINTS);
+		skelPool->skins[i].allocator = &_allocator;
+
+		for (int32_t idx : skelAsset.skins[i].joints) {
+			skelPool->skins[i].joints.push_back(&skelPool->nodes[idx]);
+		}
+
+		skelPool->skins[i].ssbo = createBuffer(sizeof(Skin::UniformBlockSkinned), VK_BUFFER_USAGE_STORAGE_BUFFER_BIT , VMA_MEMORY_USAGE_CPU_TO_GPU);
+
+		_mainDeletionQueue.pushFunction([=]() {
+			vmaDestroyBuffer(_allocator, skelPool->skins[i].ssbo._buffer, skelPool->skins[i].ssbo._allocation);
+		});
+
+		VkDescriptorSetAllocateInfo skinAllocInfo{};
+		skinAllocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
+		skinAllocInfo.descriptorPool = _descriptorPool;
+		skinAllocInfo.descriptorSetCount = 1;
+		skinAllocInfo.pSetLayouts = &_skinSetLayout;
+
+		VK_CHECK(vkAllocateDescriptorSets(_device, &skinAllocInfo, &skelPool->skins[i].descriptorSet));
+
+		VkDescriptorBufferInfo bufferInfo{};
+		bufferInfo.buffer = skelPool->skins[i].ssbo._buffer;
+		bufferInfo.offset = 0;
+		bufferInfo.range = sizeof(Skin::UniformBlockSkinned);
+
+		VkWriteDescriptorSet descriptorWrite{ vkinit::writeDescriptorBuffer(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, skelPool->skins[i].descriptorSet, &bufferInfo, 0) };
+
+		vkUpdateDescriptorSets(_device, 1, &descriptorWrite, 0, nullptr);
+	}
+
+	// skelAsset and skelPool both use same animation struct
+	skelPool->animations = skelAsset.animations;
 
 	SkeletalAnimationData& skel{ _meshes[name]->skel };
 	vkutil::bufferToPtrArray(skel.nodes, skelPool->nodes);
@@ -895,7 +939,7 @@ void VulkanEngine::initDescriptorPool() {
 
 void VulkanEngine::initObjectBuffers() {
 	for (auto i{ 0 }; i < FRAME_OVERLAP; ++i) {
-		_frames[i].objectBuffer = createBuffer(sizeof(renderObjectUB) * MAX_OBJECTS, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, VMA_MEMORY_USAGE_CPU_TO_GPU);
+		_frames[i].objectBuffer = createBuffer(sizeof(RenderObject::RenderObjectUB) * MAX_OBJECTS, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, VMA_MEMORY_USAGE_CPU_TO_GPU);
 
 		_mainDeletionQueue.pushFunction([=]() {
 			vmaDestroyBuffer(_allocator, _frames[i].objectBuffer._buffer, _frames[i].objectBuffer._allocation);
@@ -910,30 +954,41 @@ void VulkanEngine::initDescriptors()
 	VkDescriptorSetLayoutBinding sceneBind{ vkinit::descriptorsetLayoutBinding(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, 1) };
 	VkDescriptorSetLayoutBinding shadowMapBind{ vkinit::descriptorsetLayoutBinding(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT, 2) };
 
-	std::array<VkDescriptorSetLayoutBinding, 3> bindings{ cameraBind, sceneBind, shadowMapBind };
+	std::array<VkDescriptorSetLayoutBinding, 3> globalBindings{ cameraBind, sceneBind, shadowMapBind };
 
-	VkDescriptorSetLayoutCreateInfo setInfo{};
-	setInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
-	setInfo.pNext = nullptr;
-	setInfo.flags = 0;
-	setInfo.bindingCount = bindings.size();
-	setInfo.pBindings = bindings.data();
+	VkDescriptorSetLayoutCreateInfo globalSetInfo{};
+	globalSetInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
+	globalSetInfo.pNext = nullptr;
+	globalSetInfo.flags = 0;
+	globalSetInfo.bindingCount = globalBindings.size();
+	globalSetInfo.pBindings = globalBindings.data();
 
 	VkDescriptorSetLayoutBinding objectBind{ vkinit::descriptorsetLayoutBinding(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_VERTEX_BIT, 0) };
 
-	VkDescriptorSetLayoutCreateInfo setInfo2{};
-	setInfo2.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
-	setInfo2.pNext = nullptr;
-	setInfo2.flags = 0;
-	setInfo2.bindingCount = 1;
-	setInfo2.pBindings = &objectBind;
+	VkDescriptorSetLayoutCreateInfo objectSetInfo{};
+	objectSetInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
+	objectSetInfo.pNext = nullptr;
+	objectSetInfo.flags = 0;
+	objectSetInfo.bindingCount = 1;
+	objectSetInfo.pBindings = &objectBind;
 
-	VK_CHECK(vkCreateDescriptorSetLayout(_device, &setInfo, nullptr, &_globalSetLayout));
-	VK_CHECK(vkCreateDescriptorSetLayout(_device, &setInfo2, nullptr, &_objectSetLayout));
+	VkDescriptorSetLayoutBinding skinBind{ vkinit::descriptorsetLayoutBinding(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_VERTEX_BIT, 0) };
+
+	VkDescriptorSetLayoutCreateInfo skinSetInfo{};
+	skinSetInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
+	skinSetInfo.pNext = nullptr;
+	skinSetInfo.flags = 0;
+	skinSetInfo.bindingCount = 1;
+	skinSetInfo.pBindings = &skinBind;
+
+	VK_CHECK(vkCreateDescriptorSetLayout(_device, &globalSetInfo, nullptr, &_globalSetLayout));
+	VK_CHECK(vkCreateDescriptorSetLayout(_device, &objectSetInfo, nullptr, &_objectSetLayout));
+	VK_CHECK(vkCreateDescriptorSetLayout(_device, &skinSetInfo, nullptr, &_skinSetLayout));
 
 	_mainDeletionQueue.pushFunction([=]() {
 		vkDestroyDescriptorSetLayout(_device, _globalSetLayout, nullptr);
 		vkDestroyDescriptorSetLayout(_device, _objectSetLayout, nullptr);
+		vkDestroyDescriptorSetLayout(_device, _skinSetLayout, nullptr);
 	});
 
 	const size_t sceneParamBufferSize{ FRAME_OVERLAP * padUniformBufferSize(sizeof(GPUSceneData)) };
@@ -941,6 +996,8 @@ void VulkanEngine::initDescriptors()
 	_mainDeletionQueue.pushFunction([=]() {
 		vmaDestroyBuffer(_allocator, _sceneParameterBuffer._buffer, _sceneParameterBuffer._allocation);
 	});
+
+	// skin descriptor set will be allocated upon loading skin
 
 	for (auto i{ 0 }; i < FRAME_OVERLAP; ++i) {
 
@@ -990,7 +1047,7 @@ void VulkanEngine::initDescriptors()
 		VkDescriptorBufferInfo objectInfo{};
 		objectInfo.buffer = _frames[i].objectBuffer._buffer;
 		objectInfo.offset = 0;
-		objectInfo.range = sizeof(renderObjectUB) * MAX_OBJECTS;
+		objectInfo.range = sizeof(RenderObject::RenderObjectUB) * MAX_OBJECTS;
 
 		VkWriteDescriptorSet cameraWrite{ vkinit::writeDescriptorBuffer(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, _frames[i].globalDescriptor, &cameraInfo, 0) };
 		VkWriteDescriptorSet sceneWrite{ vkinit::writeDescriptorBuffer(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, _frames[i].globalDescriptor, &sceneInfo, 1) };
@@ -1718,10 +1775,10 @@ void VulkanEngine::draw()
 	// write all the objects' matrices into the SSBO (used in both shadow pass and draw objects)
 	void* objectData;
 	vmaMapMemory(_allocator, getCurrentFrame().objectBuffer._allocation, &objectData);
-	renderObjectUB* objectSSBO{ (renderObjectUB*)objectData };
+	RenderObject::RenderObjectUB* objectSSBO{ (RenderObject::RenderObjectUB*)objectData };
 	uint32_t idx{ 0 };
 	for (const RenderObject& object : _renderables) {
-		objectSSBO[idx] = *object.uniformBlock;
+		objectSSBO[idx] = object.uniformBlock;
 		++idx;
 	}
 	vmaUnmapMemory(_allocator, getCurrentFrame().objectBuffer._allocation);

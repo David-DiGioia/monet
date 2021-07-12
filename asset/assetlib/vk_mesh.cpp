@@ -182,7 +182,6 @@ assets::AssetFile assets::packSkeletalAnimation(SkeletalAnimationInfo* info, cha
 	return file;
 }
 
-
 void updateJointMatrices(Node* root, const glm::mat4& mat)
 {
 	root->cachedMatrix = root->localMatrix() * mat;
@@ -192,25 +191,26 @@ void updateJointMatrices(Node* root, const glm::mat4& mat)
 	}
 }
 
-void Skin::update()
+// m is the renderObject's transform.
+// Updates skin's joint matrices, as well as each bone's transform.
+// Also updates Skin's descriptor
+void Skin::update(const glm::mat4& m)
 {
-	glm::mat4 m = meshNode->getMatrix();
-
-	meshNode->renderObject->uniformBlockSkinned->transformMatrix = m;
 	glm::mat4 inverseTransform = glm::inverse(m);
-	//size_t numJoints = std::min((uint32_t)joints.size(), MAX_NUM_JOINTS);
-	size_t numJoints = (size_t)meshNode->renderObject->uniformBlockSkinned->jointCount;
+	size_t numJoints = (size_t)uniformBlock.jointCount;
 
 	updateJointMatrices(skeletonRoot, glm::mat4(1.0f));
 
 	for (size_t i = 0; i < numJoints; ++i) {
 		glm::mat4 jointMat = joints[i]->getCachedMatrix() * inverseBindMatrices[i];
 		jointMat = inverseTransform * jointMat;
-		meshNode->renderObject->uniformBlockSkinned->jointMatrices[i] = jointMat;
+		uniformBlock.jointMatrices[i] = jointMat;
 	}
 
-	//meshNode->renderObject->uniformBlockSkinned->jointCount = (float)numJoints;
-
+	void* data;
+	vmaMapMemory(*allocator, ssbo._allocation, &data);
+	memcpy(data, &uniformBlock, sizeof(UniformBlockSkinned));
+	vmaUnmapMemory(*allocator, ssbo._allocation);
 }
 
 // Node
@@ -279,10 +279,10 @@ void Node::update()
 
 Node::~Node()
 {
-	if (renderObject) {
-		delete renderObject;
-	}
-	for (auto& child : children) {
-		delete child;
-	}
+	//if (renderObject) {
+	//	delete renderObject;
+	//}
+	//for (auto& child : children) {
+	//	delete child;
+	//}
 }

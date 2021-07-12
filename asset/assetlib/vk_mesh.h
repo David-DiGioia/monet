@@ -70,13 +70,19 @@ struct Node;
 struct Skin {
 	std::string name;
 	Node* skeletonRoot{}; // node which is root of skeleton
-	Node* meshNode{}; // node which has a pointer to the mesh
+	//Node* meshNode{}; // node which has a pointer to the mesh
 	std::vector<glm::mat4> inverseBindMatrices;
 	std::vector<Node*> joints;
 	AllocatedBuffer ssbo; // pass actual joint matrices for current animation frame using ssbo
 	VkDescriptorSet descriptorSet;
+	VmaAllocator* allocator;
 
-	void update();
+	struct UniformBlockSkinned {
+		glm::mat4 jointMatrices[MAX_NUM_JOINTS]{};
+		float jointCount{ 0 };
+	} uniformBlock;
+
+	void update(const glm::mat4& m);
 };
 
 enum class Interpolation {
@@ -123,8 +129,6 @@ struct Node {
 	glm::mat4 matrix;
 	glm::mat4 cachedMatrix;
 	std::string name;
-	RenderObject* renderObject;
-	Skin* skin;
 	glm::vec3 translation{};
 	glm::vec3 scale{ 1.0f };
 	glm::quat rotation{};
@@ -134,7 +138,6 @@ struct Node {
 	glm::mat4 localMatrix();
 	glm::mat4 getMatrix();
 	glm::mat4 getCachedMatrix();
-	//void update();
 	~Node();
 };
 
@@ -149,7 +152,6 @@ struct SkeletalAnimationData {
 // Heap allocated space where the animation data lives. These buffers will have many pointers pointing to them.
 struct SkeletalAnimationDataPool {
 	std::vector<Node> nodes;
-	std::vector<Node> linearNodes;
 	std::vector<Animation> animations;
 	std::vector<Skin> skins;
 };
@@ -207,26 +209,17 @@ struct MaterialCreateInfo {
 	std::vector<Texture> bindingTextures;
 };
 
-struct renderObjectUB {
-	mutable glm::mat4 transformMatrix;
-};
-
-struct renderObjectSkinnedUB {
-	mutable glm::mat4 transformMatrix;
-	glm::mat4 jointMatrices[MAX_NUM_JOINTS]{};
-	float jointCount{ 0 };
-};
-
 struct RenderObject {
 	Mesh* mesh;
 	Material* material;
-	//mutable glm::mat4 transformMatrix;
 	bool castShadow;
 
-	bool operator<(const RenderObject& other) const;
+	struct RenderObjectUB {
+		mutable glm::mat4 transformMatrix;
+	} uniformBlock;
 
-	renderObjectUB* uniformBlock;
-	renderObjectSkinnedUB* uniformBlockSkinned;
+	bool operator<(const RenderObject& other) const;
+	void updateSkin();
 };
 
 // ------------------------------------------------------------------------------------------ //
@@ -239,13 +232,10 @@ namespace assets {
 	// Serializable version of node that we convert glTF files to before compressing and writing to disk
 	struct NodeAsset {
 		int32_t parentIdx;
-		//int32_t indexGLTF;
 		std::vector<int32_t> children;
 		glm::mat4 matrix;
 		std::string name;
 		int32_t mesh;
-		//Skin* skin;
-		int32_t skinIndex = -1;
 		glm::vec3 translation{};
 		glm::vec3 scale{ 1.0f };
 		glm::quat rotation{};
@@ -259,8 +249,6 @@ namespace assets {
 		int32_t meshNodeIdx{};
 		std::vector<glm::mat4> inverseBindMatrices;
 		std::vector<int32_t> joints; // indices of nodes
-		AllocatedBuffer ssbo; // pass actual joint matrices for current animation frame using ssbo
-		VkDescriptorSet descriptorSet;
 	};
 
 	struct SkeletalAnimationDataAsset {
