@@ -105,7 +105,7 @@ void GameObject::setPhysicsObject(physx::PxRigidActor* body)
 
 void GameObject::updateRenderMatrix()
 {
-	//_renderObject->transformMatrix = getGlobalMat4();
+	_renderObject->uniformBlock.transformMatrix = getGlobalMat4();
 }
 
 Transform GameObject::getTransform()

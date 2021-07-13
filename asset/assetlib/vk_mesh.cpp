@@ -229,6 +229,11 @@ void Skin::update(const glm::mat4& m)
 	vmaUnmapMemory(*allocator, ssbo._allocation);
 }
 
+void Skin::updateAnimation(float deltaTime)
+{
+
+}
+
 // Node
 
 glm::mat4 Node::localMatrix()

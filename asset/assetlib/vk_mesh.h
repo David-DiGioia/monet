@@ -83,6 +83,7 @@ struct Skin {
 	} uniformBlock;
 
 	void update(const glm::mat4& m);
+	void updateAnimation(float deltaTime);
 };
 
 enum class Interpolation {
