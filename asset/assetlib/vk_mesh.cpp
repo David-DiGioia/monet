@@ -5,6 +5,22 @@
 #include <algorithm>
 
 
+bool RenderObject::operator<(const RenderObject& other) const
+{
+	if (material->pipeline == other.material->pipeline) {
+		return mesh->vertexBuffer._buffer < other.mesh->vertexBuffer._buffer;
+	} else {
+		return material->pipeline < other.material->pipeline;
+	}
+}
+
+void RenderObject::updateSkin() const
+{
+	for (Skin* skin : mesh->skel.skins) {
+		skin->update(uniformBlock.transformMatrix);
+	}
+}
+
 VertexInputDescription getVertexDescription(uint32_t attrFlags, uint32_t stride)
 {
 	VertexInputDescription description;

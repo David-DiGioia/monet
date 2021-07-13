@@ -219,7 +219,7 @@ struct RenderObject {
 	} uniformBlock;
 
 	bool operator<(const RenderObject& other) const;
-	void updateSkin();
+	void updateSkin() const;
 };
 
 // ------------------------------------------------------------------------------------------ //

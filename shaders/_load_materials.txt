@@ -1,5 +1,6 @@
 /*
 The first two descriptor sets (for camera/scene data and object matrices) are common to all objects, so for the material we only describe the bindings to descriptor set 2
+Note: skinned meshes have descriptor set 3 as well. This is determinedc based on attr (texture attributes) as described in this file.
 
 render to texture syntax:
 

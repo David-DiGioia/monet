@@ -33,15 +33,6 @@
 #define VMA_IMPLEMENTATION
 #include "vk_mem_alloc.h"
 
-bool RenderObject::operator<(const RenderObject& other) const
-{
-	if (material->pipeline == other.material->pipeline) {
-		return mesh->vertexBuffer._buffer < other.mesh->vertexBuffer._buffer;
-	} else {
-		return material->pipeline < other.material->pipeline;
-	}
-}
-
 template<typename Mat, typename Stream>
 void printMat(const Mat& mat, Stream& out) {
 	for (auto row{ 0 }; row < mat.length(); ++row) {
@@ -842,7 +833,11 @@ void VulkanEngine::initPipeline(const MaterialCreateInfo& info, const std::strin
 		vkDestroyDescriptorSetLayout(_device, materialSetLayout, nullptr);
 	});
 
-	std::array<VkDescriptorSetLayout, 3> setLayouts{ _globalSetLayout, _objectSetLayout, materialSetLayout };
+	std::vector<VkDescriptorSetLayout> setLayouts{ _globalSetLayout, _objectSetLayout, materialSetLayout };
+	// if vertices have joint indices then they must be skinned. So we push back the skin set layout for this material
+	if (info.attributeFlags & ATTR_JOINT_INDICES) {
+		setLayouts.push_back(_skinSetLayout);
+	}
 
 	pipeline_layout_info.pushConstantRangeCount = 1;
 	pipeline_layout_info.pPushConstantRanges = &push_constant;
@@ -1778,6 +1773,7 @@ void VulkanEngine::draw()
 	RenderObject::RenderObjectUB* objectSSBO{ (RenderObject::RenderObjectUB*)objectData };
 	uint32_t idx{ 0 };
 	for (const RenderObject& object : _renderables) {
+		object.updateSkin();
 		objectSSBO[idx] = object.uniformBlock;
 		++idx;
 	}
@@ -1918,6 +1914,10 @@ void VulkanEngine::drawObjects(VkCommandBuffer cmd, const std::multiset<RenderOb
 
 			if (object.material->textureSet != VK_NULL_HANDLE) {
 				vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, object.material->pipelineLayout, 2, 1, &object.material->textureSet, 0, nullptr);
+			}
+
+			if (!object.mesh->skel.skins.empty()) {
+				vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, object.material->pipelineLayout, 3, 1, &object.mesh->skel.skins[0]->descriptorSet, 0, nullptr);
 			}
 
 			++pipelineBinds;
