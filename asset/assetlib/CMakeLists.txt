@@ -7,8 +7,8 @@ add_library (assetlib STATIC
 "asset_loader.cpp"
 "compression.h"
 "compression.cpp"
-"vk_mesh.h"
-"vk_mesh.cpp"
+"vk_mesh_asset.h"
+"vk_mesh_asset.cpp"
 )
 
 target_include_directories(assetlib PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}")

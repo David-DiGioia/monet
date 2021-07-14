@@ -14,7 +14,7 @@
 
 #include "asset_loader.h"
 #include "texture_asset.h"
-#include "vk_mesh.h"
+#include "vk_mesh_asset.h"
 
 #define TINYGLTF_IMPLEMENTATION
 #include "tiny_gltf.h"
@@ -730,9 +730,9 @@ void extractSkeletalAnimation(tinygltf::Model gltfModel, const fs::path& input, 
 	//}
 
 	SkeletalAnimationInfo animInfo;
-	animInfo.nodesSize = data.nodes.size() * sizeof(Node);
-	animInfo.linearNodesSize = data.linearNodes.size() * sizeof(Node);
-	animInfo.skinsSize = data.skins.size() * sizeof(Skin);
+	animInfo.nodesSize = data.nodes.size() * sizeof(NodeAsset);
+	animInfo.linearNodesSize = data.linearNodes.size() * sizeof(NodeAsset);
+	animInfo.skinsSize = data.skins.size() * sizeof(SkinAsset);
 	animInfo.animationsSize = data.animations.size() * sizeof(Animation);
 	animInfo.originalFile = input.string();
 
@@ -823,13 +823,10 @@ int main(int argc, char* argv[])
 						extractMeshesGLTF<Vertex>(model, p.path(), folder, convstate, VertexFormat::DEFAULT);
 					} else {
 						extractMeshesGLTF<VertexSkinned>(model, p.path(), folder, convstate, VertexFormat::SKINNED);
+						extractSkeletalAnimation(model, p.path(), folder);
 					}
 
 					//extractMaterialsGLTF(model, p.path(), folder, convstate);
-
-					//extractNodesGLTF(model, p.path(), folder, convstate);
-					extractSkeletalAnimation(model, p.path(), folder);
-
 				}
 			}
 		}

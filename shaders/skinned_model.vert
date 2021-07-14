@@ -37,14 +37,17 @@ struct ObjectData {
     mat4 model;
 };
 
+#define MAX_NUM_JOINTS 128
+
 // all object matrices
 layout (std140, set = 1, binding = 0) readonly buffer ObjectBuffer {
     ObjectData objects[]; // SSBOs can only have unsized arrays
 } objectBuffer;
 
-layout(std430, set = 1, binding = 0) readonly buffer JointMatrices {
-	mat4 jointMatrices[];
-};
+layout(set = 3, binding = 0) uniform JointMatrices {
+	mat4 jointMatrices[MAX_NUM_JOINTS];
+    float jointCount;
+} skel;
 
 layout (push_constant) uniform PushConstants
 {
@@ -55,10 +58,12 @@ layout (push_constant) uniform PushConstants
 void main()
 {
     mat4 skinMat = 
-		vJointWeights.x * jointMatrices[int(vJointIndices.x)] +
-		vJointWeights.y * jointMatrices[int(vJointIndices.y)] +
-		vJointWeights.z * jointMatrices[int(vJointIndices.z)] +
-		vJointWeights.w * jointMatrices[int(vJointIndices.w)];
+		vJointWeights.x * skel.jointMatrices[int(vJointIndices.x)] +
+		vJointWeights.y * skel.jointMatrices[int(vJointIndices.y)] +
+		vJointWeights.z * skel.jointMatrices[int(vJointIndices.z)] +
+		vJointWeights.w * skel.jointMatrices[int(vJointIndices.w)];
+
+    skinMat = mat4(1.0f);
 
     // gl_BaseInstance is the firstInstance parameter in vkCmdDraw
     // which we can use as an arbitrary integer

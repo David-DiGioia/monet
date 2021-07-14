@@ -492,9 +492,9 @@ void VulkanEngine::loadSkeletalAnimation(const std::string& name, const std::str
 
 	// TODO: eventually free skelPool
 	SkeletalAnimationDataPool* skelPool{ new SkeletalAnimationDataPool{} };
-	skelPool->nodes.resize(info.nodesSize / sizeof(Node));
-	skelPool->skins.resize(info.skinsSize / sizeof(Skin));
-	skelPool->animations.resize(info.animationsSize / sizeof(Animation));
+	skelPool->nodes.resize(skelAsset.nodes.size());
+	skelPool->skins.resize(skelAsset.skins.size());
+	skelPool->animations.resize(skelAsset.animations.size());
 
 	// convert assets to real thing
 
@@ -519,7 +519,7 @@ void VulkanEngine::loadSkeletalAnimation(const std::string& name, const std::str
 			skelPool->skins[i].joints.push_back(&skelPool->nodes[idx]);
 		}
 
-		skelPool->skins[i].ssbo = createBuffer(sizeof(Skin::UniformBlockSkinned), VK_BUFFER_USAGE_STORAGE_BUFFER_BIT , VMA_MEMORY_USAGE_CPU_TO_GPU);
+		skelPool->skins[i].ssbo = createBuffer(sizeof(Skin::UniformBlockSkinned), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT , VMA_MEMORY_USAGE_CPU_TO_GPU);
 
 		_mainDeletionQueue.pushFunction([=]() {
 			vmaDestroyBuffer(_allocator, skelPool->skins[i].ssbo._buffer, skelPool->skins[i].ssbo._allocation);
@@ -538,7 +538,7 @@ void VulkanEngine::loadSkeletalAnimation(const std::string& name, const std::str
 		bufferInfo.offset = 0;
 		bufferInfo.range = sizeof(Skin::UniformBlockSkinned);
 
-		VkWriteDescriptorSet descriptorWrite{ vkinit::writeDescriptorBuffer(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, skelPool->skins[i].descriptorSet, &bufferInfo, 0) };
+		VkWriteDescriptorSet descriptorWrite{ vkinit::writeDescriptorBuffer(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, skelPool->skins[i].descriptorSet, &bufferInfo, 0) };
 
 		vkUpdateDescriptorSets(_device, 1, &descriptorWrite, 0, nullptr);
 	}
@@ -609,6 +609,11 @@ void VulkanEngine::loadMeshes()
 						}
 					}
 
+					for (const auto& skelFile : fs::directory_iterator(file)) {
+						if (skelFile.path().extension() == ".skel") {
+							loadSkeletalAnimation(name, skelFile.path().generic_string());
+						}
+					}
 				}
 			}
 		}
@@ -967,7 +972,7 @@ void VulkanEngine::initDescriptors()
 	objectSetInfo.bindingCount = 1;
 	objectSetInfo.pBindings = &objectBind;
 
-	VkDescriptorSetLayoutBinding skinBind{ vkinit::descriptorsetLayoutBinding(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_VERTEX_BIT, 0) };
+	VkDescriptorSetLayoutBinding skinBind{ vkinit::descriptorsetLayoutBinding(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_VERTEX_BIT, 0) };
 
 	VkDescriptorSetLayoutCreateInfo skinSetInfo{};
 	skinSetInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;

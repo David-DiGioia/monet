@@ -17,6 +17,7 @@
 #include "vk_types.h"
 #include "vk_mem_alloc.h"
 #include "vk_mesh.h"
+#include "vk_mesh_asset.h"
 #include "glm/glm.hpp"
 #include "../tracy/Tracy.hpp"		// CPU profiling
 #include "../tracy/TracyVulkan.hpp"
