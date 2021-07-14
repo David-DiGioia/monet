@@ -3,6 +3,7 @@
 #include <filesystem>
 #include <chrono>
 #include <unordered_map>
+#include <unordered_set>
 #include <limits>
 
 #include "json.hpp"
@@ -483,30 +484,25 @@ bool extractMeshesGLTF(tinygltf::Model& model, const fs::path& input, const fs::
 	return true;
 }
 
-//uint32_t findNode(uint32_t parent, uint32_t index) {
-//	Node* nodeFound = nullptr;
-//	if (parent->indexGLTF == index) {
-//		return parent;
-//	}
-//	for (uint32_t child : parent->children) {
-//		nodeFound = findNode(child, index);
-//		if (nodeFound) {
-//			break;
-//		}
-//	}
-//	return nodeFound;
-//}
+int getSkeletonRootIdx(const std::vector<NodeAsset>& nodes, const std::vector<int>& joints)
+{
+	if (joints.empty()) {
+		std::cout << "Unexpected: joints vector is empty in getSkeletonRootIdx()\n";
+		return -1;
+	}
 
-//Node* nodeFromIndex(SkeletalAnimationData& data, uint32_t index) {
-//	Node* nodeFound = nullptr;
-//	for (Node& node : data.nodes) {
-//		nodeFound = findNode(&node, index);
-//		if (nodeFound) {
-//			break;
-//		}
-//	}
-//	return nodeFound;
-//}
+	std::unordered_set<int> jointsSet{ joints.begin(), joints.end() };
+
+	int joint{ joints[0] };
+	int prev{ -1 };
+
+	while (jointsSet.find(joint) != jointsSet.end()) {
+		prev = joint;
+		joint = nodes[joint].parentIdx;
+	}
+
+	return prev;
+}
 
 // from https://github.com/SaschaWillems/Vulkan-glTF-PBR/blob/master/base/VulkanglTFModel.cpp
 void loadSkins(SkeletalAnimationDataAsset& data, tinygltf::Model& gltfModel, int32_t meshNodeIdx)
@@ -519,7 +515,8 @@ void loadSkins(SkeletalAnimationDataAsset& data, tinygltf::Model& gltfModel, int
 	for (tinygltf::Skin& source : gltfModel.skins) {
 		SkinAsset newSkin{};
 		newSkin.name = source.name;
-		newSkin.skeletonRootIdx = source.skeleton;
+		// turns out, skeletonRootIdx is not mandatory for gltf files so we will calculate it ourself...
+		//newSkin.skeletonRootIdx = source.skeleton;
 		newSkin.meshNodeIdx = meshNodeIdx;
 
 		// Find joint nodes
@@ -528,6 +525,8 @@ void loadSkins(SkeletalAnimationDataAsset& data, tinygltf::Model& gltfModel, int
 				newSkin.joints.push_back(jointIndex);
 			}
 		}
+
+		newSkin.skeletonRootIdx = getSkeletonRootIdx(data.nodes, newSkin.joints);
 
 		// Get inverse bind matrices from buffer
 		if (source.inverseBindMatrices > -1) {
@@ -721,13 +720,6 @@ void extractSkeletalAnimation(tinygltf::Model gltfModel, const fs::path& input, 
 	}
 
 	loadSkins(data, gltfModel, meshNodeIdx);
-
-	//for (NodeAsset& node : data.linearNodes) {
-	//	// Initial pose
-	//	if (node.mesh > -1) {
-	//		node.update();
-	//	}
-	//}
 
 	SkeletalAnimationInfo animInfo;
 	animInfo.nodesSize = data.nodes.size() * sizeof(NodeAsset);
