@@ -733,6 +733,7 @@ void extractSkeletalAnimation(tinygltf::Model gltfModel, const fs::path& input, 
 	nlohmann::json metadata;
 
 	metadata["nodes_size"] = animInfo.nodesSize;
+	metadata["linear_nodes_size"] = animInfo.linearNodesSize;
 	metadata["skins_size"] = animInfo.skinsSize;
 	metadata["animations_size"] = animInfo.animationsSize;
 	metadata["original_file"] = animInfo.originalFile;

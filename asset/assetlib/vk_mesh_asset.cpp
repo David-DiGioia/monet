@@ -84,6 +84,7 @@ assets::SkeletalAnimationInfo assets::readSkeletalAnimationInfo(nlohmann::json& 
 	assets::SkeletalAnimationInfo info;
 
 	info.nodesSize = metadata["nodes_size"];
+	info.linearNodesSize = metadata["linear_nodes_size"];
 	info.skinsSize = metadata["skins_size"];
 	info.animationsSize = metadata["animations_size"];
 	info.originalFile = metadata["original_file"];

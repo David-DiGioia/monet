@@ -477,6 +477,8 @@ void VulkanEngine::uploadMeshSkinned(Mesh* mesh)
 
 void VulkanEngine::loadSkeletalAnimation(const std::string& name, const std::string& path)
 {
+	std::cout << "loadSkeletalAnimation...\n";
+
 	assets::AssetFile assetFile;
 	nlohmann::json metadata;
 
