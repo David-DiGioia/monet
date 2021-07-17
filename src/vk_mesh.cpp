@@ -93,14 +93,14 @@ void updateJointMatrices(Node* root, const glm::mat4& mat)
 // Also updates Skin's descriptor
 void Skin::update(const glm::mat4& m)
 {
-	glm::mat4 inverseTransform = glm::inverse(m);
+	//glm::mat4 inverseTransform = glm::inverse(m);
 	size_t numJoints = (size_t)uniformBlock.jointCount;
 
 	updateJointMatrices(skeletonRoot, glm::mat4(1.0f));
 
 	for (size_t i = 0; i < numJoints; ++i) {
 		glm::mat4 jointMat = joints[i]->getCachedMatrix() * inverseBindMatrices[i];
-		jointMat = inverseTransform * jointMat;
+		//jointMat = inverseTransform * jointMat;
 		uniformBlock.jointMatrices[i] = jointMat;
 	}
 

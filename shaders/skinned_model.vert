@@ -63,7 +63,7 @@ void main()
 		vJointWeights.z * skel.jointMatrices[int(vJointIndices.z)] +
 		vJointWeights.w * skel.jointMatrices[int(vJointIndices.w)];
 
-    skinMat = mat4(1.0f);
+    // skinMat = mat4(1.0);
 
     // gl_BaseInstance is the firstInstance parameter in vkCmdDraw
     // which we can use as an arbitrary integer

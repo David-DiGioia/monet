@@ -498,12 +498,18 @@ void VulkanEngine::loadSkeletalAnimation(const std::string& name, const std::str
 
 	// convert assets to real thing
 
+
 	for (int i = 0; i < skelAsset.nodes.size(); ++i) {
 		if (skelAsset.nodes[i].parentIdx > -1) {
 			skel.nodes[i].parent = &skel.nodes[skelAsset.nodes[i].parentIdx];
 		} else {
 			skel.nodes[i].parent = nullptr;
 		}
+
+		for (int32_t childIdx : skelAsset.nodes[i].children) {
+			skel.nodes[i].children.push_back(&skel.nodes[childIdx]);
+		}
+
 		skel.nodes[i].matrix = skelAsset.nodes[i].matrix;
 		skel.nodes[i].cachedMatrix = glm::mat4(1.0f);
 		skel.nodes[i].name = skelAsset.nodes[i].name;
@@ -515,20 +521,14 @@ void VulkanEngine::loadSkeletalAnimation(const std::string& name, const std::str
 	for (int i = 0; i < skelAsset.skins.size(); ++i) {
 		skel.skins[i].name = skelAsset.skins[i].name;
 		skel.skins[i].skeletonRoot = &skel.nodes[skelAsset.skins[i].skeletonRootIdx];
-
-		std::vector<glm::mat4> temp{ skel.skins[i].inverseBindMatrices };
-		std::vector<glm::mat4> t2{ skelAsset.skins[i].inverseBindMatrices };
-
-		t2 = temp;
-
-
 		skel.skins[i].inverseBindMatrices = skelAsset.skins[i].inverseBindMatrices;
-		skel.skins[i].uniformBlock.jointCount = (float)std::min((uint32_t)skel.skins[i].joints.size(), MAX_NUM_JOINTS);
-		skel.skins[i].allocator = &_allocator;
 
 		for (int32_t idx : skelAsset.skins[i].joints) {
 			skel.skins[i].joints.push_back(&skel.nodes[idx]);
 		}
+
+		skel.skins[i].uniformBlock.jointCount = (float)std::min((uint32_t)skel.skins[i].joints.size(), MAX_NUM_JOINTS);
+		skel.skins[i].allocator = &_allocator;
 
 		skel.skins[i].ssbo = createBuffer(sizeof(Skin::UniformBlockSkinned), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT , VMA_MEMORY_USAGE_CPU_TO_GPU);
 
