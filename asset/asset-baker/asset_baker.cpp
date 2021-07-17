@@ -724,13 +724,6 @@ void extractSkeletalAnimation(tinygltf::Model gltfModel, const fs::path& input, 
 
 	loadSkins(data, gltfModel, meshNodeIdx);
 
-	SkeletalAnimationInfo animInfo;
-	animInfo.nodesSize = data.nodes.size() * sizeof(NodeAsset);
-	animInfo.linearNodesSize = data.linearNodes.size() * sizeof(NodeAsset);
-	animInfo.skinsSize = data.skins.size() * sizeof(SkinAsset);
-	animInfo.animationsSize = data.animations.size() * sizeof(Animation);
-	animInfo.originalFile = input.string();
-
 	// serialize
 	std::string skelName{ calculateSkeletonNameGLTF() };
 	fs::path skelPath = outputFolder / (skelName + ".skel");
@@ -741,35 +734,6 @@ void extractSkeletalAnimation(tinygltf::Model gltfModel, const fs::path& input, 
 
 		oarchive(data);
 	}
-
-	//SkeletalAnimationDataAsset myData;
-
-	//{
-	//	std::ifstream ifs{ skelPath, std::ios::binary };
-	//	cereal::BinaryInputArchive iarchive(ifs);
-
-	//	iarchive(myData);
-	//}
-
-	//std::cout << myData.animations[0].channels[0].path << '\n';
-
-	/*
-	AssetFile newFile{ packSkeletalAnimation(&animInfo, (char*)data.nodes.data(), (char*)data.skins.data(), (char*)data.animations.data()) };
-
-	nlohmann::json metadata;
-
-	metadata["nodes_size"] = animInfo.nodesSize;
-	metadata["linear_nodes_size"] = animInfo.linearNodesSize;
-	metadata["skins_size"] = animInfo.skinsSize;
-	metadata["animations_size"] = animInfo.animationsSize;
-	metadata["original_file"] = animInfo.originalFile;
-
-	std::string skelName{ calculateSkeletonNameGLTF() };
-	fs::path skelPath = outputFolder / (skelName + ".skel");
-
-	//save to disk
-	saveBinaryFile(skelPath.string().c_str(), metadata, newFile);
-	*/
 }
 
 int main(int argc, char* argv[])

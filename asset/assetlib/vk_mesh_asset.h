@@ -108,23 +108,6 @@ namespace assets {
 
 	assets::AssetFile packMesh(MeshInfo* info, char* vertexData, char* indexData);
 
-	struct SkeletalAnimationInfo {
-		// sizes in bytes
-		uint32_t nodesSize;
-		uint32_t linearNodesSize;
-		uint32_t skinsSize;
-		uint32_t animationsSize;
-
-		std::string originalFile;
-		assets::CompressionMode compressionMode;
-	};
-
-	SkeletalAnimationInfo readSkeletalAnimationInfo(nlohmann::json& metadata);
-
-	void unpackSkeletalAnimation(SkeletalAnimationInfo* info, const char* sourcebuffer, char* nodeBuffer, char* skinBuffer, char* animationBuffer);
-
-	assets::AssetFile packSkeletalAnimation(SkeletalAnimationInfo* info, char* nodeData, char* skinData, char* animationData);
-
 	// Works for any vertex struct with position attribute
 	template <typename T>
 	MeshBounds calculateBounds(T* vertices, size_t count)

@@ -480,22 +480,7 @@ void VulkanEngine::uploadMeshSkinned(Mesh* mesh)
 
 void VulkanEngine::loadSkeletalAnimation(const std::string& name, const std::string& path)
 {
-	std::cout << "loadSkeletalAnimation...\n";
-
-	/*
-	assets::AssetFile assetFile;
-	nlohmann::json metadata;
-
-	assets::loadBinaryFile(path.c_str(), assetFile, metadata);
-	assets::SkeletalAnimationInfo info{ assets::readSkeletalAnimationInfo(metadata) };
-
-	assets::SkeletalAnimationDataAsset skelAsset{};
-	skelAsset.nodes.resize(info.nodesSize / sizeof(assets::NodeAsset));
-	skelAsset.linearNodes.resize(info.linearNodesSize / sizeof(assets::NodeAsset));
-	skelAsset.skins.resize(info.skinsSize / sizeof(assets::SkinAsset));
-	skelAsset.animations.resize(info.animationsSize / sizeof(Animation));
-	assets::unpackSkeletalAnimation(&info, assetFile.binaryBlob.data(), (char*)skelAsset.nodes.data(), (char*)skelAsset.skins.data(), (char*)skelAsset.animations.data());
-	*/
+	std::cout << "Loading skeletal animation...\n";
 
 	assets::SkeletalAnimationDataAsset skelAsset;
 
@@ -506,50 +491,49 @@ void VulkanEngine::loadSkeletalAnimation(const std::string& name, const std::str
 		iarchive(skelAsset);
 	}
 
-	// TODO: eventually free skelPool
-	SkeletalAnimationDataPool* skelPool{ new SkeletalAnimationDataPool{} };
-	skelPool->nodes.resize(skelAsset.nodes.size());
-	skelPool->skins.resize(skelAsset.skins.size());
-	skelPool->animations.resize(skelAsset.animations.size());
+	SkeletalAnimationData& skel{ _meshes[name]->skel };
+	skel.nodes.resize(skelAsset.nodes.size());
+	skel.skins.resize(skelAsset.skins.size());
+	skel.animations.resize(skelAsset.animations.size());
 
 	// convert assets to real thing
 
 	for (int i = 0; i < skelAsset.nodes.size(); ++i) {
 		if (skelAsset.nodes[i].parentIdx > -1) {
-			skelPool->nodes[i].parent = &skelPool->nodes[skelAsset.nodes[i].parentIdx];
+			skel.nodes[i].parent = &skel.nodes[skelAsset.nodes[i].parentIdx];
 		} else {
-			skelPool->nodes[i].parent = nullptr;
+			skel.nodes[i].parent = nullptr;
 		}
-		skelPool->nodes[i].matrix = skelAsset.nodes[i].matrix;
-		skelPool->nodes[i].cachedMatrix = glm::mat4(1.0f);
-		skelPool->nodes[i].name = skelAsset.nodes[i].name;
-		skelPool->nodes[i].translation = skelAsset.nodes[i].translation;
-		skelPool->nodes[i].scale = skelAsset.nodes[i].scale;
-		skelPool->nodes[i].rotation = skelAsset.nodes[i].rotation;
+		skel.nodes[i].matrix = skelAsset.nodes[i].matrix;
+		skel.nodes[i].cachedMatrix = glm::mat4(1.0f);
+		skel.nodes[i].name = skelAsset.nodes[i].name;
+		skel.nodes[i].translation = skelAsset.nodes[i].translation;
+		skel.nodes[i].scale = skelAsset.nodes[i].scale;
+		skel.nodes[i].rotation = skelAsset.nodes[i].rotation;
 	}
 
 	for (int i = 0; i < skelAsset.skins.size(); ++i) {
-		skelPool->skins[i].name = skelAsset.skins[i].name;
-		skelPool->skins[i].skeletonRoot = &skelPool->nodes[skelAsset.skins[i].skeletonRootIdx];
+		skel.skins[i].name = skelAsset.skins[i].name;
+		skel.skins[i].skeletonRoot = &skel.nodes[skelAsset.skins[i].skeletonRootIdx];
 
-		std::vector<glm::mat4> temp{ skelPool->skins[i].inverseBindMatrices };
+		std::vector<glm::mat4> temp{ skel.skins[i].inverseBindMatrices };
 		std::vector<glm::mat4> t2{ skelAsset.skins[i].inverseBindMatrices };
 
 		t2 = temp;
 
 
-		skelPool->skins[i].inverseBindMatrices = skelAsset.skins[i].inverseBindMatrices;
-		skelPool->skins[i].uniformBlock.jointCount = (float)std::min((uint32_t)skelPool->skins[i].joints.size(), MAX_NUM_JOINTS);
-		skelPool->skins[i].allocator = &_allocator;
+		skel.skins[i].inverseBindMatrices = skelAsset.skins[i].inverseBindMatrices;
+		skel.skins[i].uniformBlock.jointCount = (float)std::min((uint32_t)skel.skins[i].joints.size(), MAX_NUM_JOINTS);
+		skel.skins[i].allocator = &_allocator;
 
 		for (int32_t idx : skelAsset.skins[i].joints) {
-			skelPool->skins[i].joints.push_back(&skelPool->nodes[idx]);
+			skel.skins[i].joints.push_back(&skel.nodes[idx]);
 		}
 
-		skelPool->skins[i].ssbo = createBuffer(sizeof(Skin::UniformBlockSkinned), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT , VMA_MEMORY_USAGE_CPU_TO_GPU);
+		skel.skins[i].ssbo = createBuffer(sizeof(Skin::UniformBlockSkinned), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT , VMA_MEMORY_USAGE_CPU_TO_GPU);
 
 		_mainDeletionQueue.pushFunction([=]() {
-			vmaDestroyBuffer(_allocator, skelPool->skins[i].ssbo._buffer, skelPool->skins[i].ssbo._allocation);
+			vmaDestroyBuffer(_allocator, skel.skins[i].ssbo._buffer, skel.skins[i].ssbo._allocation);
 		});
 
 		VkDescriptorSetAllocateInfo skinAllocInfo{};
@@ -558,26 +542,20 @@ void VulkanEngine::loadSkeletalAnimation(const std::string& name, const std::str
 		skinAllocInfo.descriptorSetCount = 1;
 		skinAllocInfo.pSetLayouts = &_skinSetLayout;
 
-		VK_CHECK(vkAllocateDescriptorSets(_device, &skinAllocInfo, &skelPool->skins[i].descriptorSet));
+		VK_CHECK(vkAllocateDescriptorSets(_device, &skinAllocInfo, &skel.skins[i].descriptorSet));
 
 		VkDescriptorBufferInfo bufferInfo{};
-		bufferInfo.buffer = skelPool->skins[i].ssbo._buffer;
+		bufferInfo.buffer = skel.skins[i].ssbo._buffer;
 		bufferInfo.offset = 0;
 		bufferInfo.range = sizeof(Skin::UniformBlockSkinned);
 
-		VkWriteDescriptorSet descriptorWrite{ vkinit::writeDescriptorBuffer(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, skelPool->skins[i].descriptorSet, &bufferInfo, 0) };
+		VkWriteDescriptorSet descriptorWrite{ vkinit::writeDescriptorBuffer(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, skel.skins[i].descriptorSet, &bufferInfo, 0) };
 
 		vkUpdateDescriptorSets(_device, 1, &descriptorWrite, 0, nullptr);
 	}
 
 	// skelAsset and skelPool both use same animation struct
-	skelPool->animations = skelAsset.animations;
-
-	SkeletalAnimationData& skel{ _meshes[name]->skel };
-	vkutil::bufferToPtrArray(skel.nodes, skelPool->nodes);
-	vkutil::bufferToPtrArray(skel.skins, skelPool->skins);
-	vkutil::bufferToPtrArray(skel.animations, skelPool->animations);
-	skel.linearNodes = skel.nodes; // right now all nodes are linear... TODO: update this
+	skel.animations = skelAsset.animations;
 }
 
 
@@ -1949,7 +1927,7 @@ void VulkanEngine::drawObjects(VkCommandBuffer cmd, const std::multiset<RenderOb
 			}
 
 			if (!object.mesh->skel.skins.empty()) {
-				vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, object.material->pipelineLayout, 3, 1, &object.mesh->skel.skins[0]->descriptorSet, 0, nullptr);
+				vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, object.material->pipelineLayout, 3, 1, &object.mesh->skel.skins[0].descriptorSet, 0, nullptr);
 			}
 
 			++pipelineBinds;

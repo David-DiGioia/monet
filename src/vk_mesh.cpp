@@ -16,8 +16,8 @@ bool RenderObject::operator<(const RenderObject& other) const
 
 void RenderObject::updateSkin() const
 {
-	for (Skin* skin : mesh->skel.skins) {
-		skin->update(uniformBlock.transformMatrix);
+	for (Skin skin : mesh->skel.skins) {
+		skin.update(uniformBlock.transformMatrix);
 	}
 }
 
@@ -110,9 +110,13 @@ void Skin::update(const glm::mat4& m)
 	vmaUnmapMemory(*allocator, ssbo._allocation);
 }
 
-void Skin::updateAnimation(float deltaTime)
+void RenderObject::updateAnimation(float deltaTime)
 {
-
+	Animation& animation = mesh->skel.animations[activeAnimation];
+	//animation.currentTime += deltaTime;
+	//if (animation.currentTime > animation.end) {
+	//	animation.currentTime -= animation.end;
+	//}
 }
 
 // Node

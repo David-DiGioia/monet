@@ -83,7 +83,6 @@ struct Skin {
 	} uniformBlock;
 
 	void update(const glm::mat4& m);
-	void updateAnimation(float deltaTime);
 };
 
 enum class Interpolation {
@@ -161,16 +160,8 @@ struct Node {
 };
 
 struct SkeletalAnimationData {
-	std::vector<Node*> nodes;
-	std::vector<Node*> linearNodes;
-	std::vector<Animation*> animations;
-	std::vector<Skin*> skins;
-	//Skin* skin;
-};
-
-// Heap allocated space where the animation data lives. These buffers will have many pointers pointing to them.
-struct SkeletalAnimationDataPool {
 	std::vector<Node> nodes;
+	//std::vector<Node*> linearNodes;
 	std::vector<Animation> animations;
 	std::vector<Skin> skins;
 };
@@ -232,6 +223,7 @@ struct RenderObject {
 	Mesh* mesh;
 	Material* material;
 	bool castShadow;
+	int32_t activeAnimation;
 
 	struct RenderObjectUB {
 		mutable glm::mat4 transformMatrix;
@@ -239,4 +231,5 @@ struct RenderObject {
 
 	bool operator<(const RenderObject& other) const;
 	void updateSkin() const;
+	void updateAnimation(float deltaTime);
 };
