@@ -1783,7 +1783,9 @@ void VulkanEngine::draw()
 	RenderObject::RenderObjectUB* objectSSBO{ (RenderObject::RenderObjectUB*)objectData };
 	uint32_t idx{ 0 };
 	for (const RenderObject& object : _renderables) {
-		object.updateSkin();
+		if (object.animated()) {
+			object.updateAnimation(_delta);
+		}
 		objectSSBO[idx] = object.uniformBlock;
 		++idx;
 	}

@@ -130,6 +130,7 @@ struct Animation {
 	std::vector<AnimationChannel> channels;
 	float start = std::numeric_limits<float>::max();
 	float end = std::numeric_limits<float>::min();
+	float currentTime{ 0.0f };
 
 	template<class Archive>
 	void serialize(Archive& archive)
@@ -231,5 +232,6 @@ struct RenderObject {
 
 	bool operator<(const RenderObject& other) const;
 	void updateSkin() const;
-	void updateAnimation(float deltaTime);
+	void updateAnimation(float deltaTime) const;
+	bool animated() const;
 };

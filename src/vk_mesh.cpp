@@ -110,13 +110,57 @@ void Skin::update(const glm::mat4& m)
 	vmaUnmapMemory(*allocator, ssbo._allocation);
 }
 
-void RenderObject::updateAnimation(float deltaTime)
+void RenderObject::updateAnimation(float deltaTime) const
 {
 	Animation& animation = mesh->skel.animations[activeAnimation];
-	//animation.currentTime += deltaTime;
-	//if (animation.currentTime > animation.end) {
-	//	animation.currentTime -= animation.end;
-	//}
+	animation.currentTime += deltaTime;
+	if (animation.currentTime > animation.end) {
+		animation.currentTime -= animation.end;
+	}
+
+	for (AnimationChannel& channel : animation.channels) {
+
+		AnimationSampler& sampler = animation.samplers[channel.samplerIndex];
+		Node& node = mesh->skel.nodes[channel.nodeIdx];
+
+		for (size_t i = 0; i < sampler.inputs.size() - 1; ++i) {
+			// Get the input keyframe values for the current time stamp
+			if ((animation.currentTime >= sampler.inputs[i]) && (animation.currentTime <= sampler.inputs[i + 1])) {
+				// Calculate interpolation value based on timestamp
+				// at input1, a = 0, at input2 a=1, with linear interpolation
+				float a = (animation.currentTime - sampler.inputs[i]) / (sampler.inputs[i + 1] - sampler.inputs[i]);
+
+				if (channel.path == AnimationChannel::TRANSLATION) {
+					node.translation = glm::mix(sampler.outputsVec4[i], sampler.outputsVec4[i + 1], a);
+				}
+				else if (channel.path == AnimationChannel::ROTATION) {
+					glm::quat q1;
+					q1.x = sampler.outputsVec4[i].x;
+					q1.y = sampler.outputsVec4[i].y;
+					q1.z = sampler.outputsVec4[i].z;
+					q1.w = sampler.outputsVec4[i].w;
+
+					glm::quat q2;
+					q2.x = sampler.outputsVec4[i + 1].x;
+					q2.y = sampler.outputsVec4[i + 1].y;
+					q2.z = sampler.outputsVec4[i + 1].z;
+					q2.w = sampler.outputsVec4[i + 1].w;
+
+					node.rotation = glm::normalize(glm::slerp(q1, q2, a));
+				}
+				else if (channel.path == AnimationChannel::SCALE) {
+					node.scale = glm::mix(sampler.outputsVec4[i], sampler.outputsVec4[i + 1], a);
+				}
+			}
+		}
+	}
+
+	updateSkin();
+}
+
+bool RenderObject::animated() const
+{
+	return !mesh->skel.animations.empty();
 }
 
 // Node
