@@ -73,7 +73,6 @@ target_link_libraries(imgui PUBLIC Vulkan::Vulkan sdl2)
 
 target_include_directories(stb_image INTERFACE "${CMAKE_CURRENT_SOURCE_DIR}/stb_image" )
 
-
 ## FMT LIB
 target_include_directories(fmt_lib PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/fmt_lib")
 

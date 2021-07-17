@@ -33,6 +33,8 @@ target_include_directories(monet PUBLIC
 target_include_directories(monet PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/../third_party/SDL2_mixer-2.0.4/include")
 target_link_libraries(monet "${CMAKE_CURRENT_SOURCE_DIR}/../third_party/SDL2_mixer-2.0.4/lib/x64/SDL2_mixer.lib")
 
+target_include_directories(monet PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/../third_party/cereal")
+
 #target_link_libraries(monet ${AUDIO_LIB})
 
 target_link_libraries(monet

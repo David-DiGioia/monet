@@ -29,6 +29,9 @@
 #include "SDL_mixer.h"
 #include "util.h"
 #include "texture_asset.h"
+#include "cereal/archives/binary.hpp"
+#include "cereal/types/vector.hpp"
+#include "cereal/types/string.hpp"
 
 #define VMA_IMPLEMENTATION
 #include "vk_mem_alloc.h"
@@ -254,11 +257,11 @@ void VulkanEngine::init(Application* app)
 	initDefaultRenderpass();
 	initFramebuffers(false);
 	initSyncStructures();
-	loadMeshes();
 	initDescriptorPool();
 	initObjectBuffers();
 	initShadowPass();
 	initDescriptors(); // descriptors are needed at pipeline create, so before materials
+	loadMeshes();
 	loadMaterials();
 	initScene();
 	initBoundingSphere();
@@ -479,6 +482,7 @@ void VulkanEngine::loadSkeletalAnimation(const std::string& name, const std::str
 {
 	std::cout << "loadSkeletalAnimation...\n";
 
+	/*
 	assets::AssetFile assetFile;
 	nlohmann::json metadata;
 
@@ -491,6 +495,16 @@ void VulkanEngine::loadSkeletalAnimation(const std::string& name, const std::str
 	skelAsset.skins.resize(info.skinsSize / sizeof(assets::SkinAsset));
 	skelAsset.animations.resize(info.animationsSize / sizeof(Animation));
 	assets::unpackSkeletalAnimation(&info, assetFile.binaryBlob.data(), (char*)skelAsset.nodes.data(), (char*)skelAsset.skins.data(), (char*)skelAsset.animations.data());
+	*/
+
+	assets::SkeletalAnimationDataAsset skelAsset;
+
+	{
+		std::ifstream ifs{ path, std::ios::binary };
+		cereal::BinaryInputArchive iarchive(ifs);
+
+		iarchive(skelAsset);
+	}
 
 	// TODO: eventually free skelPool
 	SkeletalAnimationDataPool* skelPool{ new SkeletalAnimationDataPool{} };
@@ -501,7 +515,11 @@ void VulkanEngine::loadSkeletalAnimation(const std::string& name, const std::str
 	// convert assets to real thing
 
 	for (int i = 0; i < skelAsset.nodes.size(); ++i) {
-		skelPool->nodes[i].parent = &skelPool->nodes[skelAsset.nodes[i].parentIdx];
+		if (skelAsset.nodes[i].parentIdx > -1) {
+			skelPool->nodes[i].parent = &skelPool->nodes[skelAsset.nodes[i].parentIdx];
+		} else {
+			skelPool->nodes[i].parent = nullptr;
+		}
 		skelPool->nodes[i].matrix = skelAsset.nodes[i].matrix;
 		skelPool->nodes[i].cachedMatrix = glm::mat4(1.0f);
 		skelPool->nodes[i].name = skelAsset.nodes[i].name;
@@ -513,6 +531,13 @@ void VulkanEngine::loadSkeletalAnimation(const std::string& name, const std::str
 	for (int i = 0; i < skelAsset.skins.size(); ++i) {
 		skelPool->skins[i].name = skelAsset.skins[i].name;
 		skelPool->skins[i].skeletonRoot = &skelPool->nodes[skelAsset.skins[i].skeletonRootIdx];
+
+		std::vector<glm::mat4> temp{ skelPool->skins[i].inverseBindMatrices };
+		std::vector<glm::mat4> t2{ skelAsset.skins[i].inverseBindMatrices };
+
+		t2 = temp;
+
+
 		skelPool->skins[i].inverseBindMatrices = skelAsset.skins[i].inverseBindMatrices;
 		skelPool->skins[i].uniformBlock.jointCount = (float)std::min((uint32_t)skelPool->skins[i].joints.size(), MAX_NUM_JOINTS);
 		skelPool->skins[i].allocator = &_allocator;

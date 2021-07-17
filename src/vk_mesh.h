@@ -104,6 +104,12 @@ struct AnimationChannel {
 	PathType path;
 	uint32_t nodeIdx;
 	uint32_t samplerIndex;
+
+	template<class Archive>
+	void serialize(Archive& archive)
+	{
+		archive(path, nodeIdx, samplerIndex); // serialize things by passing them to the archive
+	}
 };
 
 struct AnimationSampler {
@@ -111,6 +117,12 @@ struct AnimationSampler {
 	InterpolationType interpolation;
 	std::vector<float> inputs;
 	std::vector<glm::vec4> outputsVec4;
+
+	template<class Archive>
+	void serialize(Archive& archive)
+	{
+		archive(interpolation, inputs, outputsVec4); // serialize things by passing them to the archive
+	}
 };
 
 struct Animation {
@@ -119,6 +131,12 @@ struct Animation {
 	std::vector<AnimationChannel> channels;
 	float start = std::numeric_limits<float>::max();
 	float end = std::numeric_limits<float>::min();
+
+	template<class Archive>
+	void serialize(Archive& archive)
+	{
+		archive(name, samplers, channels, start, end); // serialize things by passing them to the archive
+	}
 };
 
 struct Mesh;

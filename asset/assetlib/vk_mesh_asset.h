@@ -13,6 +13,34 @@
 #include "asset_loader.h"
 #include "vk_mesh.h"
 
+namespace glm
+{
+
+	template<class Archive> void serialize(Archive& archive, glm::vec2& v) { archive(v.x, v.y); }
+	template<class Archive> void serialize(Archive& archive, glm::vec3& v) { archive(v.x, v.y, v.z); }
+	template<class Archive> void serialize(Archive& archive, glm::vec4& v) { archive(v.x, v.y, v.z, v.w); }
+	template<class Archive> void serialize(Archive& archive, glm::ivec2& v) { archive(v.x, v.y); }
+	template<class Archive> void serialize(Archive& archive, glm::ivec3& v) { archive(v.x, v.y, v.z); }
+	template<class Archive> void serialize(Archive& archive, glm::ivec4& v) { archive(v.x, v.y, v.z, v.w); }
+	template<class Archive> void serialize(Archive& archive, glm::uvec2& v) { archive(v.x, v.y); }
+	template<class Archive> void serialize(Archive& archive, glm::uvec3& v) { archive(v.x, v.y, v.z); }
+	template<class Archive> void serialize(Archive& archive, glm::uvec4& v) { archive(v.x, v.y, v.z, v.w); }
+	template<class Archive> void serialize(Archive& archive, glm::dvec2& v) { archive(v.x, v.y); }
+	template<class Archive> void serialize(Archive& archive, glm::dvec3& v) { archive(v.x, v.y, v.z); }
+	template<class Archive> void serialize(Archive& archive, glm::dvec4& v) { archive(v.x, v.y, v.z, v.w); }
+
+	// glm matrices serialization
+	template<class Archive> void serialize(Archive& archive, glm::mat2& m) { archive(m[0], m[1]); }
+	template<class Archive> void serialize(Archive& archive, glm::dmat2& m) { archive(m[0], m[1]); }
+	template<class Archive> void serialize(Archive& archive, glm::mat3& m) { archive(m[0], m[1], m[2]); }
+	template<class Archive> void serialize(Archive& archive, glm::mat4& m) { archive(m[0], m[1], m[2], m[3]); }
+	template<class Archive> void serialize(Archive& archive, glm::dmat4& m) { archive(m[0], m[1], m[2], m[3]); }
+
+	template<class Archive> void serialize(Archive& archive, glm::quat& q) { archive(q.x, q.y, q.z, q.w); }
+	template<class Archive> void serialize(Archive& archive, glm::dquat& q) { archive(q.x, q.y, q.z, q.w); }
+
+}
+
 namespace assets {
 
 	// Serializable version of node that we convert glTF files to before compressing and writing to disk
@@ -27,6 +55,12 @@ namespace assets {
 		glm::quat rotation{};
 		//BoundingBox bvh;
 		//BoundingBox aabb;
+
+		template<class Archive>
+		void serialize(Archive& archive)
+		{
+			archive(parentIdx, children, matrix, name, mesh, translation, scale, rotation); // serialize things by passing them to the archive
+		}
 	};
 
 	struct SkinAsset {
@@ -35,6 +69,12 @@ namespace assets {
 		int32_t meshNodeIdx{};
 		std::vector<glm::mat4> inverseBindMatrices;
 		std::vector<int32_t> joints; // indices of nodes
+
+		template<class Archive>
+		void serialize(Archive& archive)
+		{
+			archive(skeletonRootIdx, meshNodeIdx, inverseBindMatrices, joints); // serialize things by passing them to the archive
+		}
 	};
 
 	struct SkeletalAnimationDataAsset {
@@ -42,6 +82,12 @@ namespace assets {
 		std::vector<NodeAsset> linearNodes;
 		std::vector<Animation> animations;
 		std::vector<SkinAsset> skins;
+
+		template<class Archive>
+		void serialize(Archive& archive)
+		{
+			archive(nodes, linearNodes, animations, skins); // serialize things by passing them to the archive
+		}
 	};
 
 	struct MeshInfo {

@@ -28,6 +28,9 @@
 #include "glm/gtc/matrix_transform.hpp"
 #include "glm/gtc/type_ptr.hpp"
 #include "glm/gtx/string_cast.hpp"
+#include "cereal/archives/binary.hpp"
+#include "cereal/types/vector.hpp"
+#include "cereal/types/string.hpp"
 
 namespace fs = std::filesystem;
 using namespace assets;
@@ -507,7 +510,7 @@ int getSkeletonRootIdx(const std::vector<NodeAsset>& nodes, const std::vector<in
 // from https://github.com/SaschaWillems/Vulkan-glTF-PBR/blob/master/base/VulkanglTFModel.cpp
 void loadSkins(SkeletalAnimationDataAsset& data, tinygltf::Model& gltfModel, int32_t meshNodeIdx)
 {
-	
+
 	if (gltfModel.skins.size() > 1) {
 		std::cout << "Error: More than one skin not supported yet!\n";
 	}
@@ -657,7 +660,7 @@ void loadNode(SkeletalAnimationDataAsset& data, const tinygltf::Node& node, cons
 {
 	// parent index is set by caller after all nodes are loaded
 	NodeAsset newNode{};
-	//newNode.parentIdx = parentIdx;
+	newNode.parentIdx = -1;
 	newNode.name = node.name;
 	//newNode.skinIndex = node.skin;
 	newNode.matrix = glm::mat4(1.0f);
@@ -728,6 +731,29 @@ void extractSkeletalAnimation(tinygltf::Model gltfModel, const fs::path& input, 
 	animInfo.animationsSize = data.animations.size() * sizeof(Animation);
 	animInfo.originalFile = input.string();
 
+	// serialize
+	std::string skelName{ calculateSkeletonNameGLTF() };
+	fs::path skelPath = outputFolder / (skelName + ".skel");
+
+	{
+		std::ofstream ofs{ skelPath, std::ios::binary };
+		cereal::BinaryOutputArchive oarchive(ofs);
+
+		oarchive(data);
+	}
+
+	//SkeletalAnimationDataAsset myData;
+
+	//{
+	//	std::ifstream ifs{ skelPath, std::ios::binary };
+	//	cereal::BinaryInputArchive iarchive(ifs);
+
+	//	iarchive(myData);
+	//}
+
+	//std::cout << myData.animations[0].channels[0].path << '\n';
+
+	/*
 	AssetFile newFile{ packSkeletalAnimation(&animInfo, (char*)data.nodes.data(), (char*)data.skins.data(), (char*)data.animations.data()) };
 
 	nlohmann::json metadata;
@@ -743,6 +769,7 @@ void extractSkeletalAnimation(tinygltf::Model gltfModel, const fs::path& input, 
 
 	//save to disk
 	saveBinaryFile(skelPath.string().c_str(), metadata, newFile);
+	*/
 }
 
 int main(int argc, char* argv[])
