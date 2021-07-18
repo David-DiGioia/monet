@@ -564,7 +564,7 @@ void prepareShadowMapFramebuffer(VulkanEngine& engine, const ShadowGlobalResourc
 	});
 }
 
-void setupDescriptorSetLayouts(VulkanEngine& engine, std::array<VkDescriptorSetLayout, 2>& setLayoutsOut, VkPipelineLayout* pipelineLayout)
+void setupShadowDescriptorSetLayoutsInternal(VulkanEngine& engine, std::vector<VkDescriptorSetLayout>& setLayoutsOut, VkPipelineLayout* pipelineLayout, bool isSkinned)
 {
 	// GLSL:
 	//layout(set = 0, binding = 0) uniform LightBuffer {
@@ -579,6 +579,12 @@ void setupDescriptorSetLayouts(VulkanEngine& engine, std::array<VkDescriptorSetL
 	lightSetInfo.bindingCount = 1;
 	lightSetInfo.pBindings = &lightBinding;
 
+	setLayoutsOut.emplace_back();
+	vkCreateDescriptorSetLayout(engine._device, &lightSetInfo, nullptr, &setLayoutsOut[0]);
+	engine._mainDeletionQueue.pushFunction([=, &engine]() {
+		vkDestroyDescriptorSetLayout(engine._device, setLayoutsOut[0], nullptr);
+	});
+
 	// GLSL:
 	//layout(std140, set = 1, binding = 0) readonly buffer ObjectBuffer {
 	//	ObjectData objects[]; // SSBOs can only have unsized arrays
@@ -592,12 +598,33 @@ void setupDescriptorSetLayouts(VulkanEngine& engine, std::array<VkDescriptorSetL
 	objectSetInfo.bindingCount = 1;
 	objectSetInfo.pBindings = &objectBinding;
 
-	vkCreateDescriptorSetLayout(engine._device, &lightSetInfo, nullptr, &setLayoutsOut[0]);
+	setLayoutsOut.emplace_back();
 	vkCreateDescriptorSetLayout(engine._device, &objectSetInfo, nullptr, &setLayoutsOut[1]);
 	engine._mainDeletionQueue.pushFunction([=, &engine]() {
 		vkDestroyDescriptorSetLayout(engine._device, setLayoutsOut[1], nullptr);
-		vkDestroyDescriptorSetLayout(engine._device, setLayoutsOut[0], nullptr);
 	});
+
+	if (isSkinned) {
+		// GLSL:
+		//layout(set = 2, binding = 0) uniform JointMatrices {
+		//	mat4 jointMatrices[MAX_NUM_JOINTS];
+		//	float jointCount;
+		//} skel;
+		VkDescriptorSetLayoutBinding skinBinding{ vkinit::descriptorsetLayoutBinding(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_VERTEX_BIT, 0) };
+
+		VkDescriptorSetLayoutCreateInfo skinSetInfo{};
+		skinSetInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
+		skinSetInfo.pNext = nullptr;
+		skinSetInfo.flags = 0;
+		skinSetInfo.bindingCount = 1;
+		skinSetInfo.pBindings = &skinBinding;
+
+		setLayoutsOut.emplace_back();
+		vkCreateDescriptorSetLayout(engine._device, &skinSetInfo, nullptr, &setLayoutsOut[2]);
+		engine._mainDeletionQueue.pushFunction([=, &engine]() {
+			vkDestroyDescriptorSetLayout(engine._device, setLayoutsOut[2], nullptr);
+		});
+	}
 
 	//VkPipelineLayoutCreateInfo pPipelineLayoutCreateInfo = vks::initializers::pipelineLayoutCreateInfo(&descriptorSetLayout, 1);
 	VkPipelineLayoutCreateInfo pipelineLayoutCreateInfo{};
@@ -613,16 +640,41 @@ void setupDescriptorSetLayouts(VulkanEngine& engine, std::array<VkDescriptorSetL
 	});
 }
 
-// Only sets up the light uniform buffer descriptor set, since the objects one is already set up
-void setupDescriptorSets(VulkanEngine& engine, ShadowFrameResources& shadowFrame, VkBuffer& objectBuffer, std::array<VkDescriptorSetLayout, 2>& setLayouts)
+void setupShadowDescriptorSetLayouts(VulkanEngine& engine, std::vector<VkDescriptorSetLayout>& setLayoutsOut, VkPipelineLayout* pipelineLayout)
 {
-	// Image descriptor for the shadow map attachment
-	VkDescriptorImageInfo shadowMapDescriptor{};
-	shadowMapDescriptor.sampler = shadowFrame.depthSampler;
-	shadowMapDescriptor.imageView = shadowFrame.depth.imageView;
-	// imageLayout is which layout it will be in already, it won't change it to this for us (the renderpass transitiosn it to this for us)
-	shadowMapDescriptor.imageLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL;
+	setupShadowDescriptorSetLayoutsInternal(engine, setLayoutsOut, pipelineLayout, false);
+}
 
+void setupShadowDescriptorSetLayoutsSkinned(VulkanEngine& engine, std::vector<VkDescriptorSetLayout>& setLayoutsOut, VkPipelineLayout* pipelineLayout)
+{
+	setupShadowDescriptorSetLayoutsInternal(engine, setLayoutsOut, pipelineLayout, true);
+}
+
+void setupShadowDescriptorSetsSkinned(VulkanEngine& engine, VkBuffer& skinBuffer, VkDescriptorSetLayout setLayout, VkDescriptorSet& descriptorSet)
+{
+	VkDescriptorSetAllocateInfo allocInfoSkin{};
+	allocInfoSkin.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
+	allocInfoSkin.descriptorPool = engine._descriptorPool;
+	allocInfoSkin.descriptorSetCount = 1;
+	allocInfoSkin.pSetLayouts = &setLayout;
+
+	VK_CHECK(vkAllocateDescriptorSets(engine._device, &allocInfoSkin, &descriptorSet));
+
+	VkDescriptorBufferInfo skinInfo{};
+	skinInfo.offset = 0;
+	skinInfo.range = VK_WHOLE_SIZE;
+	skinInfo.buffer = skinBuffer;
+
+	std::vector<VkWriteDescriptorSet> writeDescriptorSets{
+		// Set 2, Binding 0 : Skin uniform buffer
+		vkinit::writeDescriptorBuffer(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, descriptorSet, &skinInfo, 0)
+	};
+
+	vkUpdateDescriptorSets(engine._device, writeDescriptorSets.size(), writeDescriptorSets.data(), 0, nullptr);
+}
+
+void setupShadowDescriptorSetsGlobal(VulkanEngine& engine, ShadowFrameResources& shadowFrame, VkBuffer& objectBuffer, std::vector<VkDescriptorSetLayout>& setLayouts)
+{
 	VkDescriptorSetAllocateInfo allocInfoLight{};
 	allocInfoLight.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
 	allocInfoLight.descriptorPool = engine._descriptorPool;
@@ -638,11 +690,15 @@ void setupDescriptorSets(VulkanEngine& engine, ShadowFrameResources& shadowFrame
 	VK_CHECK(vkAllocateDescriptorSets(engine._device, &allocInfoLight, &shadowFrame.shadowDescriptorSetLight));
 	VK_CHECK(vkAllocateDescriptorSets(engine._device, &allocInfoObjects, &shadowFrame.shadowDescriptorSetObjects));
 
+	// TODO: I think skin shadowDescriptorSetSkin does not belong in this function (or in shadowFrame).
+	//       I think it needs to be per-object, then will be updated when we call updateAnimation.
+
 	VkDescriptorBufferInfo lightInfo{};
 	lightInfo.offset = 0;
 	lightInfo.range = VK_WHOLE_SIZE;
 	lightInfo.buffer = shadowFrame.shadowLightBuffer._buffer;
 
+	// notice we're reusing buffers here
 	VkDescriptorBufferInfo objectInfo{};
 	objectInfo.offset = 0;
 	objectInfo.range = VK_WHOLE_SIZE;
@@ -657,6 +713,7 @@ void setupDescriptorSets(VulkanEngine& engine, ShadowFrameResources& shadowFrame
 
 	vkUpdateDescriptorSets(engine._device, writeDescriptorSets.size(), writeDescriptorSets.data(), 0, nullptr);
 }
+
 
 void initShadowPipelineInternal(VulkanEngine& engine, VkRenderPass& renderpass, VkPipelineLayout pipelineLayout, VkPipeline* pipeline, bool isSkinned)
 {
@@ -693,7 +750,7 @@ void initShadowPipelineInternal(VulkanEngine& engine, VkRenderPass& renderpass, 
 	std::vector<VkDynamicState> dynamicStateEnables = { VK_DYNAMIC_STATE_VIEWPORT, VK_DYNAMIC_STATE_SCISSOR, VK_DYNAMIC_STATE_DEPTH_BIAS };
 
 	std::string prefix{ "../../shaders/spirv/" };
-	std::string vertPath{ prefix + "depth.vert.spv" };
+	std::string vertPath{ prefix + (isSkinned ? "skinned_depth.vert.spv" : "depth.vert.spv") };
 	VkShaderModule vertShader;
 	if (!engine.loadShaderModule(vertPath, &vertShader)) {
 		std::cout << "Error when building vertex shader module: " << vertPath << "\n";
@@ -703,9 +760,14 @@ void initShadowPipelineInternal(VulkanEngine& engine, VkRenderPass& renderpass, 
 	// vertex input controls how to read vertices from vertex buffers
 	VkPipelineVertexInputStateCreateInfo vertexInputInfo{ vkinit::vertexInputStateCreateInfo() };
 
-	uint32_t stride{ isSkinned ? sizeof(VertexSkinned) : sizeof(Vertex) };
-	// input assembly is the configuration for drawing triangle lists, strips, or individual points
-	VertexInputDescription vertexDescription{ getVertexDescription(ATTR_POSITION, stride) };
+	VertexInputDescription vertexDescription{};
+	if (isSkinned) {
+		uint32_t stride{ sizeof(VertexSkinned) };
+		vertexDescription = getVertexDescription(ATTR_POSITION | ATTR_JOINT_INDICES | ATTR_JOINT_WEIGHTS, stride);
+	} else {
+		uint32_t stride{ sizeof(Vertex) };
+		vertexDescription = getVertexDescription(ATTR_POSITION, stride);
+	}
 
 	vertexInputInfo.vertexAttributeDescriptionCount = vertexDescription.attributes.size();
 	vertexInputInfo.pVertexAttributeDescriptions = vertexDescription.attributes.data();
@@ -740,7 +802,6 @@ void initShadowPipelineInternal(VulkanEngine& engine, VkRenderPass& renderpass, 
 	pipelineCI.pStages = &vertStage;
 	pipelineCI.pVertexInputState = &vertexInputInfo;
 	pipelineCI.pDynamicState = &dynamicStateCI;
-	pipelineCI.renderPass = renderpass;
 
 	VK_CHECK(vkCreateGraphicsPipelines(engine._device, VK_NULL_HANDLE, 1, &pipelineCI, nullptr, pipeline));
 	engine._mainDeletionQueue.pushFunction([=, &engine]() {

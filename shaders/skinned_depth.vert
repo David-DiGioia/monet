@@ -1,7 +1,7 @@
 #version 460
 layout (location = 0) in vec3 aPos;
-layout (location = 1) in vec4 vJointIndices;
-layout (location = 2) in vec4 vJointWeights;
+layout (location = 4) in vec4 vJointIndices;
+layout (location = 5) in vec4 vJointWeights;
 
 layout (set = 0, binding = 0) uniform LightBuffer{
     mat4 lightSpaceMatrix;
@@ -18,7 +18,7 @@ layout (std140, set = 1, binding = 0) readonly buffer ObjectBuffer {
     ObjectData objects[]; // SSBOs can only have unsized arrays
 } objectBuffer;
 
-layout(set = 3, binding = 0) uniform JointMatrices {
+layout(set = 2, binding = 0) uniform JointMatrices {
 	mat4 jointMatrices[MAX_NUM_JOINTS];
     float jointCount;
 } skel;

@@ -105,9 +105,9 @@ void Skin::update(const glm::mat4& m)
 	}
 
 	void* data;
-	vmaMapMemory(*allocator, ssbo._allocation, &data);
+	vmaMapMemory(*allocator, ubo._allocation, &data);
 	memcpy(data, &uniformBlock, sizeof(UniformBlockSkinned));
-	vmaUnmapMemory(*allocator, ssbo._allocation);
+	vmaUnmapMemory(*allocator, ubo._allocation);
 }
 
 void RenderObject::updateAnimation(float deltaTime) const

@@ -81,6 +81,8 @@ struct ShadowGlobalResources {
 	VkPipeline shadowPipeline;
 	VkPipeline shadowPipelineSkinned;
 	VkPipelineLayout shadowPipelineLayout;
+	VkPipelineLayout shadowPipelineLayoutSkinned;
+	VkDescriptorSetLayout shadowJointSetLayout;
 	glm::mat4 lightSpaceMatrix;
 };
 
@@ -90,6 +92,7 @@ struct ShadowFrameResources {
 	VkSampler depthSampler;
 	VkDescriptorImageInfo descriptor;
 	VkPipelineLayout shadowPipelineLayout;
+	// Notice that there is not a descriptor set for skin here. That is in Skin struct.
 	VkDescriptorSet shadowDescriptorSetLight;
 	VkDescriptorSet shadowDescriptorSetObjects;
 	AllocatedBuffer shadowLightBuffer;

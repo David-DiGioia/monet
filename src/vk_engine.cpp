@@ -530,10 +530,10 @@ void VulkanEngine::loadSkeletalAnimation(const std::string& name, const std::str
 		skel.skins[i].uniformBlock.jointCount = (float)std::min((uint32_t)skel.skins[i].joints.size(), MAX_NUM_JOINTS);
 		skel.skins[i].allocator = &_allocator;
 
-		skel.skins[i].ssbo = createBuffer(sizeof(Skin::UniformBlockSkinned), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT , VMA_MEMORY_USAGE_CPU_TO_GPU);
+		skel.skins[i].ubo = createBuffer(sizeof(Skin::UniformBlockSkinned), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT , VMA_MEMORY_USAGE_CPU_TO_GPU);
 
 		_mainDeletionQueue.pushFunction([=]() {
-			vmaDestroyBuffer(_allocator, skel.skins[i].ssbo._buffer, skel.skins[i].ssbo._allocation);
+			vmaDestroyBuffer(_allocator, skel.skins[i].ubo._buffer, skel.skins[i].ubo._allocation);
 		});
 
 		VkDescriptorSetAllocateInfo skinAllocInfo{};
@@ -542,16 +542,19 @@ void VulkanEngine::loadSkeletalAnimation(const std::string& name, const std::str
 		skinAllocInfo.descriptorSetCount = 1;
 		skinAllocInfo.pSetLayouts = &_skinSetLayout;
 
-		VK_CHECK(vkAllocateDescriptorSets(_device, &skinAllocInfo, &skel.skins[i].descriptorSet));
+		VK_CHECK(vkAllocateDescriptorSets(_device, &skinAllocInfo, &skel.skins[i].jointsDescriptorSet));
 
 		VkDescriptorBufferInfo bufferInfo{};
-		bufferInfo.buffer = skel.skins[i].ssbo._buffer;
+		bufferInfo.buffer = skel.skins[i].ubo._buffer;
 		bufferInfo.offset = 0;
 		bufferInfo.range = sizeof(Skin::UniformBlockSkinned);
 
-		VkWriteDescriptorSet descriptorWrite{ vkinit::writeDescriptorBuffer(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, skel.skins[i].descriptorSet, &bufferInfo, 0) };
+		VkWriteDescriptorSet descriptorWrite{ vkinit::writeDescriptorBuffer(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, skel.skins[i].jointsDescriptorSet, &bufferInfo, 0) };
 
 		vkUpdateDescriptorSets(_device, 1, &descriptorWrite, 0, nullptr);
+
+		// allocate and write shadow descriptor set
+		setupShadowDescriptorSetsSkinned(*this, skel.skins[i].ubo._buffer, _shadowGlobal.shadowJointSetLayout, skel.skins[i].jointsShadowDescriptorSet);
 	}
 
 	// skelAsset and skelPool both use same animation struct
@@ -1579,10 +1582,16 @@ void VulkanEngine::initShadowPass()
 	_shadowGlobal.height = SHADOWMAP_DIM;
 
 	prepareShadowMapRenderpass(*this, &_shadowGlobal.renderPass);
-	std::array<VkDescriptorSetLayout, 2> setLayouts{};
-	setupDescriptorSetLayouts(*this, setLayouts, &_shadowGlobal.shadowPipelineLayout);
+
+	std::vector<VkDescriptorSetLayout> setLayouts{};
+	std::vector<VkDescriptorSetLayout> setLayoutsSkinned{};
+	setupShadowDescriptorSetLayouts(*this, setLayouts, &_shadowGlobal.shadowPipelineLayout);
+	setupShadowDescriptorSetLayoutsSkinned(*this, setLayoutsSkinned, &_shadowGlobal.shadowPipelineLayoutSkinned);
+
+	_shadowGlobal.shadowJointSetLayout = setLayoutsSkinned[2];
+
 	initShadowPipeline(*this, _shadowGlobal.renderPass, _shadowGlobal.shadowPipelineLayout, &_shadowGlobal.shadowPipeline);
-	initShadowPipelineSkinned(*this, _shadowGlobal.renderPass, _shadowGlobal.shadowPipelineLayout, &_shadowGlobal.shadowPipelineSkinned);
+	initShadowPipelineSkinned(*this, _shadowGlobal.renderPass, _shadowGlobal.shadowPipelineLayoutSkinned, &_shadowGlobal.shadowPipelineSkinned);
 
 	for (auto i{ 0 }; i < FRAME_OVERLAP; ++i) {
 		ShadowFrameResources& shadowFrame{ _frames[i % FRAME_OVERLAP].shadow };
@@ -1594,7 +1603,9 @@ void VulkanEngine::initShadowPass()
 			vmaDestroyBuffer(_allocator, shadowFrame.shadowLightBuffer._buffer, shadowFrame.shadowLightBuffer._allocation);
 		});
 
-		setupDescriptorSets(*this, shadowFrame, _frames[i].objectBuffer._buffer, setLayouts);
+		// Set up all global shadow descriptor sets common to all shadows.
+		// We set up the skinned descriptor set when we load the skin in loadSkeletalAnimation, since it's a per-skin descriptor set.
+		setupShadowDescriptorSetsGlobal(*this, shadowFrame, _frames[i].objectBuffer._buffer, setLayouts);
 	}
 }
 
@@ -1694,6 +1705,10 @@ void VulkanEngine::shadowPass(VkCommandBuffer& cmd)
 
 	uint32_t idx{ 0 };
 	for (const RenderObject& object : _renderables) {
+		if (!object.castShadow) {
+			continue;
+		}
+
 		bool isSkinned{ object.mesh->vertexFormat == VertexFormat::SKINNED };
 
 		if (lastSkinned != isSkinned) {
@@ -1703,22 +1718,23 @@ void VulkanEngine::shadowPass(VkCommandBuffer& cmd)
 			lastSkinned = isSkinned;
 		}
 
-		if (object.castShadow) {
-
-			// only bind the mesh if it's a different one from last bind
-			if (object.mesh != lastMesh) {
-				// bind the mesh vertex buffer with offset 0
-				VkDeviceSize offset{ 0 };
-				vkCmdBindVertexBuffers(cmd, 0, 1, &object.mesh->vertexBuffer._buffer, &offset);
-				vkCmdBindIndexBuffer(cmd, object.mesh->indexBuffer._buffer, 0, VK_INDEX_TYPE_UINT16);
-
-				lastMesh = object.mesh;
-			}
-
-			//vkCmdDraw(cmd, object.mesh->_vertices.size(), 1, 0, idx);
-			vkCmdDrawIndexed(cmd, object.mesh->indices.size(), 1, 0, 0, idx);
-
+		if (isSkinned) {
+			vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, _shadowGlobal.shadowPipelineLayoutSkinned, 2, 1, &object.mesh->skel.skins[0].jointsShadowDescriptorSet, 0, nullptr);
 		}
+
+		// only bind the mesh if it's a different one from last bind
+		if (object.mesh != lastMesh) {
+			// bind the mesh vertex buffer with offset 0
+			VkDeviceSize offset{ 0 };
+			vkCmdBindVertexBuffers(cmd, 0, 1, &object.mesh->vertexBuffer._buffer, &offset);
+			vkCmdBindIndexBuffer(cmd, object.mesh->indexBuffer._buffer, 0, VK_INDEX_TYPE_UINT16);
+
+			lastMesh = object.mesh;
+		}
+
+		//vkCmdDraw(cmd, object.mesh->_vertices.size(), 1, 0, idx);
+		vkCmdDrawIndexed(cmd, object.mesh->indices.size(), 1, 0, 0, idx);
+
 		++idx;
 	}
 
@@ -1929,7 +1945,7 @@ void VulkanEngine::drawObjects(VkCommandBuffer cmd, const std::multiset<RenderOb
 			}
 
 			if (!object.mesh->skel.skins.empty()) {
-				vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, object.material->pipelineLayout, 3, 1, &object.mesh->skel.skins[0].descriptorSet, 0, nullptr);
+				vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, object.material->pipelineLayout, 3, 1, &object.mesh->skel.skins[0].jointsDescriptorSet, 0, nullptr);
 			}
 
 			++pipelineBinds;

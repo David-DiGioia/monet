@@ -73,8 +73,9 @@ struct Skin {
 	//Node* meshNode{}; // node which has a pointer to the mesh
 	std::vector<glm::mat4> inverseBindMatrices;
 	std::vector<Node*> joints;
-	AllocatedBuffer ssbo; // pass actual joint matrices for current animation frame using ssbo
-	VkDescriptorSet descriptorSet;
+	AllocatedBuffer ubo; // pass actual joint matrices for current animation frame using ubo
+	VkDescriptorSet jointsDescriptorSet;
+	VkDescriptorSet jointsShadowDescriptorSet;
 	VmaAllocator* allocator;
 
 	struct UniformBlockSkinned {
