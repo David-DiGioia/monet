@@ -1114,7 +1114,6 @@ void VulkanEngine::initDefaultRenderpass()
 	VkAttachmentDescription color_attachment{};
 	// the attachment will have the format needed by the swapchain
 	color_attachment.format = _swapchainImageFormat;
-	// 1 sample, we won't be doing MSAA
 	color_attachment.samples = _msaaSamples;
 	// we clear when this attachment is loaded
 	color_attachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
@@ -1186,12 +1185,10 @@ void VulkanEngine::initDefaultRenderpass()
 
 	dependencies[0].srcSubpass = VK_SUBPASS_EXTERNAL;
 	dependencies[0].dstSubpass = 0;
-	dependencies[0].srcStageMask = VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;
-	dependencies[0].srcAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT;
-	// early fragment since that's where depth attachment (not shadowmap) is load_op_clear'd
-	dependencies[0].dstStageMask = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT | VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
-	// depth_write for load_op_clear for depth pass (not shadowmap)
-	dependencies[0].dstAccessMask = VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+	dependencies[0].srcStageMask = VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT;
+	dependencies[0].dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
+	dependencies[0].srcAccessMask = VK_ACCESS_MEMORY_READ_BIT;
+	dependencies[0].dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
 
 	dependencies[1].srcSubpass = 0;
 	dependencies[1].dstSubpass = VK_SUBPASS_EXTERNAL;
@@ -1807,8 +1804,6 @@ void VulkanEngine::draw()
 	}
 	vmaUnmapMemory(_allocator, getCurrentFrame().objectBuffer._allocation);
 	vmaFlushAllocation(_allocator, getCurrentFrame().objectBuffer._allocation, 0, VK_WHOLE_SIZE);
-
-	// TODO: we should upload uniformBlockSkinned to GPU here
 
 	VK_CHECK(vkBeginCommandBuffer(getCurrentFrame().mainCommandBuffer, &cmdBeginInfo));
 

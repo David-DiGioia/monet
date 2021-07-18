@@ -108,6 +108,7 @@ void Skin::update(const glm::mat4& m)
 	vmaMapMemory(*allocator, ubo._allocation, &data);
 	memcpy(data, &uniformBlock, sizeof(UniformBlockSkinned));
 	vmaUnmapMemory(*allocator, ubo._allocation);
+	vmaFlushAllocation(*allocator, ubo._allocation, 0, VK_WHOLE_SIZE);
 }
 
 void RenderObject::updateAnimation(float deltaTime) const
