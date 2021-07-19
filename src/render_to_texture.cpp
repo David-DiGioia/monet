@@ -690,9 +690,6 @@ void setupShadowDescriptorSetsGlobal(VulkanEngine& engine, ShadowFrameResources&
 	VK_CHECK(vkAllocateDescriptorSets(engine._device, &allocInfoLight, &shadowFrame.shadowDescriptorSetLight));
 	VK_CHECK(vkAllocateDescriptorSets(engine._device, &allocInfoObjects, &shadowFrame.shadowDescriptorSetObjects));
 
-	// TODO: I think skin shadowDescriptorSetSkin does not belong in this function (or in shadowFrame).
-	//       I think it needs to be per-object, then will be updated when we call updateAnimation.
-
 	VkDescriptorBufferInfo lightInfo{};
 	lightInfo.offset = 0;
 	lightInfo.range = VK_WHOLE_SIZE;

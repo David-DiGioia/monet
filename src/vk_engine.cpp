@@ -1702,35 +1702,34 @@ void VulkanEngine::shadowPass(VkCommandBuffer& cmd)
 
 	uint32_t idx{ 0 };
 	for (const RenderObject& object : _renderables) {
-		if (!object.castShadow) {
-			continue;
+
+		if (object.castShadow) {
+			bool isSkinned{ object.mesh->vertexFormat == VertexFormat::SKINNED };
+
+			if (lastSkinned != isSkinned) {
+				VkPipeline pipeline{ isSkinned ? _shadowGlobal.shadowPipelineSkinned : _shadowGlobal.shadowPipeline };
+				vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline);
+
+				lastSkinned = isSkinned;
+			}
+
+			if (isSkinned) {
+				vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, _shadowGlobal.shadowPipelineLayoutSkinned, 2, 1, &object.mesh->skel.skins[0].jointsShadowDescriptorSet, 0, nullptr);
+			}
+
+			// only bind the mesh if it's a different one from last bind
+			if (object.mesh != lastMesh) {
+				// bind the mesh vertex buffer with offset 0
+				VkDeviceSize offset{ 0 };
+				vkCmdBindVertexBuffers(cmd, 0, 1, &object.mesh->vertexBuffer._buffer, &offset);
+				vkCmdBindIndexBuffer(cmd, object.mesh->indexBuffer._buffer, 0, VK_INDEX_TYPE_UINT16);
+
+				lastMesh = object.mesh;
+			}
+
+			//vkCmdDraw(cmd, object.mesh->_vertices.size(), 1, 0, idx);
+			vkCmdDrawIndexed(cmd, object.mesh->indices.size(), 1, 0, 0, idx);
 		}
-
-		bool isSkinned{ object.mesh->vertexFormat == VertexFormat::SKINNED };
-
-		if (lastSkinned != isSkinned) {
-			VkPipeline pipeline{ isSkinned ? _shadowGlobal.shadowPipelineSkinned : _shadowGlobal.shadowPipeline };
-			vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline);
-
-			lastSkinned = isSkinned;
-		}
-
-		if (isSkinned) {
-			vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, _shadowGlobal.shadowPipelineLayoutSkinned, 2, 1, &object.mesh->skel.skins[0].jointsShadowDescriptorSet, 0, nullptr);
-		}
-
-		// only bind the mesh if it's a different one from last bind
-		if (object.mesh != lastMesh) {
-			// bind the mesh vertex buffer with offset 0
-			VkDeviceSize offset{ 0 };
-			vkCmdBindVertexBuffers(cmd, 0, 1, &object.mesh->vertexBuffer._buffer, &offset);
-			vkCmdBindIndexBuffer(cmd, object.mesh->indexBuffer._buffer, 0, VK_INDEX_TYPE_UINT16);
-
-			lastMesh = object.mesh;
-		}
-
-		//vkCmdDraw(cmd, object.mesh->_vertices.size(), 1, 0, idx);
-		vkCmdDrawIndexed(cmd, object.mesh->indices.size(), 1, 0, 0, idx);
 
 		++idx;
 	}
