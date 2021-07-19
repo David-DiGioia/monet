@@ -1703,6 +1703,7 @@ void VulkanEngine::shadowPass(VkCommandBuffer& cmd)
 	uint32_t idx{ 0 };
 	for (const RenderObject& object : _renderables) {
 
+		// DO NOT change this to continue if !object.castShadow, because we need to increment idx still
 		if (object.castShadow) {
 			bool isSkinned{ object.mesh->vertexFormat == VertexFormat::SKINNED };
 
