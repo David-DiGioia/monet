@@ -122,7 +122,7 @@ bool TestApp::events(SDL_Event e)
 	return bQuit;
 }
 
-void TestApp::gui()
+void TestApp::gui(VulkanEngine& engine)
 {
 	//ImGui::ShowDemoWindow();
 
@@ -156,8 +156,7 @@ void TestApp::gui()
 
 	ImGui::DragFloat3("Cube Pos", (float*)&_cubePos, 0.005f);
 	ImGui::DragFloat3("Cylinder Pos", (float*)&_skinningPos, 0.005f);
-
-	//ImGui::SliderFloat("Roughness", &_guiData.roughness_mult, 0.0f, 1.0f);
+	ImGui::SliderFloat("Roughness", &engine._guiData.roughness_mult, 0.0f, 1.0f);
 
 	//ImGui::End();
 }

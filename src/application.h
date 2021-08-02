@@ -16,5 +16,5 @@ public:
 
 	virtual bool events(SDL_Event e) = 0;
 
-	virtual void gui() = 0;
+	virtual void gui(VulkanEngine& engine) = 0;
 };

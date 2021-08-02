@@ -2004,7 +2004,7 @@ void VulkanEngine::gui()
 
 	// imgui commands ---------------------------------------
 
-	_app->gui();
+	_app->gui(*this);
 }
 
 void VulkanEngine::addToPhysicsEngineDynamic(GameObject* go, PxShape* shape, float density)

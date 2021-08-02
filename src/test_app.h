@@ -16,7 +16,7 @@ public:
 
 	bool events(SDL_Event e) override;
 
-	void gui() override;
+	void gui(VulkanEngine& engine) override;
 
 	// New functions
 	void updateCamera(VulkanEngine& engine);
