@@ -293,11 +293,12 @@ void extractVerticesGLTF(tinygltf::Primitive& primitive, tinygltf::Model& model,
 			{
 				uint8_t* dtf = (uint8_t*)joints_data.data();
 
-				//vec3f 
-				_vertices[i].jointIndices[0] = *(dtf + (i * 4) + 0);
-				_vertices[i].jointIndices[1] = *(dtf + (i * 4) + 1);
-				_vertices[i].jointIndices[2] = *(dtf + (i * 4) + 2);
-				_vertices[i].jointIndices[3] = *(dtf + (i * 4) + 3);
+				for (int j = 0; j < 4; ++j) {
+					auto jointIndex{ *(dtf + (i * 4) + j) };
+					//_vertices[i].jointIndices[j] = model.skins[0].joints[jointIndex];
+					_vertices[i].jointIndices[j] = jointIndex;
+				}
+
 			} else {
 				std::cout << "ERROR: Component type mismatch\n";
 				assert(false);
@@ -318,7 +319,6 @@ void extractVerticesGLTF(tinygltf::Primitive& primitive, tinygltf::Model& model,
 			{
 				float* dtf = (float*)weights_data.data();
 
-				//vec3f 
 				_vertices[i].jointWeights[0] = *(dtf + (i * 4) + 0);
 				_vertices[i].jointWeights[1] = *(dtf + (i * 4) + 1);
 				_vertices[i].jointWeights[2] = *(dtf + (i * 4) + 2);
@@ -705,6 +705,9 @@ void extractSkeletalAnimation(tinygltf::Model gltfModel, const fs::path& input, 
 
 	int32_t meshNodeIdx{ -1 };
 	for (size_t i = 0; i < gltfModel.nodes.size(); ++i) {
+
+		std::cout << gltfModel.nodes[i].name << '\n';
+
 		loadNode(data, gltfModel.nodes[i], gltfModel);
 		if (data.nodes.back().mesh > -1) {
 			meshNodeIdx = i;

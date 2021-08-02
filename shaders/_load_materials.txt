@@ -103,8 +103,6 @@ END
 // ----------------------------------------------------------------------------------------
 
 
-// furniture scene
-
 name:	default
 vert:	pbr.vert.spv
 frag:	pbr.frag.spv
@@ -187,6 +185,62 @@ bind:	3
 	type:	COMBINED_IMAGE_SAMPLER
 	stage:	FRAGMENT
 	path:	_default/textures/_ao__.tx
+	format:	R8G8B8A8_UNORM
+// metallic
+bind:	4
+	type:	COMBINED_IMAGE_SAMPLER
+	stage:	FRAGMENT
+	path:	_default/textures/_meta.tx
+	format:	R8G8B8A8_UNORM
+
+// irradiance map
+bind:	5
+	type:	COMBINED_IMAGE_SAMPLER
+	stage:	FRAGMENT
+	path:	irradiance_map
+	format:	R32G32B32A32_SFLOAT
+// prefiltered map
+bind:	6
+	type:	COMBINED_IMAGE_SAMPLER
+	stage:	FRAGMENT
+	path:	prefiltered_environment_map
+	format:	R32G32B32A32_SFLOAT
+// BRDF LUT
+bind:	7
+	type:	COMBINED_IMAGE_SAMPLER
+	stage:	FRAGMENT
+	path:	integrated_brdf_map
+	format:	R32G32B32A32_SFLOAT
+attr:	63
+END
+
+
+name:	toad
+vert:	skinned_model.vert.spv
+frag:	pbr.frag.spv
+// diffuse
+bind:	0
+	type:	COMBINED_IMAGE_SAMPLER
+	stage:	FRAGMENT
+	path:	toad/textures/toad_diff.tx
+	format:	R8G8B8A8_SRGB
+// normal
+bind:	1
+	type:	COMBINED_IMAGE_SAMPLER
+	stage:	FRAGMENT
+	path:	toad/textures/toad_norm.tx
+	format:	R8G8B8A8_UNORM
+// roughness
+bind:	2
+	type:	COMBINED_IMAGE_SAMPLER
+	stage:	FRAGMENT
+	path:	toad/textures/toad_roug.tx
+	format:	R8G8B8A8_UNORM
+// ao
+bind:	3
+	type:	COMBINED_IMAGE_SAMPLER
+	stage:	FRAGMENT
+	path:	toad/textures/toad_ao__.tx
 	format:	R8G8B8A8_UNORM
 // metallic
 bind:	4

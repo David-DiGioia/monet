@@ -81,7 +81,7 @@ VertexInputDescription getVertexDescription(uint32_t attrFlags, uint32_t stride)
 
 void updateJointMatrices(Node* root, const glm::mat4& mat)
 {
-	root->cachedMatrix = root->localMatrix() * mat;
+	root->cachedMatrix = mat * root->localMatrix();
 
 	for (Node* child : root->children) {
 		updateJointMatrices(child, root->cachedMatrix);
@@ -100,6 +100,7 @@ void Skin::update(const glm::mat4& m)
 
 	for (size_t i = 0; i < numJoints; ++i) {
 		glm::mat4 jointMat = joints[i]->getCachedMatrix() * inverseBindMatrices[i];
+		//glm::mat4 jointMat = joints[i]->getMatrix() * inverseBindMatrices[i];
 		//jointMat = inverseTransform * jointMat;
 		uniformBlock.jointMatrices[i] = jointMat;
 	}
