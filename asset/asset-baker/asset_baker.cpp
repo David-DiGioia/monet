@@ -558,13 +558,13 @@ void loadAnimations(SkeletalAnimationDataAsset& data, tinygltf::Model& gltfModel
 			AnimationSampler sampler{};
 
 			if (samp.interpolation == "LINEAR") {
-				sampler.interpolation = AnimationSampler::InterpolationType::LINEAR;
+				sampler.interpolation = Interpolation::LINEAR;
 			}
 			if (samp.interpolation == "STEP") {
-				sampler.interpolation = AnimationSampler::InterpolationType::STEP;
+				sampler.interpolation = Interpolation::STEP;
 			}
 			if (samp.interpolation == "CUBICSPLINE") {
-				sampler.interpolation = AnimationSampler::InterpolationType::CUBICSPLINE;
+				sampler.interpolation = Interpolation::CUBICSPLINE;
 			}
 
 			// Read sampler input time values

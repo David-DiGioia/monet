@@ -113,8 +113,7 @@ struct AnimationChannel {
 };
 
 struct AnimationSampler {
-	enum InterpolationType { LINEAR, STEP, CUBICSPLINE };
-	InterpolationType interpolation;
+	Interpolation interpolation;
 	std::vector<float> inputs;
 	std::vector<glm::vec4> outputsVec4;
 
@@ -163,7 +162,6 @@ struct Node {
 
 struct SkeletalAnimationData {
 	std::vector<Node> nodes;
-	//std::vector<Node*> linearNodes;
 	std::vector<Animation> animations;
 	std::vector<Skin> skins;
 };
