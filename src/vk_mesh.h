@@ -164,6 +164,11 @@ struct SkeletalAnimationData {
 	std::vector<Node> nodes;
 	std::vector<Animation> animations;
 	std::vector<Skin> skins;
+
+	// Blender sets all interpolation to linear when "always sample animation" is enabled
+	// so this option allows step interpolation even when you need to sample animation in Blender
+	// (for example, when using bone constraints)
+	bool forceStepInterpolation{ false };
 };
 
 // ------------------------------------------------------------------------------------------ //

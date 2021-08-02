@@ -16,6 +16,7 @@ void TestApp::init(VulkanEngine& engine)
 	_camera.pos = glm::vec3{ 0.0, 2.0, 2.0 };
 
 	_skinning.setRenderObject(engine.createRenderObject("toad", "toad"));
+	_skinning.setForceStepInterpolation(true);
 
 	_cubeObj.setRenderObject(engine.createRenderObject("cube", "default"));
 

@@ -169,6 +169,10 @@ void GameObject::setRot(glm::mat4 rot)
 	updateRenderMatrix();
 }
 
+void GameObject::setForceStepInterpolation(bool x) {
+	_renderObject->mesh->skel.forceStepInterpolation = x;
+}
+
 void GameObject::addForce(glm::vec3 force)
 {
 	_physicsObject->is<PxRigidDynamic>()->addForce(physx::PxVec3{ force.x, force.y, force.z });

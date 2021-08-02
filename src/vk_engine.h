@@ -176,6 +176,8 @@ public:
 
 	void setRot(glm::mat4 rot);
 
+	void setForceStepInterpolation(bool x);
+
 	// physics
 
 	void addForce(glm::vec3 force);

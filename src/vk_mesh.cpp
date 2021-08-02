@@ -126,16 +126,25 @@ void RenderObject::updateAnimation(float deltaTime) const
 		Node& node = mesh->skel.nodes[channel.nodeIdx];
 
 		for (size_t i = 0; i < sampler.inputs.size() - 1; ++i) {
+
 			// Get the input keyframe values for the current time stamp
 			if ((animation.currentTime >= sampler.inputs[i]) && (animation.currentTime <= sampler.inputs[i + 1])) {
-				// Calculate interpolation value based on timestamp
-				// at input1, a = 0, at input2 a=1, with linear interpolation
-				float a = (animation.currentTime - sampler.inputs[i]) / (sampler.inputs[i + 1] - sampler.inputs[i]);
+
+				float a{};
+
+				if (sampler.interpolation == Interpolation::STEP || mesh->skel.forceStepInterpolation) {
+
+					a = 0.0f;
+
+				} else if (sampler.interpolation == Interpolation::LINEAR) {
+					// Calculate interpolation value based on timestamp
+					// at input1, a = 0, at input2 a=1, with linear interpolation
+					a = (animation.currentTime - sampler.inputs[i]) / (sampler.inputs[i + 1] - sampler.inputs[i]);
+				}
 
 				if (channel.path == AnimationChannel::TRANSLATION) {
 					node.translation = glm::mix(sampler.outputsVec4[i], sampler.outputsVec4[i + 1], a);
-				}
-				else if (channel.path == AnimationChannel::ROTATION) {
+				} else if (channel.path == AnimationChannel::ROTATION) {
 					glm::quat q1;
 					q1.x = sampler.outputsVec4[i].x;
 					q1.y = sampler.outputsVec4[i].y;
@@ -149,10 +158,10 @@ void RenderObject::updateAnimation(float deltaTime) const
 					q2.w = sampler.outputsVec4[i + 1].w;
 
 					node.rotation = glm::normalize(glm::slerp(q1, q2, a));
-				}
-				else if (channel.path == AnimationChannel::SCALE) {
+				} else if (channel.path == AnimationChannel::SCALE) {
 					node.scale = glm::mix(sampler.outputsVec4[i], sampler.outputsVec4[i + 1], a);
 				}
+
 			}
 		}
 	}
