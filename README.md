@@ -16,6 +16,7 @@ A C++ game engine made using the Vulkan graphics API.
  * PhysX physics implemented
  * Simple audio playback
  * Cache assets for faster startup
+ * Skeletal animation
 
 ## Screenshots
 
@@ -26,6 +27,6 @@ Furniture and ground lit by an HDRI
 ## Plans
 
  * SSAO
- * Skeletal animation
  * Frustum culling
  * Occlusion culling
+ * Particle system
