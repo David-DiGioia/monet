@@ -4,6 +4,7 @@
 #include <string>
 #include <limits>
 #include <cstdint>
+#include <unordered_map>
 
 #include "vk_types.h"
 #include "glm/vec3.hpp"
@@ -164,6 +165,7 @@ struct SkeletalAnimationData {
 	std::vector<Node> nodes;
 	std::vector<Animation> animations;
 	std::vector<Skin> skins;
+	std::unordered_map<std::string, uint32_t> animNameToIndex;
 
 	// Blender sets all interpolation to linear when "always sample animation" is enabled
 	// so this option allows step interpolation even when you need to sample animation in Blender
@@ -228,7 +230,7 @@ struct RenderObject {
 	Mesh* mesh;
 	Material* material;
 	bool castShadow;
-	int32_t activeAnimation;
+	mutable int32_t activeAnimation;
 
 	struct RenderObjectUB {
 		mutable glm::mat4 transformMatrix;

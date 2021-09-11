@@ -154,6 +154,9 @@ void main()
     // transform normal vector to range [-1, 1]
     normal = normalize(normal * 2.0 - 1.0);
     float roughness = texture(roughnessTex, texCoord).g * constants.roughness_multiplier.x;
+    // make roughness never exactly 0.0 or 1.0 because discontinuities appear at these values
+    roughness = (roughness * 0.999) + 0.0001;
+
     float ao = texture(aoTex, texCoord).r;
     float metallic = texture(metalTex, texCoord).b;
 
@@ -184,10 +187,9 @@ void main()
     prefilteredColor = clamp(prefilteredColor, 0.0, SPECULAR_SHADOW_CLAMP + 100.0 * (1.0 - shadow));
 
     vec3 F = fresnelSchlickRoughness(max(dot(N, V), 0.0), F0, roughness);
-    vec2 envBRDF = texture(brdfLUT, vec2(max(dot(N, V), 0.0), roughness)).rg;
+    // Mirroring roughness below because for some reason the brdfLUT is mirrored??
+    vec2 envBRDF = texture(brdfLUT, vec2(max(dot(N, V), 0.0), 1.0 - roughness)).rg;
     vec3 specular = prefilteredColor * (F * envBRDF.x + envBRDF.y);
-
-    // specular = specular * (1.0 - shadow);
 
     // we don't multiply specular by kS since we already have a Fresnel multiplication in there
     vec3 ambient = (kD * diffuse + specular) * ao;
@@ -197,4 +199,5 @@ void main()
     // color = color / (color + 1.0);
 
     outFragColor = vec4(color, 1.0);
+    // outFragColor = vec4(vec3(max(dot(N, V), 0.0)), 1.0);
 }

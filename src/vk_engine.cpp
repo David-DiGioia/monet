@@ -91,6 +91,11 @@ physx::PxTransform Transform::toPhysx()
 	return result;
 }
 
+void GameObject::playAnimation(const std::string& name)
+{
+	_renderObject->activeAnimation = _renderObject->mesh->skel.animNameToIndex[name];
+}
+
 void GameObject::setRenderObject(const RenderObject* ro)
 {
 	_renderObject = ro;
@@ -502,7 +507,6 @@ void VulkanEngine::loadSkeletalAnimation(const std::string& name, const std::str
 
 	// convert assets to real thing
 
-
 	for (int i = 0; i < skelAsset.nodes.size(); ++i) {
 		if (skelAsset.nodes[i].parentIdx > -1) {
 			skel.nodes[i].parent = &skel.nodes[skelAsset.nodes[i].parentIdx];
@@ -563,6 +567,10 @@ void VulkanEngine::loadSkeletalAnimation(const std::string& name, const std::str
 
 	// skelAsset and skelPool both use same animation struct
 	skel.animations = skelAsset.animations;
+
+	for (int i = 0; i < skelAsset.animations.size(); ++i) {
+		skel.animNameToIndex[skelAsset.animations[i].name] = i;
+	}
 }
 
 

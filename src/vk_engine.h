@@ -152,6 +152,8 @@ public:
 		, _physicsObject{}
 	{}
 
+	void playAnimation(const std::string& name);
+
 	void setRenderObject(const RenderObject* ro);
 
 	physx::PxRigidActor* getPhysicsObject();

@@ -15,8 +15,8 @@ void TestApp::init(VulkanEngine& engine)
 
 	_camera.pos = glm::vec3{ 0.0, 2.0, 2.0 };
 
-	_skinning.setRenderObject(engine.createRenderObject("toad", "toad"));
-	_skinning.setForceStepInterpolation(true);
+	_toad.setRenderObject(engine.createRenderObject("toad", "toad"));
+	_toad.setForceStepInterpolation(true);
 
 	_cubeObj.setRenderObject(engine.createRenderObject("cube", "default"));
 
@@ -46,7 +46,7 @@ void TestApp::updateCamera(VulkanEngine& engine)
 void TestApp::update(VulkanEngine& engine, float delta)
 {
 	_lights[0].position.x = std::sinf(_time) * 3.0f;
-	_skinning.setPos(_skinningPos);
+	_toad.setPos(_skinningPos);
 	_cubeObj.setPos(_cubePos);
 
 	updateCamera(engine);
@@ -82,6 +82,12 @@ void TestApp::input(const uint8_t* keystate, float delta)
 	}
 	if (keystate[SDL_SCANCODE_Q]) {
 		translate.y -= speed * delta;
+	}
+	if (keystate[SDL_SCANCODE_F]) {
+		_toad.playAnimation("run");
+	}
+	if (keystate[SDL_SCANCODE_G]) {
+		_toad.playAnimation("idle");
 	}
 
 	if (keystate[SDL_SCANCODE_T]) {

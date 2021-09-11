@@ -37,7 +37,7 @@ private:
 	// objects
 	GameObject _cube{};
 	GameObject _cubeObj{};
-	GameObject _skinning{};
+	GameObject _toad{};
 	GameObject _chair{};
 
 	// physics variables
