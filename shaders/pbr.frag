@@ -136,11 +136,22 @@ float shadowCalculation(vec4 fragPosLightSpace) {
     // fragment's lightspace position is in range [-1, 1] so we map it to rang [0, 1]
     projCoords.xy = projCoords.xy * 0.5 + 0.5;
     // get closest depth from light's persepctive
-    float closestDepth = texture(shadowMap, projCoords.xy).r;
+    // float closestDepth = texture(shadowMap, projCoords.xy).r;
     // get depth of current fragment from light's perspective
     float currentDepth = clamp(projCoords.z, 0.0, 1.0);
+
     // check whether current frag pos is in shadow
-    float shadow = currentDepth > closestDepth ? 1.0 : 0.0;
+    // float shadow = currentDepth > closestDepth ? 1.0 : 0.0;
+
+    float shadow = 0.0;
+    vec2 texelSize = 1.0 / textureSize(shadowMap, 0);
+    for(int x = -1; x <= 1; ++x) {
+        for(int y = -1; y <= 1; ++y) {
+            float pcfDepth = texture(shadowMap, projCoords.xy + vec2(x, y) * texelSize).r;
+            shadow += currentDepth > pcfDepth ? 1.0 : 0.0;
+        }
+    }
+    shadow /= 9.0;
 
     return shadow;
 }
@@ -177,14 +188,17 @@ void main()
 
     float shadow = shadowCalculation(fragPosLightSpace);
     vec3 irradiance = texture(irradianceMap, N).rgb;
-    irradiance = clamp(irradiance, 0.0, IRRADIANCE_SHADOW_CLAMP + 100.0 * (1.0 - shadow));
+
+    // irradiance and prefilteredColor are unbounded, so when not in shadow we don't want to clamp it. But when in shadow
+    // we clamp it in the between (0, A) where A is in [IRRADIANCE_SHADOW_CLAMP, 1.0] depending on value of shadow
+    irradiance = shadow == 0.0 ? irradiance : clamp(irradiance, 0.0, IRRADIANCE_SHADOW_CLAMP + (1.0 - IRRADIANCE_SHADOW_CLAMP) * (1.0 - shadow));
 
     diffuse = irradiance * diffuse;
 
     const float MAX_REFLECTION_LOD = 8.0;
     vec3 prefilteredColor = textureLod(prefilterMap, R, roughness * MAX_REFLECTION_LOD).rgb;
 
-    prefilteredColor = clamp(prefilteredColor, 0.0, SPECULAR_SHADOW_CLAMP + 100.0 * (1.0 - shadow));
+    prefilteredColor = shadow == 0.0 ? prefilteredColor : clamp(prefilteredColor, 0.0, SPECULAR_SHADOW_CLAMP + (1.0 - SPECULAR_SHADOW_CLAMP) * (1.0 - shadow));
 
     vec3 F = fresnelSchlickRoughness(max(dot(N, V), 0.0), F0, roughness);
     // Mirroring roughness below because for some reason the brdfLUT is mirrored??
@@ -199,5 +213,5 @@ void main()
     // color = color / (color + 1.0);
 
     outFragColor = vec4(color, 1.0);
-    // outFragColor = vec4(vec3(max(dot(N, V), 0.0)), 1.0);
+    // outFragColor = vec4(vec3(shadow), 1.0);
 }
