@@ -48,6 +48,10 @@ const float PI = 3.14159265359;
 const float IRRADIANCE_SHADOW_CLAMP = 0.4;
 const float SPECULAR_SHADOW_CLAMP = 0.6;
 
+// Lightest value achieved by fragment in shadow (fragment brightness is unbounded, so this choice must be made)
+const float IRRADIANCE_MAX_SHADOW_VALUE = 1.5; // Note: lightest irradiance value in renderdoc ~2.6
+const float SPECULAR_MAX_SHADOW_VALUE = 1.3;   // Note: lightest prefilter value in renderdoc ~1.7
+
 // F0 is the surface reflection at zero incidence (looking directly at surface)
 vec3 fresnelSchlick(float cosTheta, vec3 F0)
 {
@@ -191,14 +195,14 @@ void main()
 
     // irradiance and prefilteredColor are unbounded, so when not in shadow we don't want to clamp it. But when in shadow
     // we clamp it in the between (0, A) where A is in [IRRADIANCE_SHADOW_CLAMP, 1.0] depending on value of shadow
-    irradiance = shadow == 0.0 ? irradiance : clamp(irradiance, 0.0, IRRADIANCE_SHADOW_CLAMP + (1.0 - IRRADIANCE_SHADOW_CLAMP) * (1.0 - shadow));
+    irradiance = shadow == 0.0 ? irradiance : clamp(irradiance, 0.0, mix(IRRADIANCE_SHADOW_CLAMP, IRRADIANCE_MAX_SHADOW_VALUE, (1.0 - shadow)));
 
     diffuse = irradiance * diffuse;
 
     const float MAX_REFLECTION_LOD = 8.0;
     vec3 prefilteredColor = textureLod(prefilterMap, R, roughness * MAX_REFLECTION_LOD).rgb;
 
-    prefilteredColor = shadow == 0.0 ? prefilteredColor : clamp(prefilteredColor, 0.0, SPECULAR_SHADOW_CLAMP + (1.0 - SPECULAR_SHADOW_CLAMP) * (1.0 - shadow));
+    prefilteredColor = shadow == 0.0 ? prefilteredColor : clamp(prefilteredColor, 0.0, mix(SPECULAR_SHADOW_CLAMP, SPECULAR_MAX_SHADOW_VALUE, (1.0 - shadow)));
 
     vec3 F = fresnelSchlickRoughness(max(dot(N, V), 0.0), F0, roughness);
     // Mirroring roughness below because for some reason the brdfLUT is mirrored??
