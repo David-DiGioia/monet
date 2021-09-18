@@ -15,18 +15,29 @@ void TestApp::init(VulkanEngine& engine)
 
 	_camera.pos = glm::vec3{ 0.0, 2.0, 2.0 };
 
-	_toad.setRenderObject(engine.createRenderObject("toad", "toad"));
-	_toad.setForceStepInterpolation(true);
+	_toadArt.setRenderObject(engine.createRenderObject("toad", "toad"));
+	_toadArt.setForceStepInterpolation(true);
+	_toadArt.setParent(&_toad);
 
-	_cubeObj.setRenderObject(engine.createRenderObject("cube", "default"));
+	_cube.setRenderObject(engine.createRenderObject("cube", "default"));
 
-	//float halfExtent{ 1.0f };
-	//PxMaterial* material{ engine.create_physics_material(0.5, 0.5, 0.6) };
-	//PxShape* shape{ engine.create_physics_shape(PxBoxGeometry(halfExtent, halfExtent, halfExtent), *material) };
+	float halfExtent{ 1.0f };
+	PxMaterial* material{ engine.createPhysicsMaterial(0.5, 0.5, 0.6) };
+	PxShape* boxShape{ engine.createPhysicsShape(PxBoxGeometry(halfExtent, halfExtent, halfExtent), *material) };
+	PxShape* toadShape{ engine.createPhysicsShape(PxCapsuleGeometry(0.4, 1.0), *material) };
 
-	//_cube.setRenderObject(engine.create_render_object("cube", "default"));
-	//_cube.setPos(glm::vec3(0.0, 3.0, 0.0));
-	//engine.add_to_physics_engine_dynamic(&_cube, shape);
+	engine.addToPhysicsEngineStatic(&_cube, boxShape);
+	engine.addToPhysicsEngineDynamic(&_toad, toadShape);
+	
+	// Toad is an empty controlled by physics engine, and parent to the toad artwork.
+	// This allows offseting/rotating the artwork relative to the physics shape
+	Transform t{};
+	t.pos = glm::vec3(0.0, 6.0, 0.0);
+	t.rot = glm::rotate(glm::mat4(1.0), glm::radians(90.0f), glm::vec3(0.0, 0.0, 1.0));
+	_toad.setPhysicsTransform(t);
+
+	_toadArt.setRot(glm::rotate(glm::mat4(1.0), glm::radians(-90.0f), glm::vec3(0.0, 0.0, 1.0)));
+	_toadArt.setPos(glm::vec3(-1.4, 0.0, 0.0));
 
 	Light light{};
 	light.color = glm::vec4{ 0.1, 1.0, 0.1, 0.0 };
@@ -46,8 +57,7 @@ void TestApp::updateCamera(VulkanEngine& engine)
 void TestApp::update(VulkanEngine& engine, float delta)
 {
 	_lights[0].position.x = std::sinf(_time) * 3.0f;
-	_toad.setPos(_skinningPos);
-	_cubeObj.setPos(_cubePos);
+	//_toadArt.setPos(_skinningPos);
 
 	updateCamera(engine);
 	engine.setSceneLights(_lights);
@@ -56,7 +66,9 @@ void TestApp::update(VulkanEngine& engine, float delta)
 
 void TestApp::fixedUpdate(VulkanEngine& engine)
 {
-
+	//Transform t{ _cube.getTransform() };
+	//t.pos = _cubePos;
+	//_cube.getPhysicsObject()->setGlobalPose(t.toPhysx());
 }
 
 void TestApp::input(const uint8_t* keystate, float delta)
@@ -84,10 +96,10 @@ void TestApp::input(const uint8_t* keystate, float delta)
 		translate.y -= speed * delta;
 	}
 	if (keystate[SDL_SCANCODE_F]) {
-		_toad.playAnimation("run");
+		_toadArt.playAnimation("run");
 	}
 	if (keystate[SDL_SCANCODE_G]) {
-		_toad.playAnimation("idle");
+		_toadArt.playAnimation("idle");
 	}
 
 	if (keystate[SDL_SCANCODE_T]) {

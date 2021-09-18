@@ -141,14 +141,14 @@ public:
 	GameObject(const RenderObject* ro)
 		: _renderObject{ ro }
 		, _transform{}
-		, parent{ nullptr }
+		, _parent{ nullptr }
 		, _physicsObject{}
 	{}
 
 	GameObject()
 		: _renderObject{ nullptr }
 		, _transform{}
-		, parent{ nullptr }
+		, _parent{ nullptr }
 		, _physicsObject{}
 	{}
 
@@ -180,6 +180,8 @@ public:
 
 	void setForceStepInterpolation(bool x);
 
+	void setParent(GameObject* parent);
+
 	// physics
 
 	void addForce(glm::vec3 force);
@@ -188,11 +190,11 @@ public:
 
 	void setVelocity(glm::vec3 velocity);
 
+	void setPhysicsTransform(Transform transform);
+
 	void setMass(float mass);
 	
 	float getMass();
-
-	GameObject* parent;
 
 private:
 	void updateRenderMatrix();
@@ -200,6 +202,8 @@ private:
 	Transform _transform;
 	const RenderObject* _renderObject;
 	physx::PxRigidActor* _physicsObject;
+	GameObject* _parent;
+	std::vector<GameObject*> _children;
 };
 
 struct GuiData {

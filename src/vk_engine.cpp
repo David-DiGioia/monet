@@ -113,7 +113,14 @@ void GameObject::setPhysicsObject(physx::PxRigidActor* body)
 
 void GameObject::updateRenderMatrix()
 {
-	_renderObject->uniformBlock.transformMatrix = getGlobalMat4();
+	if (_renderObject) {
+		_renderObject->uniformBlock.transformMatrix = getGlobalMat4();
+	}
+
+	// update children render matrices
+	for (GameObject* child : _children) {
+		child->updateRenderMatrix();
+	}
 }
 
 Transform GameObject::getTransform()
@@ -125,11 +132,11 @@ glm::mat4 GameObject::getGlobalMat4()
 {
 	GameObject* go{ this };
 	glm::mat4 result{ _transform.mat4() };
-	go = go->parent;
+	go = go->_parent;
 
 	while (go) {
 		result = go->getTransform().mat4() * result;
-		go = go->parent;
+		go = go->_parent;
 	}
 
 	return result;
@@ -174,8 +181,15 @@ void GameObject::setRot(glm::mat4 rot)
 	updateRenderMatrix();
 }
 
-void GameObject::setForceStepInterpolation(bool x) {
+void GameObject::setForceStepInterpolation(bool x)
+{
 	_renderObject->mesh->skel.forceStepInterpolation = x;
+}
+
+void GameObject::setParent(GameObject* parent)
+{
+	_parent = parent;
+	parent->_children.push_back(this);
 }
 
 void GameObject::addForce(glm::vec3 force)
@@ -195,6 +209,12 @@ void GameObject::setVelocity(glm::vec3 velocity)
 	v.y = velocity.y;
 	v.z = velocity.z;
 	_physicsObject->is<PxRigidDynamic>()->setLinearVelocity(v);
+}
+
+// This should be called on dynamic actors. See comments for setGlobalPose for static actors.
+void GameObject::setPhysicsTransform(Transform transform)
+{
+	this->getPhysicsObject()->setGlobalPose(transform.toPhysx());
 }
 
 void GameObject::setMass(float mass)
@@ -538,7 +558,7 @@ void VulkanEngine::loadSkeletalAnimation(const std::string& name, const std::str
 		skel.skins[i].uniformBlock.jointCount = (float)std::min((uint32_t)skel.skins[i].joints.size(), MAX_NUM_JOINTS);
 		skel.skins[i].allocator = &_allocator;
 
-		skel.skins[i].ubo = createBuffer(sizeof(Skin::UniformBlockSkinned), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT , VMA_MEMORY_USAGE_CPU_TO_GPU);
+		skel.skins[i].ubo = createBuffer(sizeof(Skin::UniformBlockSkinned), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VMA_MEMORY_USAGE_CPU_TO_GPU);
 
 		_mainDeletionQueue.pushFunction([=]() {
 			vmaDestroyBuffer(_allocator, skel.skins[i].ubo._buffer, skel.skins[i].ubo._allocation);
@@ -2074,9 +2094,9 @@ bool VulkanEngine::advancePhysics(float delta)
 
 void VulkanEngine::updatePhysics()
 {
-	ZoneScoped
-		// Advance forward simulation
-		advancePhysics(_delta);
+	ZoneScoped;
+	// Advance forward simulation
+	advancePhysics(_delta);
 
 	// Update gameobject transforms to match the transforms of the physics objects
 	for (GameObject* go : _physicsObjects) {
@@ -2169,9 +2189,9 @@ void VulkanEngine::run()
 		bQuit = input();
 		if (!_minimized) {
 			gui();
+			updatePhysics();
 			draw();
 			showFPS();
-			updatePhysics();
 		}
 	}
 }
