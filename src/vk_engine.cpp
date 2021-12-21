@@ -630,7 +630,7 @@ void VulkanEngine::loadMesh(const std::string& name, const std::string& path)
 void VulkanEngine::loadMeshes()
 {
 	namespace fs = std::filesystem;
-	std::string modelsPath{ "../../asset/assets_export/models/" };
+	std::string modelsPath{ "../../../asset/assets_export/models/" };
 
 	for (const auto& modelDir : fs::directory_iterator(modelsPath)) {
 		if (modelDir.is_directory()) {
@@ -667,12 +667,12 @@ void VulkanEngine::loadTexture(const std::string& path, VkFormat format)
 	bool hdri{ format == VK_FORMAT_R32G32B32A32_SFLOAT };
 
 	if (hdri) {
-		std::string prefix{ "../../asset/assets/models/" };
+		std::string prefix{ "../../../asset/assets/models/" };
 		if (!vkutil::loadImageFromFile(*this, (prefix + path).c_str(), texture.image, &mipLevels, format)) {
 			std::cout << "Failed to load texture: " << path << "\n";
 		}
 	} else {
-		std::string prefix{ "../../asset/assets_export/models/" };
+		std::string prefix{ "../../../asset/assets_export/models/" };
 		if (!vkutil::loadImageFromAsset(*this, (prefix + path).c_str(), format, &mipLevels, texture.image)) {
 			std::cout << "Failed to load texture: " << path << "\n";
 		}
@@ -692,8 +692,8 @@ void VulkanEngine::loadTexture(const std::string& path, VkFormat format)
 
 void VulkanEngine::loadMaterials()
 {
-	std::string prefix{ "../../shaders/spirv/" };
-	std::string loadFile{ "../../shaders/_load_materials.txt" };
+	std::string prefix{ "../../../shaders/spirv/" };
+	std::string loadFile{ "../../../shaders/_load_materials.txt" };
 	std::ifstream file{ loadFile };
 	std::string line;
 
