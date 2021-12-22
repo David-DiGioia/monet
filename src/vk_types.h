@@ -5,6 +5,10 @@
 
 #include <vulkan/vulkan.h>
 #include <vk_mem_alloc.h>
+#include <string>
+
+static const std::string ASSET_PREFIX{ "../../../asset" };
+static const std::string SHADER_PREFIX{ "../../../shaders" };
 
 static constexpr float pi{ 3.1415926535897932384626433832 };
 
