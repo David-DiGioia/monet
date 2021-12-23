@@ -1,7 +1,7 @@
 #include <iostream>
 
 #include "vk_engine.h"
-#include "test_app.h"
+#include "main_app.h"
 
 int main(int argc, char* argv[])
 {
