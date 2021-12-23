@@ -11,7 +11,7 @@ int main(int argc, char* argv[])
 
 	VulkanEngine engine;
 
-	TestApp app{};
+	APP_NAME app{};
 
 	engine.init(&app);
 	

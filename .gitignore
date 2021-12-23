@@ -5,6 +5,9 @@
 extra/traces
 /shaders/spirv
 
+/bin/Debug/*.exe
+/bin/Release/*.exe
+
 # config files
 *.ini
 
