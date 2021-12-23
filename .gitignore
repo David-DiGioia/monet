@@ -1,9 +1,12 @@
 /build
-#/bin # we want the dll files to be included
+# we want the dll files to be included so don't ignore bin
 /asset/assets_export
 /asset/assets
 extra/traces
 /shaders/spirv
+
+# config files
+*.ini
 
 # Ignore all model files except the default folder
 !/asset/assets/models/_default
@@ -26,10 +29,10 @@ extra/traces
 *.userprefs
 
 # Build results
-[Dd]ebug/
+# [Dd]ebug/
 [Dd]ebugPublic/
 
-[Rr]elease/
+# [Rr]elease/
 [Rr]eleases/
 x64/
 x86/
@@ -37,7 +40,7 @@ x86/
 [Aa][Rr][Mm]/
 [Aa][Rr][Mm]64/
 bld/
-[Bb]in/
+# [Bb]in/
 [Oo]bj/
 [Ll]og/
 
