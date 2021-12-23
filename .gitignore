@@ -1,5 +1,5 @@
 /build
-/bin
+#/bin # we want the dll files to be included
 /asset/assets_export
 /asset/assets
 extra/traces
