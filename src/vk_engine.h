@@ -188,6 +188,8 @@ public:
 
 	void setRigidDynamicLockFlags(physx::PxRigidDynamicLockFlags flags);
 
+	void setAngularDamping(float damping);
+
 	void addTorque(glm::vec3 torque);
 
 	void setVelocity(glm::vec3 velocity);
@@ -197,6 +199,8 @@ public:
 	void setMass(float mass);
 	
 	float getMass();
+
+	glm::vec3 getVelocity();
 
 private:
 	void updateRenderMatrix();

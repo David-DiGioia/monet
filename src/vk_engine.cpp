@@ -202,6 +202,11 @@ void GameObject::setRigidDynamicLockFlags(physx::PxRigidDynamicLockFlags flags)
 	_physicsObject->is<PxRigidDynamic>()->setRigidDynamicLockFlags(flags);
 }
 
+void GameObject::setAngularDamping(float damping)
+{
+	_physicsObject->is<PxRigidDynamic>()->setAngularDamping(damping);
+}
+
 void GameObject::addTorque(glm::vec3 torque)
 {
 	_physicsObject->is<PxRigidDynamic>()->addTorque(physx::PxVec3{ torque.x, torque.y, torque.z });
@@ -230,6 +235,12 @@ void GameObject::setMass(float mass)
 float GameObject::getMass()
 {
 	return _physicsObject->is<PxRigidDynamic>()->getMass();
+}
+
+glm::vec3 GameObject::getVelocity()
+{
+	physx::PxVec3 v{ _physicsObject->is<PxRigidDynamic>()->getLinearVelocity() };
+	return glm::vec3{v.x, v.y, v.z};
 }
 
 //int resizingEventWatcher(void* data, SDL_Event* event) {
