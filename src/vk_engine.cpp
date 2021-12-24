@@ -197,6 +197,11 @@ void GameObject::addForce(glm::vec3 force)
 	_physicsObject->is<PxRigidDynamic>()->addForce(physx::PxVec3{ force.x, force.y, force.z });
 }
 
+void GameObject::setRigidDynamicLockFlags(physx::PxRigidDynamicLockFlags flags)
+{
+	_physicsObject->is<PxRigidDynamic>()->setRigidDynamicLockFlags(flags);
+}
+
 void GameObject::addTorque(glm::vec3 torque)
 {
 	_physicsObject->is<PxRigidDynamic>()->addTorque(physx::PxVec3{ torque.x, torque.y, torque.z });

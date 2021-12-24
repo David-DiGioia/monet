@@ -186,6 +186,8 @@ public:
 
 	void addForce(glm::vec3 force);
 
+	void setRigidDynamicLockFlags(physx::PxRigidDynamicLockFlags flags);
+
 	void addTorque(glm::vec3 torque);
 
 	void setVelocity(glm::vec3 velocity);
