@@ -2106,6 +2106,10 @@ void VulkanEngine::updatePhysics()
 	// Update gameobject transforms to match the transforms of the physics objects
 	for (GameObject* go : _physicsObjects) {
 		Transform t{ _physicsEngine.getActorTransform(go->getPhysicsObject()) };
+
+		// Rigidbodies only determine objects position/rotation
+		t.scale = go->getScale();
+
 		go->setTransform(t);
 	}
 }
