@@ -36,6 +36,8 @@ public:
 
 	void setGravity(float gravity);
 
+	bool raycast(const PxVec3& origin, const PxVec3& unitDir, PxReal maxDistance, PxRaycastBuffer& hit);
+
 private:
 	PxDefaultAllocator _allocator;
 	PxDefaultErrorCallback _errorCallback;

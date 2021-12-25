@@ -2108,6 +2108,13 @@ bool VulkanEngine::advancePhysics(float delta)
 	return true;
 }
 
+bool VulkanEngine::raycast(const glm::vec3& origin, const glm::vec3& unitDir, float maxDistance, PxRaycastBuffer& hit)
+{
+	PxVec3 pxOrigin{ origin.x, origin.y, origin.z };
+	PxVec3 pxUnitDir{ unitDir.x, unitDir.y, unitDir.z };
+	return _physicsEngine.raycast(pxOrigin, pxUnitDir, maxDistance, hit);
+}
+
 void VulkanEngine::updatePhysics()
 {
 	ZoneScoped;

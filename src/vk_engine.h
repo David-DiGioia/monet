@@ -388,6 +388,8 @@ public:
 
 	bool advancePhysics(float delta);
 
+	bool raycast(const glm::vec3& origin, const glm::vec3& unitDir, float maxDistance, PxRaycastBuffer& hit);
+
 	PxMaterial* createPhysicsMaterial(float staticFriciton, float dynamicFriction, float restitution);
 
 	PxShape* createPhysicsShape(const PxGeometry& geometry,
