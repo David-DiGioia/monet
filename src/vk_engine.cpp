@@ -192,9 +192,9 @@ void GameObject::setParent(GameObject* parent)
 	parent->_children.push_back(this);
 }
 
-void GameObject::addForce(glm::vec3 force)
+void GameObject::addForce(glm::vec3 force, physx::PxForceMode::Enum mode)
 {
-	_physicsObject->is<PxRigidDynamic>()->addForce(physx::PxVec3{ force.x, force.y, force.z });
+	_physicsObject->is<PxRigidDynamic>()->addForce(physx::PxVec3{ force.x, force.y, force.z }, mode);
 }
 
 void GameObject::setRigidDynamicLockFlags(physx::PxRigidDynamicLockFlags flags)

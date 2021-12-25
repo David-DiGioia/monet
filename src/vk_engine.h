@@ -184,7 +184,7 @@ public:
 
 	// physics
 
-	void addForce(glm::vec3 force);
+	void addForce(glm::vec3 force, physx::PxForceMode::Enum mode = physx::PxForceMode::eFORCE);
 
 	void setRigidDynamicLockFlags(physx::PxRigidDynamicLockFlags flags);
 
