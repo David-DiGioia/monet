@@ -2,6 +2,7 @@
 #include <vector>
 
 #include "glm/glm.hpp"
+#include "PxPhysicsAPI.h"
 
 namespace vkutil {
 
@@ -14,5 +15,9 @@ namespace vkutil {
 			ptrArr.push_back(&t);
 		}
 	}
+
+	physx::PxVec3 toPhysx(const glm::vec3& v);
+
+	glm::vec3 toGLM(const physx::PxVec3& v);
 
 }

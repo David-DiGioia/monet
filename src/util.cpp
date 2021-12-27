@@ -30,3 +30,13 @@ glm::mat4 vkutil::ortho(float left, float right, float bottom, float top, float 
 	result[3][2] = -zNear / (zFar - zNear);
 	return result;
 }
+
+physx::PxVec3 vkutil::toPhysx(const glm::vec3& v)
+{
+	return physx::PxVec3{ v.x, v.y, v.z };
+}
+
+glm::vec3 vkutil::toGLM(const physx::PxVec3& v)
+{
+	return glm::vec3{ v.x, v.y, v.z };
+}

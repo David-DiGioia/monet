@@ -1836,7 +1836,7 @@ void VulkanEngine::draw()
 	cmdBeginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
 
 	// Assume _camTransform and _sceneParamters lights are updated here if they need to be
-	_app->update(*this, _delta);
+	_app->update(_delta);
 
 	// write all the objects' matrices into the SSBO (used in both shadow pass and draw objects)
 	void* objectData;
@@ -2052,7 +2052,7 @@ void VulkanEngine::gui()
 
 	// imgui commands ---------------------------------------
 
-	_app->gui(*this);
+	_app->gui();
 }
 
 void VulkanEngine::addToPhysicsEngineDynamic(GameObject* go, PxShape* shape, float density)
@@ -2103,7 +2103,7 @@ bool VulkanEngine::advancePhysics(float delta)
 
 	_physicsAccumulator -= _physicsStepSize;
 
-	_app->fixedUpdate(*this);
+	_app->fixedUpdate();
 	_physicsEngine.stepPhysics(_physicsStepSize);
 	return true;
 }
