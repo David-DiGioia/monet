@@ -37,6 +37,31 @@ glm::vec3 vertexDataCube[NUM_VERTICES_CUBE]{
 	// left
 	{-1.0,  1.0, -1.0}, {-1.0, -1.0,  1.0}, {-1.0,  1.0,  1.0},
 	{-1.0,  1.0, -1.0}, {-1.0, -1.0, -1.0}, {-1.0, -1.0,  1.0},
+
+
+	//// front
+	//{-1.0, -1.0,  1.0}, {-1.0,  1.0,  1.0}, { 1.0, -1.0,  1.0},
+	//{-1.0,  1.0,  1.0}, { 1.0,  1.0,  1.0}, { 1.0, -1.0,  1.0},
+
+	//// back
+	//{-1.0,  1.0, -1.0}, {-1.0, -1.0, -1.0}, { 1.0,  1.0, -1.0},
+	//{-1.0, -1.0, -1.0}, { 1.0, -1.0, -1.0}, { 1.0,  1.0, -1.0},
+
+	//// up
+	//{ 1.0,  1.0,  1.0}, {-1.0,  1.0,  1.0}, { 1.0,  1.0, -1.0},
+	//{-1.0,  1.0,  1.0}, {-1.0,  1.0, -1.0}, { 1.0,  1.0, -1.0},
+
+	//// down
+	//{-1.0, -1.0,  1.0}, { 1.0, -1.0,  1.0}, {-1.0, -1.0, -1.0},
+	//{ 1.0, -1.0,  1.0}, { 1.0, -1.0, -1.0}, {-1.0, -1.0, -1.0},
+
+	//// right
+	//{ 1.0, -1.0,  1.0}, { 1.0,  1.0,  1.0}, { 1.0, -1.0, -1.0},
+	//{ 1.0,  1.0,  1.0}, { 1.0,  1.0, -1.0}, { 1.0, -1.0, -1.0},
+
+	//// left
+	//{-1.0,  1.0,  1.0}, {-1.0, -1.0,  1.0}, {-1.0,  1.0, -1.0},
+	//{-1.0, -1.0,  1.0}, {-1.0, -1.0, -1.0}, {-1.0,  1.0, -1.0},
 };
 
 glm::vec3 vertexDataPlane[NUM_VERTICES_PLANE]{
@@ -93,7 +118,7 @@ void create_rt_renderpass(VulkanEngine& engine, VkFormat format, VkRenderPass* o
 	// guaranteed to be preserved.
 	// since we are clearing it then writing into it, it doesn't matter the previous layout
 	// since the implementation will know the layout it writes to it
-	attachment.initialLayout - VK_IMAGE_LAYOUT_UNDEFINED;
+	attachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
 	// final layout is automatically transitioned to at end of renderpass
 	attachment.finalLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 

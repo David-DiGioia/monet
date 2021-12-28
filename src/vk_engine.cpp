@@ -457,7 +457,7 @@ void VulkanEngine::initImgui()
 
 void VulkanEngine::initScene()
 {
-	createRenderObject("cube", "testCubemapMat", false);
+	createRenderObject("cube_inv", "testCubemapMat", false);
 	_sceneParameters = GPUSceneData{}; // zero out scene parameters
 
 	_app->init(*this);
