@@ -182,6 +182,8 @@ public:
 
 	void setParent(GameObject* parent);
 
+	void setVisible(bool visible);
+
 	// physics
 
 	void addForce(glm::vec3 force, physx::PxForceMode::Enum mode = physx::PxForceMode::eFORCE);

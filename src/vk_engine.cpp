@@ -192,6 +192,12 @@ void GameObject::setParent(GameObject* parent)
 	parent->_children.push_back(this);
 }
 
+void GameObject::setVisible(bool visible)
+{
+	_renderObject->visible = visible;
+	_renderObject->castShadow = visible;
+}
+
 void GameObject::addForce(glm::vec3 force, physx::PxForceMode::Enum mode)
 {
 	_physicsObject->is<PxRigidDynamic>()->addForce(physx::PxVec3{ force.x, force.y, force.z }, mode);
@@ -464,6 +470,7 @@ const RenderObject* VulkanEngine::createRenderObject(const std::string& meshName
 	object.material = getMaterial(matName);
 	object.castShadow = castShadow;
 	object.uniformBlock.transformMatrix = glm::mat4(1.0f);
+	object.visible = true;
 
 	return &(*_renderables.insert(object));
 }
@@ -1969,6 +1976,11 @@ void VulkanEngine::drawObjects(VkCommandBuffer cmd, const std::multiset<RenderOb
 
 	uint32_t idx{ 0 };
 	for (const RenderObject& object : renderables) {
+		if (!object.visible) {
+			++idx;
+			continue;
+		}
+
 		// only bind the pipeline if it doesn't match with the already bound one
 		if (object.material != lastMaterial) {
 			// if this material has the same descriptor set layout then the pipelines might be the same and we don't have to rebind??

@@ -228,7 +228,8 @@ struct MaterialCreateInfo {
 struct RenderObject {
 	Mesh* mesh;
 	Material* material;
-	bool castShadow;
+	mutable bool castShadow;
+	mutable bool visible;
 	mutable int32_t activeAnimation;
 
 	struct RenderObjectUB {
