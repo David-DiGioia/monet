@@ -167,6 +167,12 @@ void GameObject::setPos(glm::vec3 pos)
 {
 	_transform.pos = pos;
 	updateRenderMatrix();
+
+	if (_physicsObject) {
+		PxTransform transform{ _physicsObject->getGlobalPose() };
+		transform.p = vkutil::toPhysx(pos);
+		_physicsObject->setGlobalPose(transform);
+	}
 }
 
 void GameObject::setScale(glm::vec3 scale)
@@ -179,6 +185,12 @@ void GameObject::setRot(glm::mat4 rot)
 {
 	_transform.rot = rot;
 	updateRenderMatrix();
+
+	if (_physicsObject) {
+		PxTransform transform{ _physicsObject->getGlobalPose() };
+		transform.q = vkutil::toPhysx(glm::toQuat(rot));
+		_physicsObject->setGlobalPose(transform);
+	}
 }
 
 void GameObject::setForceStepInterpolation(bool x)

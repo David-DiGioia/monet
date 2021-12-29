@@ -36,6 +36,11 @@ physx::PxVec3 vkutil::toPhysx(const glm::vec3& v)
 	return physx::PxVec3{ v.x, v.y, v.z };
 }
 
+physx::PxQuat vkutil::toPhysx(const glm::quat& q)
+{
+	return physx::PxQuat{ q.x, q.y, q.z, q.w };
+}
+
 glm::vec3 vkutil::toGLM(const physx::PxVec3& v)
 {
 	return glm::vec3{ v.x, v.y, v.z };

@@ -2,6 +2,7 @@
 #include <vector>
 
 #include "glm/glm.hpp"
+#include "glm/gtx/quaternion.hpp"
 #include "PxPhysicsAPI.h"
 
 namespace vkutil {
@@ -17,6 +18,8 @@ namespace vkutil {
 	}
 
 	physx::PxVec3 toPhysx(const glm::vec3& v);
+
+	physx::PxQuat toPhysx(const glm::quat& q);
 
 	glm::vec3 toGLM(const physx::PxVec3& v);
 
